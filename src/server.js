@@ -28,6 +28,8 @@ const webhookRoutes = require('./routes/webhook.routes');
 const leadsRoutes = require('./routes/leads.routes');
 const vendedoresRoutes = require('./routes/vendedores.routes');
 const followupsRoutes = require('./routes/followups.routes');
+const metasRoutes = require('./routes/metas.routes');
+const { iniciarSlaChecker } = require('./jobs/slaChecker.job');
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -40,6 +42,7 @@ app.use('/api/webhook', webhookRoutes);
 app.use('/api/leads', leadsRoutes);
 app.use('/api/vendedores', vendedoresRoutes);
 app.use('/api/followups', followupsRoutes);
+app.use('/api/metas', metasRoutes);
 
 // WebSocket
 io.on('connection', (socket) => {
@@ -69,8 +72,15 @@ process.on('SIGTERM', gracefulShutdown);
 process.on('SIGINT', gracefulShutdown);
 
 // Start
-server.listen(env.port, () => {
+server.listen(env.port, async () => {
   logger.info(`Server running on port ${env.port} (${env.nodeEnv})`);
+
+  // Iniciar SLA Checker (BullMQ)
+  try {
+    await iniciarSlaChecker(io);
+  } catch (err) {
+    logger.error(`Erro ao iniciar SLA Checker: ${err.message}`);
+  }
 });
 
 module.exports = { app, io, server };

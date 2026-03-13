@@ -414,6 +414,41 @@ async function criarInteracao(req, res, next) {
   }
 }
 
+async function leadsPorDia(req, res, next) {
+  try {
+    const { dias = '30', vendedor_id } = req.query;
+    const numDias = parseInt(dias, 10);
+    const dataInicio = new Date();
+    dataInicio.setDate(dataInicio.getDate() - numDias);
+    dataInicio.setHours(0, 0, 0, 0);
+
+    const where = { createdAt: { gte: dataInicio } };
+    if (vendedor_id) where.vendedorId = parseInt(vendedor_id, 10);
+
+    const leads = await prisma.lead.findMany({
+      where,
+      select: { createdAt: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    // Agrupar por dia
+    const porDia = {};
+    for (let i = 0; i < numDias; i++) {
+      const d = new Date(dataInicio);
+      d.setDate(d.getDate() + i);
+      porDia[d.toISOString().slice(0, 10)] = 0;
+    }
+    for (const lead of leads) {
+      const dia = lead.createdAt.toISOString().slice(0, 10);
+      if (porDia[dia] !== undefined) porDia[dia]++;
+    }
+
+    res.json(Object.entries(porDia).map(([data, total]) => ({ data, total })));
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   listar,
   detalhe,
@@ -423,4 +458,5 @@ module.exports = {
   redistribuir,
   interacoes,
   criarInteracao,
+  leadsPorDia,
 };

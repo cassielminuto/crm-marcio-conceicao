@@ -59,6 +59,7 @@ const criarInteracaoSchema = z.object({
 });
 
 // Rotas
+router.get('/por-dia', autenticar, leadsController.leadsPorDia);
 router.get('/', autenticar, leadsController.listar);
 router.get('/:id', autenticar, leadsController.detalhe);
 router.post('/', autenticar, validar(criarLeadSchema), leadsController.criar);
