@@ -1,0 +1,12 @@
+node_modules
+frontend/node_modules
+frontend/dist
+.env
+.git
+.gitignore
+.claude
+*.log
+.DS_Store
+uploads/calls/*.wav
+uploads/calls/*.webm
+uploads/calls/*.aiff

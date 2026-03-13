@@ -1,3 +1,4 @@
+const path = require('path');
 const env = require('./config/env');
 const express = require('express');
 const cors = require('cors');
@@ -10,16 +11,18 @@ const prisma = require('./config/database');
 const app = express();
 const server = http.createServer(app);
 
+const corsOrigin = env.nodeEnv === 'production' ? true : env.frontendUrl;
+
 const io = new Server(server, {
   cors: {
-    origin: env.frontendUrl,
+    origin: corsOrigin,
     methods: ['GET', 'POST'],
   },
 });
 
 // Middlewares globais
-app.use(helmet());
-app.use(cors({ origin: env.frontendUrl }));
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(cors({ origin: corsOrigin }));
 app.use(express.json({ limit: '10mb' }));
 
 const errorHandler = require('./middleware/errorHandler');
@@ -65,6 +68,20 @@ io.on('connection', (socket) => {
 
 // Disponibilizar io para os controllers
 app.set('io', io);
+
+// Servir frontend estático (produção)
+const frontendPath = path.join(__dirname, '..', 'frontend', 'dist');
+app.use(express.static(frontendPath));
+
+// SPA fallback — rotas não-API redirecionam para index.html
+app.use((req, res, next) => {
+  if (req.method !== 'GET' || req.path.startsWith('/api/') || req.path.startsWith('/socket.io')) {
+    return next();
+  }
+  res.sendFile(path.join(frontendPath, 'index.html'), (err) => {
+    if (err) next();
+  });
+});
 
 // Error handler (deve ser o último middleware)
 app.use(errorHandler);
