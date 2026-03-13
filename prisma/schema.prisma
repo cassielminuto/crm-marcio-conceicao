@@ -196,6 +196,8 @@ model Lead {
   followUps           FollowUp[]
   funilHistorico      FunilHistorico[]
   propostas           Proposta[]
+  duplicatasOrigem    PossivelDuplicata[] @relation("DuplicataOrigem")
+  duplicatasDe        PossivelDuplicata[] @relation("DuplicataDuplicata")
 
   @@map("leads")
 }
@@ -332,6 +334,23 @@ model AuditLog {
   usuario          Usuario? @relation(fields: [usuarioId], references: [id])
 
   @@map("audit_log")
+}
+
+/// Tabela 13: possiveis_duplicatas
+model PossivelDuplicata {
+  id             Int      @id @default(autoincrement())
+  leadOrigemId   Int      @map("lead_origem_id")
+  leadDuplicataId Int     @map("lead_duplicata_id")
+  tipoMatch      String   @map("tipo_match") @db.VarChar(20) // 'telefone', 'email', 'ambos'
+  status         String   @default("pendente") @db.VarChar(20) // 'pendente', 'confirmado', 'descartado', 'mergeado'
+  resolvidoPor   Int?     @map("resolvido_por")
+  resolvidoEm    DateTime? @map("resolvido_em")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  leadOrigem     Lead     @relation("DuplicataOrigem", fields: [leadOrigemId], references: [id])
+  leadDuplicata  Lead     @relation("DuplicataDuplicata", fields: [leadDuplicataId], references: [id])
+
+  @@map("possiveis_duplicatas")
 }
 
 /// Tabela 12: propostas

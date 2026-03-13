@@ -51,7 +51,15 @@ export default function AppLayout() {
     }
   }, [adicionarToast]);
 
-  useSocket(handleNovoLead, handleSlaAlerta);
+  const handleDuplicata = useCallback((data) => {
+    const nomes = data.duplicatas?.map((d) => d.nome).join(', ') || '';
+    adicionarToast(
+      `Duplicata detectada: ${data.leadNome} — matches com ${nomes}`,
+      'aviso'
+    );
+  }, [adicionarToast]);
+
+  useSocket(handleNovoLead, handleSlaAlerta, handleDuplicata);
 
   return (
     <div className="flex min-h-screen bg-gray-50">

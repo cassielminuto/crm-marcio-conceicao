@@ -1,6 +1,7 @@
 const prisma = require('../config/database');
 const { identificarCanal, calcularScore } = require('../services/scoreEngine');
 const { distribuir, incrementarLeadsAtivos } = require('../services/distribuidor');
+const { verificarDuplicidade, registrarDuplicatas } = require('../services/deduplicador');
 const logger = require('../utils/logger');
 
 async function receberLeadRespondi(req, res, next) {
@@ -40,11 +41,29 @@ async function receberLeadRespondi(req, res, next) {
       }
     }
 
-    // 4. Distribuir para closer
+    // 4. Verificar duplicidade por telefone/email
+    const { exato, parciais } = await verificarDuplicidade(telefone, email);
+
+    if (exato) {
+      return res.status(409).json({
+        error: 'Lead duplicado encontrado (telefone + email)',
+        leadId: exato.id,
+        leadExistente: {
+          id: exato.id,
+          nome: exato.nome,
+          telefone: exato.telefone,
+          email: exato.email,
+          classe: exato.classe,
+          etapaFunil: exato.etapaFunil,
+        },
+      });
+    }
+
+    // 5. Distribuir para closer
     const vendedor = await distribuir(classe);
     const agora = new Date();
 
-    // 5. Salvar lead no banco
+    // 6. Salvar lead no banco
     const lead = await prisma.lead.create({
       data: {
         respondiId,
@@ -65,7 +84,7 @@ async function receberLeadRespondi(req, res, next) {
       },
     });
 
-    // 6. Registrar no histórico do funil
+    // 7. Registrar no histórico do funil
     await prisma.funilHistorico.create({
       data: {
         leadId: lead.id,
@@ -76,12 +95,35 @@ async function receberLeadRespondi(req, res, next) {
       },
     });
 
-    // 7. Incrementar leads ativos do vendedor
+    // 8. Incrementar leads ativos do vendedor
     if (vendedor) {
       await incrementarLeadsAtivos(vendedor.id);
     }
 
-    // 8. Notificar via WebSocket (leads A são urgentes)
+    // 9. Registrar possíveis duplicatas (match parcial) e alertar via WebSocket
+    let duplicatasRegistradas = [];
+    if (parciais.length > 0) {
+      duplicatasRegistradas = await registrarDuplicatas(lead.id, parciais);
+
+      const io = req.app.get('io');
+      if (io && duplicatasRegistradas.length > 0) {
+        io.emit('duplicata_detectada', {
+          leadId: lead.id,
+          leadNome: nome,
+          duplicatas: parciais.map((p) => ({
+            leadId: p.lead.id,
+            nome: p.lead.nome,
+            tipoMatch: p.tipoMatch,
+          })),
+        });
+      }
+
+      logger.warn(
+        `Possivel duplicata: ${nome} (${telefone}) — ${parciais.length} matches parciais`
+      );
+    }
+
+    // 10. Notificar via WebSocket (leads A são urgentes)
     const io = req.app.get('io');
     if (io && vendedor) {
       io.emit('novo_lead', {
@@ -110,6 +152,11 @@ async function receberLeadRespondi(req, res, next) {
       vendedor: vendedor
         ? { id: vendedor.id, nome: vendedor.nomeExibicao, papel: vendedor.papel }
         : null,
+      duplicatas: duplicatasRegistradas.length > 0 ? parciais.map((p) => ({
+        leadId: p.lead.id,
+        nome: p.lead.nome,
+        tipoMatch: p.tipoMatch,
+      })) : undefined,
     });
   } catch (err) {
     next(err);

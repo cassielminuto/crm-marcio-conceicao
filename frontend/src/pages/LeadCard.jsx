@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import ScriptChecklist from '../components/ScriptChecklist';
 import CallRecorder from '../components/CallRecorder';
+import DuplicateAlert from '../components/DuplicateAlert';
 import {
   ArrowLeft, Phone, Mail, Instagram, Megaphone, Clock, User, Save,
   MessageSquare, PhoneCall, FileText, ChevronDown, ChevronUp, Bot,
@@ -84,6 +85,7 @@ export default function LeadCard() {
   const [salvando, setSalvando] = useState(false);
   const [salvoMsg, setSalvoMsg] = useState('');
   const [timelineAberta, setTimelineAberta] = useState(true);
+  const [duplicatas, setDuplicatas] = useState([]);
 
   // Campos editáveis
   const [campos, setCampos] = useState({
@@ -95,12 +97,14 @@ export default function LeadCard() {
 
   const carregar = useCallback(async () => {
     try {
-      const [leadRes, intRes] = await Promise.all([
+      const [leadRes, intRes, dupRes] = await Promise.all([
         api.get(`/leads/${id}`),
         api.get(`/leads/${id}/interacoes`),
+        api.get(`/leads/${id}/duplicatas`).catch(() => ({ data: [] })),
       ]);
       setLead(leadRes.data);
       setInteracoes(intRes.data);
+      setDuplicatas(dupRes.data);
       setCampos({
         dorPrincipal: leadRes.data.dorPrincipal || '',
         tracoCarater: leadRes.data.tracoCarater || '',
@@ -201,6 +205,9 @@ export default function LeadCard() {
           </span>
         )}
       </div>
+
+      {/* Alerta de duplicata */}
+      <DuplicateAlert leadId={lead.id} duplicatas={duplicatas} onResolvido={carregar} />
 
       {/* Layout 2 colunas */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">

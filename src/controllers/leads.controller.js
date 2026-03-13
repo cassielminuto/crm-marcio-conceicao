@@ -1,6 +1,7 @@
 const prisma = require('../config/database');
 const { identificarCanal, calcularScore } = require('../services/scoreEngine');
 const { distribuir, incrementarLeadsAtivos } = require('../services/distribuidor');
+const { verificarDuplicidade, registrarDuplicatas, buscarDuplicatas, mergearLeads } = require('../services/deduplicador');
 
 async function listar(req, res, next) {
   try {
@@ -113,6 +114,16 @@ async function detalhe(req, res, next) {
 async function criar(req, res, next) {
   try {
     const { nome, telefone, email, canal, formulario_titulo, dados_respondi } = req.body;
+
+    // Verificar duplicidade exata
+    const { exato } = await verificarDuplicidade(telefone, email);
+    if (exato) {
+      return res.status(409).json({
+        error: 'Lead duplicado (telefone + email)',
+        leadId: exato.id,
+        leadExistente: { id: exato.id, nome: exato.nome, telefone: exato.telefone },
+      });
+    }
 
     let pontuacao = 0;
     let classe = 'C';
@@ -449,6 +460,54 @@ async function leadsPorDia(req, res, next) {
   }
 }
 
+async function duplicatas(req, res, next) {
+  try {
+    const { id } = req.params;
+    const lista = await buscarDuplicatas(parseInt(id, 10));
+    res.json(lista);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function merge(req, res, next) {
+  try {
+    const { id, duplicateId } = req.params;
+    const leadPrincipalId = parseInt(id, 10);
+    const leadDuplicadoId = parseInt(duplicateId, 10);
+
+    const resultado = await mergearLeads(leadPrincipalId, leadDuplicadoId, req.usuario.id);
+    res.json(resultado);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function descartarDuplicata(req, res, next) {
+  try {
+    const { id, duplicateId } = req.params;
+
+    await prisma.possivelDuplicata.updateMany({
+      where: {
+        OR: [
+          { leadOrigemId: parseInt(id, 10), leadDuplicataId: parseInt(duplicateId, 10) },
+          { leadOrigemId: parseInt(duplicateId, 10), leadDuplicataId: parseInt(id, 10) },
+        ],
+        status: 'pendente',
+      },
+      data: {
+        status: 'descartado',
+        resolvidoPor: req.usuario.id,
+        resolvidoEm: new Date(),
+      },
+    });
+
+    res.json({ descartado: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   listar,
   detalhe,
@@ -459,4 +518,7 @@ module.exports = {
   interacoes,
   criarInteracao,
   leadsPorDia,
+  duplicatas,
+  merge,
+  descartarDuplicata,
 };

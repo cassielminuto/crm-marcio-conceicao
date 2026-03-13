@@ -68,5 +68,8 @@ router.patch('/:id/etapa', autenticar, validar(moverEtapaSchema), leadsControlle
 router.patch('/:id/vendedor', autenticar, autorizar('admin', 'gestor'), validar(redistribuirSchema), leadsController.redistribuir);
 router.get('/:id/interacoes', autenticar, leadsController.interacoes);
 router.post('/:id/interacoes', autenticar, validar(criarInteracaoSchema), leadsController.criarInteracao);
+router.get('/:id/duplicatas', autenticar, leadsController.duplicatas);
+router.post('/:id/merge/:duplicateId', autenticar, autorizar('admin', 'gestor'), leadsController.merge);
+router.delete('/:id/duplicatas/:duplicateId', autenticar, autorizar('admin', 'gestor'), leadsController.descartarDuplicata);
 
 module.exports = router;
