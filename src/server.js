@@ -32,7 +32,10 @@ const metasRoutes = require('./routes/metas.routes');
 const callsRoutes = require('./routes/calls.routes');
 const relatoriosRoutes = require('./routes/relatorios.routes');
 const adminRoutes = require('./routes/admin.routes');
+const whatsappRoutes = require('./routes/whatsapp.routes');
+const templatesRoutes = require('./routes/templates.routes');
 const { iniciarSlaChecker } = require('./jobs/slaChecker.job');
+const { iniciarWhatsappDispatcher } = require('./jobs/whatsappDispatcher.job');
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -49,6 +52,8 @@ app.use('/api/metas', metasRoutes);
 app.use('/api/calls', callsRoutes);
 app.use('/api/relatorios', relatoriosRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
+app.use('/api/templates', templatesRoutes);
 
 // WebSocket
 io.on('connection', (socket) => {
@@ -84,8 +89,9 @@ server.listen(env.port, async () => {
   // Iniciar SLA Checker (BullMQ)
   try {
     await iniciarSlaChecker(io);
+    await iniciarWhatsappDispatcher();
   } catch (err) {
-    logger.error(`Erro ao iniciar SLA Checker: ${err.message}`);
+    logger.error(`Erro ao iniciar jobs: ${err.message}`);
   }
 });
 

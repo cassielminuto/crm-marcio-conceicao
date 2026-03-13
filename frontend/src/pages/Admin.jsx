@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { Settings, Clock } from 'lucide-react';
+import { Settings, Clock, Smartphone, FileText } from 'lucide-react';
 
 export default function Admin() {
   const location = useLocation();
@@ -13,7 +12,7 @@ export default function Admin() {
         <p className="text-sm text-gray-500 mt-1">Configuracoes do sistema</p>
       </div>
 
-      <div className="flex gap-3">
+      <div className="flex gap-3 flex-wrap">
         <NavLink
           to="/admin/sla"
           className={({ isActive }) =>
@@ -23,6 +22,26 @@ export default function Admin() {
           }
         >
           <Clock size={16} /> SLA Config
+        </NavLink>
+        <NavLink
+          to="/admin/whatsapp"
+          className={({ isActive }) =>
+            `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              isActive ? 'bg-green-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+            }`
+          }
+        >
+          <Smartphone size={16} /> WhatsApp
+        </NavLink>
+        <NavLink
+          to="/admin/templates"
+          className={({ isActive }) =>
+            `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              isActive ? 'bg-purple-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+            }`
+          }
+        >
+          <FileText size={16} /> Templates
         </NavLink>
       </div>
 
