@@ -1,0 +1,354 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum Perfil {
+  admin
+  gestor
+  vendedor
+}
+
+enum PapelVendedor {
+  closer_lider
+  closer_independente
+  trainee
+}
+
+enum CanalLead {
+  bio
+  anuncio
+  evento
+}
+
+enum ClasseLead {
+  A
+  B
+  C
+}
+
+enum EtapaFunil {
+  novo
+  em_abordagem
+  qualificado
+  proposta
+  fechado_ganho
+  fechado_perdido
+  nurturing
+}
+
+enum StatusLead {
+  aguardando
+  em_abordagem
+  convertido
+  perdido
+  nurturing
+}
+
+enum TracoCarater {
+  esquizoide
+  oral
+  masoquista
+  rigido
+  nao_identificado
+}
+
+enum ResultadoCall {
+  fechou
+  nao_fechou
+  reagendar
+  sem_call
+}
+
+enum TipoInteracao {
+  call
+  whatsapp_enviado
+  whatsapp_recebido
+  nota
+  email
+}
+
+enum TipoFollowUp {
+  whatsapp
+  call
+  email
+}
+
+enum StatusFollowUp {
+  pendente
+  executado
+  atrasado
+  cancelado
+}
+
+enum TipoTemplate {
+  whatsapp
+  email
+}
+
+enum ClasseTemplate {
+  A
+  B
+  C
+  todos
+}
+
+enum StatusMeta {
+  em_andamento
+  atingida
+  nao_atingida
+}
+
+enum StatusProposta {
+  rascunho
+  enviada
+  visualizada
+  aceita
+  recusada
+}
+
+// ==========================================
+// TABELAS
+// ==========================================
+
+/// Tabela 1: usuarios
+model Usuario {
+  id         Int      @id @default(autoincrement())
+  nome       String   @db.VarChar(255)
+  email      String   @unique @db.VarChar(255)
+  senhaHash  String   @map("senha_hash") @db.VarChar(255)
+  perfil     Perfil
+  ativo      Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  vendedor   Vendedor?
+  auditLogs  AuditLog[]
+
+  @@map("usuarios")
+}
+
+/// Tabela 2: vendedores
+model Vendedor {
+  id               Int            @id @default(autoincrement())
+  usuarioId        Int            @unique @map("usuario_id")
+  nomeExibicao     String?        @map("nome_exibicao") @db.VarChar(100)
+  papel            PapelVendedor
+  classesAtendidas String[]       @map("classes_atendidas")
+  scorePerformance Float          @default(0) @map("score_performance")
+  leadsAtivos      Int            @default(0) @map("leads_ativos")
+  leadsMax         Int            @default(30) @map("leads_max")
+  totalConversoes  Int            @default(0) @map("total_conversoes")
+  ticketMedio      Decimal        @default(0) @map("ticket_medio") @db.Decimal(10, 2)
+  rankingPosicao   Int            @default(0) @map("ranking_posicao")
+  ativo            Boolean        @default(true)
+
+  usuario          Usuario        @relation(fields: [usuarioId], references: [id])
+  leads            Lead[]
+  interacoes       Interacao[]
+  followUps        FollowUp[]
+  metas            Meta[]
+  gamificacao      Gamificacao[]
+  propostas        Proposta[]
+  funilHistorico   FunilHistorico[]
+
+  @@map("vendedores")
+}
+
+/// Tabela 3: leads
+model Lead {
+  id                  Int           @id @default(autoincrement())
+  respondiId          String?       @unique @map("respondi_id") @db.VarChar(255)
+  nome                String        @db.VarChar(255)
+  telefone            String        @db.VarChar(20)
+  email               String?       @db.VarChar(255)
+  canal               CanalLead
+  formularioTitulo    String?       @map("formulario_titulo") @db.VarChar(255)
+  pontuacao           Int           @default(0)
+  classe              ClasseLead
+  etapaFunil          EtapaFunil    @default(novo) @map("etapa_funil")
+  vendedorId          Int?          @map("vendedor_id")
+  status              StatusLead    @default(aguardando)
+  dadosRespondi       Json?         @map("dados_respondi")
+  dorPrincipal        String?       @map("dor_principal")
+  tracoCarater        TracoCarater? @map("traco_carater")
+  objecaoPrincipal    String?       @map("objecao_principal")
+  resultadoCall       ResultadoCall? @map("resultado_call")
+  vendaRealizada      Boolean       @default(false) @map("venda_realizada")
+  valorVenda          Decimal?      @map("valor_venda") @db.Decimal(10, 2)
+  dataPreenchimento   DateTime?     @map("data_preenchimento")
+  dataAtribuicao      DateTime?     @map("data_atribuicao")
+  dataAbordagem       DateTime?     @map("data_abordagem")
+  dataConversao       DateTime?     @map("data_conversao")
+  motivoPerda         String?       @map("motivo_perda")
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+
+  vendedor            Vendedor?     @relation(fields: [vendedorId], references: [id])
+  interacoes          Interacao[]
+  followUps           FollowUp[]
+  funilHistorico      FunilHistorico[]
+  propostas           Proposta[]
+
+  @@map("leads")
+}
+
+/// Tabela 4: interacoes
+model Interacao {
+  id            Int           @id @default(autoincrement())
+  leadId        Int           @map("lead_id")
+  vendedorId    Int           @map("vendedor_id")
+  tipo          TipoInteracao
+  conteudo      String?
+  gravacaoUrl   String?       @map("gravacao_url") @db.VarChar(500)
+  transcricao   String?
+  resumoIa      String?       @map("resumo_ia")
+  camposIa      Json?         @map("campos_ia")
+  duracao       Int?
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  lead          Lead          @relation(fields: [leadId], references: [id])
+  vendedor      Vendedor      @relation(fields: [vendedorId], references: [id])
+
+  @@map("interacoes")
+}
+
+/// Tabela 5: follow_ups
+model FollowUp {
+  id               Int            @id @default(autoincrement())
+  leadId           Int            @map("lead_id")
+  vendedorId       Int            @map("vendedor_id")
+  dataProgramada   DateTime       @map("data_programada")
+  dataExecutada    DateTime?      @map("data_executada")
+  tipo             TipoFollowUp
+  status           StatusFollowUp @default(pendente)
+  templateId       Int?           @map("template_id")
+  mensagemEnviada  String?        @map("mensagem_enviada")
+  createdAt        DateTime       @default(now()) @map("created_at")
+
+  lead             Lead           @relation(fields: [leadId], references: [id])
+  vendedor         Vendedor       @relation(fields: [vendedorId], references: [id])
+  template         TemplateMensagem? @relation(fields: [templateId], references: [id])
+
+  @@map("follow_ups")
+}
+
+/// Tabela 6: templates_mensagem
+model TemplateMensagem {
+  id          Int            @id @default(autoincrement())
+  nome        String         @db.VarChar(100)
+  conteudo    String
+  etapaFunil  EtapaFunil?    @map("etapa_funil")
+  classeLead  ClasseTemplate @default(todos) @map("classe_lead")
+  tipo        TipoTemplate   @default(whatsapp)
+  ativo       Boolean        @default(true)
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  followUps   FollowUp[]
+
+  @@map("templates_mensagem")
+}
+
+/// Tabela 7: metas
+model Meta {
+  id           Int        @id @default(autoincrement())
+  vendedorId   Int        @map("vendedor_id")
+  periodo      String     @db.VarChar(20)
+  valorMeta    Decimal    @map("valor_meta") @db.Decimal(10, 2)
+  valorAtual   Decimal    @default(0) @map("valor_atual") @db.Decimal(10, 2)
+  percentual   Float      @default(0)
+  leadsMeta    Int?       @map("leads_meta")
+  leadsAtual   Int        @default(0) @map("leads_atual")
+  status       StatusMeta @default(em_andamento)
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  vendedor     Vendedor   @relation(fields: [vendedorId], references: [id])
+
+  @@map("metas")
+}
+
+/// Tabela 8: funil_historico
+model FunilHistorico {
+  id             Int       @id @default(autoincrement())
+  leadId         Int       @map("lead_id")
+  etapaAnterior  String?   @map("etapa_anterior") @db.VarChar(50)
+  etapaNova      String    @map("etapa_nova") @db.VarChar(50)
+  vendedorId     Int?      @map("vendedor_id")
+  motivo         String?
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  lead           Lead      @relation(fields: [leadId], references: [id])
+  vendedor       Vendedor? @relation(fields: [vendedorId], references: [id])
+
+  @@map("funil_historico")
+}
+
+/// Tabela 9: sla_config
+model SlaConfig {
+  id                      Int        @id @default(autoincrement())
+  classeLead              ClasseLead @unique @map("classe_lead")
+  tempoMaximoMinutos      Int        @map("tempo_maximo_minutos")
+  alertaAmareloPct        Int        @default(50) @map("alerta_amarelo_pct")
+  alertaVermelhoPct        Int        @default(80) @map("alerta_vermelho_pct")
+  redistribuirAoEstourar  Boolean    @default(true) @map("redistribuir_ao_estourar")
+
+  @@map("sla_config")
+}
+
+/// Tabela 10: gamificacao
+model Gamificacao {
+  id          Int      @id @default(autoincrement())
+  vendedorId  Int      @map("vendedor_id")
+  pontos      Int      @default(0)
+  badges      Json     @default("[]")
+  periodo     String   @db.VarChar(20)
+  ranking     Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  vendedor    Vendedor @relation(fields: [vendedorId], references: [id])
+
+  @@map("gamificacao")
+}
+
+/// Tabela 11: audit_log
+model AuditLog {
+  id               Int      @id @default(autoincrement())
+  usuarioId        Int?     @map("usuario_id")
+  acao             String   @db.VarChar(50)
+  entidade         String   @db.VarChar(50)
+  entidadeId       Int?     @map("entidade_id")
+  dadosAnteriores  Json?    @map("dados_anteriores")
+  dadosNovos       Json?    @map("dados_novos")
+  ip               String?  @db.VarChar(45)
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  usuario          Usuario? @relation(fields: [usuarioId], references: [id])
+
+  @@map("audit_log")
+}
+
+/// Tabela 12: propostas
+model Proposta {
+  id              Int            @id @default(autoincrement())
+  leadId          Int            @map("lead_id")
+  vendedorId      Int            @map("vendedor_id")
+  valor           Decimal        @db.Decimal(10, 2)
+  status          StatusProposta @default(rascunho)
+  urlDocumento    String?        @map("url_documento") @db.VarChar(500)
+  aberturas       Int            @default(0)
+  dataEnvio       DateTime?      @map("data_envio")
+  dataAssinatura  DateTime?      @map("data_assinatura")
+  createdAt       DateTime       @default(now()) @map("created_at")
+
+  lead            Lead           @relation(fields: [leadId], references: [id])
+  vendedor        Vendedor       @relation(fields: [vendedorId], references: [id])
+
+  @@map("propostas")
+}
