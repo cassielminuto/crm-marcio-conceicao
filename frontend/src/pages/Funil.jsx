@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -32,7 +33,7 @@ function scoreCor(pontuacao) {
   return { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Frio' };
 }
 
-function LeadCard({ lead, index }) {
+function LeadCard({ lead, index, onClickLead }) {
   const score = scoreCor(lead.pontuacao);
   const CanalIcone = lead.canal === 'bio' ? Instagram : Megaphone;
 
@@ -43,12 +44,13 @@ function LeadCard({ lead, index }) {
           ref={provided.innerRef}
           {...provided.draggableProps}
           {...provided.dragHandleProps}
+          onClick={() => onClickLead(lead.id)}
           className={`bg-white rounded-lg border p-3 mb-2 cursor-grab active:cursor-grabbing transition-shadow ${
             snapshot.isDragging ? 'shadow-lg ring-2 ring-blue-300' : 'shadow-sm hover:shadow-md'
           }`}
         >
           <div className="flex items-start justify-between gap-2 mb-2">
-            <p className="text-sm font-medium text-gray-800 truncate flex-1">{lead.nome}</p>
+            <p className="text-sm font-medium text-gray-800 truncate flex-1 hover:text-blue-600">{lead.nome}</p>
             <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${score.bg} ${score.text} shrink-0`}>
               {lead.pontuacao}
             </span>
@@ -82,7 +84,7 @@ function LeadCard({ lead, index }) {
   );
 }
 
-function KanbanColuna({ etapa, leads }) {
+function KanbanColuna({ etapa, leads, onClickLead }) {
   const pipelineValor = etapa.id === 'proposta' ? leads.length * TICKET_MEDIO : null;
 
   return (
@@ -112,7 +114,7 @@ function KanbanColuna({ etapa, leads }) {
             }`}
           >
             {leads.map((lead, idx) => (
-              <LeadCard key={lead.id} lead={lead} index={idx} />
+              <LeadCard key={lead.id} lead={lead} index={idx} onClickLead={onClickLead} />
             ))}
             {provided.placeholder}
           </div>
@@ -124,6 +126,7 @@ function KanbanColuna({ etapa, leads }) {
 
 export default function Funil() {
   const { usuario } = useAuth();
+  const navigate = useNavigate();
   const [leads, setLeads] = useState([]);
   const [vendedores, setVendedores] = useState([]);
   const [carregando, setCarregando] = useState(true);
@@ -272,6 +275,7 @@ export default function Funil() {
               key={etapa.id}
               etapa={etapa}
               leads={leadsPorEtapa[etapa.id] || []}
+              onClickLead={(leadId) => navigate(`/leads/${leadId}`)}
             />
           ))}
         </div>

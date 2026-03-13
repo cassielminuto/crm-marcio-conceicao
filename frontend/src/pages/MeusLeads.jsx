@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Search, ChevronLeft, ChevronRight, Phone, Mail, Instagram, Megaphone } from 'lucide-react';
@@ -37,6 +38,7 @@ function scoreCor(pontuacao) {
 
 export default function MeusLeads() {
   const { usuario } = useAuth();
+  const navigate = useNavigate();
   const [leads, setLeads] = useState([]);
   const [paginacao, setPaginacao] = useState({ pagina: 1, total: 0, totalPaginas: 1 });
   const [carregando, setCarregando] = useState(true);
@@ -166,7 +168,10 @@ export default function MeusLeads() {
                   return (
                     <tr key={lead.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3">
-                        <p className="text-sm font-medium text-gray-800">{lead.nome}</p>
+                        <p
+                          className="text-sm font-medium text-gray-800 hover:text-blue-600 cursor-pointer"
+                          onClick={() => navigate(`/leads/${lead.id}`)}
+                        >{lead.nome}</p>
                         {lead.dorPrincipal && (
                           <p className="text-xs text-gray-400 truncate max-w-[200px]">{lead.dorPrincipal}</p>
                         )}

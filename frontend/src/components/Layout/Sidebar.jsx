@@ -7,6 +7,7 @@ import {
   CalendarCheck,
   Trophy,
   Target,
+  BarChart3,
   Settings,
   LogOut,
 } from 'lucide-react';
@@ -18,6 +19,7 @@ const navItems = [
   { to: '/follow-ups', label: 'Follow-ups', icon: CalendarCheck },
   { to: '/ranking', label: 'Ranking', icon: Trophy },
   { to: '/metas', label: 'Metas', icon: Target },
+  { to: '/relatorios', label: 'Relatorios', icon: BarChart3, adminOnly: true },
 ];
 
 const adminItems = [
@@ -38,7 +40,7 @@ export default function Sidebar() {
 
       <nav className="flex-1 py-4">
         <ul className="space-y-1 px-3">
-          {navItems.map(({ to, label, icon: Icon }) => (
+          {navItems.filter((item) => !item.adminOnly || isAdmin).map(({ to, label, icon: Icon }) => (
             <li key={to}>
               <NavLink
                 to={to}

@@ -29,6 +29,9 @@ const leadsRoutes = require('./routes/leads.routes');
 const vendedoresRoutes = require('./routes/vendedores.routes');
 const followupsRoutes = require('./routes/followups.routes');
 const metasRoutes = require('./routes/metas.routes');
+const callsRoutes = require('./routes/calls.routes');
+const relatoriosRoutes = require('./routes/relatorios.routes');
+const adminRoutes = require('./routes/admin.routes');
 const { iniciarSlaChecker } = require('./jobs/slaChecker.job');
 
 // Health check
@@ -43,6 +46,9 @@ app.use('/api/leads', leadsRoutes);
 app.use('/api/vendedores', vendedoresRoutes);
 app.use('/api/followups', followupsRoutes);
 app.use('/api/metas', metasRoutes);
+app.use('/api/calls', callsRoutes);
+app.use('/api/relatorios', relatoriosRoutes);
+app.use('/api/admin', adminRoutes);
 
 // WebSocket
 io.on('connection', (socket) => {

@@ -9,7 +9,10 @@ import MeusLeads from './pages/MeusLeads';
 import FollowUps from './pages/FollowUps';
 import Ranking from './pages/Ranking';
 import Metas from './pages/Metas';
+import Relatorios from './pages/Relatorios';
 import Admin from './pages/Admin';
+import SLAConfig from './pages/SLAConfig';
+import LeadCard from './pages/LeadCard';
 
 export default function App() {
   return (
@@ -31,7 +34,11 @@ export default function App() {
             <Route path="follow-ups" element={<FollowUps />} />
             <Route path="ranking" element={<Ranking />} />
             <Route path="metas" element={<Metas />} />
-            <Route path="admin" element={<Admin />} />
+            <Route path="relatorios" element={<Relatorios />} />
+            <Route path="leads/:id" element={<LeadCard />} />
+            <Route path="admin" element={<Admin />}>
+              <Route path="sla" element={<SLAConfig />} />
+            </Route>
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
