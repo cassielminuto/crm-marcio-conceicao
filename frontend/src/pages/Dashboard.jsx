@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import DateRangeFilter from '../components/DateRangeFilter';
+import AIResumoPeriodo from '../components/AIResumoPeriodo';
 import { Users, TrendingUp, DollarSign, Target, Clock, Phone, MessageSquare, AlertTriangle } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -76,14 +78,21 @@ export default function Dashboard() {
   const [graficoDados, setGraficoDados] = useState([]);
   const [carregando, setCarregando] = useState(true);
 
+  const [dataInicio, setDataInicio] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const [dataFim, setDataFim] = useState(() => new Date());
+
   const vendedorId = usuario?.vendedorId;
   const isAdmin = usuario?.perfil === 'admin' || usuario?.perfil === 'gestor';
 
   const carregarDados = useCallback(async () => {
     try {
+      const dateParams = `data_inicio=${dataInicio.toISOString()}&data_fim=${dataFim.toISOString()}`;
       const promises = [
         api.get('/vendedores'),
-        api.get('/leads/por-dia?dias=30'),
+        api.get(`/leads/por-dia?${dateParams}`),
       ];
 
       if (vendedorId) {
@@ -114,7 +123,7 @@ export default function Dashboard() {
     } finally {
       setCarregando(false);
     }
-  }, [vendedorId, isAdmin]);
+  }, [vendedorId, isAdmin, dataInicio, dataFim]);
 
   useEffect(() => {
     carregarDados();
@@ -135,11 +144,18 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-[22px] font-bold text-white">Dashboard</h1>
-        <p className="text-text-secondary text-[13px] mt-1">
-          {isAdmin ? 'Visao geral do time' : `Bem-vindo, ${usuario?.nome}`}
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-[22px] font-bold text-white">Dashboard</h1>
+          <p className="text-text-secondary text-[13px] mt-1">
+            {isAdmin ? 'Visao geral do time' : `Bem-vindo, ${usuario?.nome}`}
+          </p>
+        </div>
+        <DateRangeFilter
+          dataInicio={dataInicio}
+          dataFim={dataFim}
+          onChange={(inicio, fim) => { setDataInicio(inicio); setDataFim(fim); }}
+        />
       </div>
 
       {/* Cards de metricas */}
@@ -173,6 +189,8 @@ export default function Dashboard() {
           subtitulo={`${dash?.mes?.conversoes ?? 0} conversoes no mes`}
         />
       </div>
+
+      {isAdmin && <AIResumoPeriodo dataInicio={dataInicio} dataFim={dataFim} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Grafico */}

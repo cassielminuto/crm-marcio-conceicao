@@ -2,15 +2,25 @@ const prisma = require('../config/database');
 
 const TICKET_MEDIO = 1229;
 
+function buildDateFilter(req) {
+  const { data_inicio, data_fim } = req.query;
+  if (!data_inicio && !data_fim) return {};
+  const filter = {};
+  if (data_inicio) filter.gte = new Date(data_inicio);
+  if (data_fim) filter.lte = new Date(data_fim + (data_fim.length === 10 ? 'T23:59:59.999Z' : ''));
+  return { createdAt: filter };
+}
+
 async function geral(req, res, next) {
   try {
+    const dateWhere = buildDateFilter(req);
     const [totalLeads, convertidos, perdidos, porCanal, porClasse, porEtapa] = await Promise.all([
-      prisma.lead.count(),
-      prisma.lead.count({ where: { vendaRealizada: true } }),
-      prisma.lead.count({ where: { status: 'perdido' } }),
-      prisma.lead.groupBy({ by: ['canal'], _count: true }),
-      prisma.lead.groupBy({ by: ['classe'], _count: true }),
-      prisma.lead.groupBy({ by: ['etapaFunil'], _count: true }),
+      prisma.lead.count({ where: dateWhere }),
+      prisma.lead.count({ where: { ...dateWhere, vendaRealizada: true } }),
+      prisma.lead.count({ where: { ...dateWhere, status: 'perdido' } }),
+      prisma.lead.groupBy({ by: ['canal'], where: dateWhere, _count: true }),
+      prisma.lead.groupBy({ by: ['classe'], where: dateWhere, _count: true }),
+      prisma.lead.groupBy({ by: ['etapaFunil'], where: dateWhere, _count: true }),
     ]);
 
     const taxaConversao = totalLeads > 0 ? Math.round((convertidos / totalLeads) * 10000) / 100 : 0;
@@ -34,13 +44,14 @@ async function geral(req, res, next) {
 
 async function porCanal(req, res, next) {
   try {
+    const dateWhere = buildDateFilter(req);
     const canais = ['bio', 'anuncio', 'evento'];
     const resultado = [];
 
     for (const canal of canais) {
       const [total, convertidos] = await Promise.all([
-        prisma.lead.count({ where: { canal } }),
-        prisma.lead.count({ where: { canal, vendaRealizada: true } }),
+        prisma.lead.count({ where: { ...dateWhere, canal } }),
+        prisma.lead.count({ where: { ...dateWhere, canal, vendaRealizada: true } }),
       ]);
       if (total === 0) continue;
 
@@ -62,13 +73,14 @@ async function porCanal(req, res, next) {
 
 async function porClasse(req, res, next) {
   try {
+    const dateWhere = buildDateFilter(req);
     const classes = ['A', 'B', 'C'];
     const resultado = [];
 
     for (const classe of classes) {
       const [total, convertidos] = await Promise.all([
-        prisma.lead.count({ where: { classe } }),
-        prisma.lead.count({ where: { classe, vendaRealizada: true } }),
+        prisma.lead.count({ where: { ...dateWhere, classe } }),
+        prisma.lead.count({ where: { ...dateWhere, classe, vendaRealizada: true } }),
       ]);
       if (total === 0) continue;
 
@@ -90,6 +102,7 @@ async function porClasse(req, res, next) {
 
 async function porCloser(req, res, next) {
   try {
+    const dateWhere = buildDateFilter(req);
     const vendedores = await prisma.vendedor.findMany({
       where: { ativo: true },
       include: { usuario: { select: { nome: true } } },
@@ -99,10 +112,10 @@ async function porCloser(req, res, next) {
 
     for (const v of vendedores) {
       const [total, convertidos, leadsComAbordagem] = await Promise.all([
-        prisma.lead.count({ where: { vendedorId: v.id } }),
-        prisma.lead.count({ where: { vendedorId: v.id, vendaRealizada: true } }),
+        prisma.lead.count({ where: { ...dateWhere, vendedorId: v.id } }),
+        prisma.lead.count({ where: { ...dateWhere, vendedorId: v.id, vendaRealizada: true } }),
         prisma.lead.findMany({
-          where: { vendedorId: v.id, dataAtribuicao: { not: null }, dataAbordagem: { not: null } },
+          where: { ...dateWhere, vendedorId: v.id, dataAtribuicao: { not: null }, dataAbordagem: { not: null } },
           select: { dataAtribuicao: true, dataAbordagem: true },
         }),
       ]);
@@ -137,4 +150,18 @@ async function porCloser(req, res, next) {
   }
 }
 
-module.exports = { geral, porCanal, porClasse, porCloser };
+async function resumoIA(req, res, next) {
+  try {
+    const { data_inicio, data_fim } = req.query;
+    if (!data_inicio || !data_fim) {
+      return res.status(400).json({ error: 'data_inicio e data_fim sao obrigatorios' });
+    }
+    const { gerarResumoPeriodo } = require('../services/aiService');
+    const resultado = await gerarResumoPeriodo(data_inicio, data_fim);
+    res.json(resultado);
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { geral, porCanal, porClasse, porCloser, resumoIA };

@@ -9,5 +9,6 @@ router.get('/geral', autenticar, autorizar('admin', 'gestor'), relatoriosControl
 router.get('/por-canal', autenticar, autorizar('admin', 'gestor'), relatoriosController.porCanal);
 router.get('/por-classe', autenticar, autorizar('admin', 'gestor'), relatoriosController.porClasse);
 router.get('/por-closer', autenticar, autorizar('admin', 'gestor'), relatoriosController.porCloser);
+router.get('/resumo-ia', autenticar, relatoriosController.resumoIA);
 
 module.exports = router;

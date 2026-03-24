@@ -487,14 +487,26 @@ async function criarInteracao(req, res, next) {
 
 async function leadsPorDia(req, res, next) {
   try {
-    const { dias = '30', vendedor_id } = req.query;
-    const numDias = parseInt(dias, 10);
-    const dataInicio = new Date();
-    dataInicio.setDate(dataInicio.getDate() - numDias);
-    dataInicio.setHours(0, 0, 0, 0);
+    const { dias = '30', vendedor_id, data_inicio, data_fim } = req.query;
 
-    const where = { createdAt: { gte: dataInicio } };
+    let dateStart, dateEnd;
+    if (data_inicio && data_fim) {
+      dateStart = new Date(data_inicio);
+      dateEnd = new Date(data_fim.length === 10 ? data_fim + 'T23:59:59.999Z' : data_fim);
+    } else {
+      const numDias = parseInt(dias, 10);
+      dateStart = new Date();
+      dateStart.setDate(dateStart.getDate() - numDias);
+      dateStart.setHours(0, 0, 0, 0);
+      dateEnd = new Date();
+    }
+
+    const where = { createdAt: { gte: dateStart, lte: dateEnd } };
     if (vendedor_id) where.vendedorId = parseInt(vendedor_id, 10);
+
+    if (req.usuario.perfil === 'vendedor' && req.usuario.vendedorId) {
+      where.vendedorId = req.usuario.vendedorId;
+    }
 
     const leads = await prisma.lead.findMany({
       where,
@@ -502,10 +514,12 @@ async function leadsPorDia(req, res, next) {
       orderBy: { createdAt: 'asc' },
     });
 
-    // Agrupar por dia
     const porDia = {};
-    for (let i = 0; i < numDias; i++) {
-      const d = new Date(dataInicio);
+    const diffTime = dateEnd - dateStart;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+    for (let i = 0; i < diffDays; i++) {
+      const d = new Date(dateStart);
       d.setDate(d.getDate() + i);
       porDia[d.toISOString().slice(0, 10)] = 0;
     }

@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
+import DateRangeFilter from '../components/DateRangeFilter';
+import AIResumoPeriodo from '../components/AIResumoPeriodo';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { FileDown, TrendingUp, DollarSign, Users } from 'lucide-react';
 
@@ -42,29 +44,38 @@ export default function Relatorios() {
   const [leadsPorDia, setLeadsPorDia] = useState([]);
   const [carregando, setCarregando] = useState(true);
 
-  useEffect(() => {
-    async function carregar() {
-      try {
-        const [geralRes, canalRes, classeRes, closerRes, diasRes] = await Promise.all([
-          api.get('/relatorios/geral'),
-          api.get('/relatorios/por-canal'),
-          api.get('/relatorios/por-classe'),
-          api.get('/relatorios/por-closer'),
-          api.get('/leads/por-dia?dias=30'),
-        ]);
-        setGeral(geralRes.data);
-        setPorCanal(canalRes.data);
-        setPorClasse(classeRes.data);
-        setPorCloser(closerRes.data);
-        setLeadsPorDia(diasRes.data);
-      } catch (err) {
-        console.error('Erro ao carregar relatorios:', err);
-      } finally {
-        setCarregando(false);
-      }
+  const [dataInicio, setDataInicio] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const [dataFim, setDataFim] = useState(() => new Date());
+
+  const carregar = useCallback(async () => {
+    setCarregando(true);
+    try {
+      const dp = `data_inicio=${dataInicio.toISOString()}&data_fim=${dataFim.toISOString()}`;
+      const [geralRes, canalRes, classeRes, closerRes, diasRes] = await Promise.all([
+        api.get(`/relatorios/geral?${dp}`),
+        api.get(`/relatorios/por-canal?${dp}`),
+        api.get(`/relatorios/por-classe?${dp}`),
+        api.get(`/relatorios/por-closer?${dp}`),
+        api.get(`/leads/por-dia?${dp}`),
+      ]);
+      setGeral(geralRes.data);
+      setPorCanal(canalRes.data);
+      setPorClasse(classeRes.data);
+      setPorCloser(closerRes.data);
+      setLeadsPorDia(diasRes.data);
+    } catch (err) {
+      console.error('Erro ao carregar relatorios:', err);
+    } finally {
+      setCarregando(false);
     }
+  }, [dataInicio, dataFim]);
+
+  useEffect(() => {
     carregar();
-  }, []);
+  }, [carregar]);
 
   const exportarCSV = (dados, nome) => {
     if (!dados || dados.length === 0) return;
@@ -92,12 +103,17 @@ export default function Relatorios() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-[22px] font-bold text-white">Relatorios</h1>
           <p className="text-[13px] text-text-secondary mt-1">Visao gerencial do CRM</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-3">
+          <DateRangeFilter
+            dataInicio={dataInicio}
+            dataFim={dataFim}
+            onChange={(inicio, fim) => { setDataInicio(inicio); setDataFim(fim); }}
+          />
           <button
             onClick={() => exportarCSV(porCloser, 'relatorio-closers')}
             className="flex items-center gap-1 bg-[rgba(0,184,148,0.12)] text-accent-emerald px-3 py-2 rounded-[10px] text-[11px] font-semibold hover:bg-[rgba(0,184,148,0.18)] transition-colors"
@@ -121,6 +137,8 @@ export default function Relatorios() {
           <CardMetrica titulo="Convertidos" valor={geral.convertidos} icone={TrendingUp} cor="bg-[rgba(108,92,231,0.1)] text-accent-violet-light" />
         </div>
       )}
+
+      <AIResumoPeriodo dataInicio={dataInicio} dataFim={dataFim} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-bg-card border border-border-subtle rounded-[14px] p-[22px]">

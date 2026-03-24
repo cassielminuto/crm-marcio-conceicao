@@ -318,4 +318,86 @@ Sem markdown, sem explicacoes, apenas JSON.`;
   return dados;
 }
 
-module.exports = { transcreverAudio, analisarTranscricao, processarCall, analisarPrintWhatsApp, gerarResumoEProximaAcao };
+async function gerarResumoPeriodo(dataInicio, dataFim) {
+  const inicio = new Date(dataInicio);
+  const fim = new Date(dataFim);
+
+  const [
+    totalLeads, leadsA, leadsB, leadsC,
+    vendasGanhas, vendasPerdidas,
+    leadsBio, leadsAnuncio,
+    vendedoresStats,
+  ] = await Promise.all([
+    prisma.lead.count({ where: { createdAt: { gte: inicio, lte: fim } } }),
+    prisma.lead.count({ where: { createdAt: { gte: inicio, lte: fim }, classe: 'A' } }),
+    prisma.lead.count({ where: { createdAt: { gte: inicio, lte: fim }, classe: 'B' } }),
+    prisma.lead.count({ where: { createdAt: { gte: inicio, lte: fim }, classe: 'C' } }),
+    prisma.lead.count({ where: { createdAt: { gte: inicio, lte: fim }, etapaFunil: 'fechado_ganho' } }),
+    prisma.lead.count({ where: { createdAt: { gte: inicio, lte: fim }, etapaFunil: 'fechado_perdido' } }),
+    prisma.lead.count({ where: { createdAt: { gte: inicio, lte: fim }, canal: 'bio' } }),
+    prisma.lead.count({ where: { createdAt: { gte: inicio, lte: fim }, canal: 'anuncio' } }),
+    prisma.vendedor.findMany({
+      where: { ativo: true },
+      select: {
+        nomeExibicao: true,
+        leads: {
+          where: { createdAt: { gte: inicio, lte: fim } },
+          select: { etapaFunil: true, vendaRealizada: true, valorVenda: true },
+        },
+      },
+    }),
+  ]);
+
+  const vendedoresResumo = vendedoresStats.map(v => {
+    const totalVendedor = v.leads.length;
+    const vendas = v.leads.filter(l => l.vendaRealizada).length;
+    const receita = v.leads.filter(l => l.valorVenda).reduce((sum, l) => sum + Number(l.valorVenda), 0);
+    const taxaConversao = totalVendedor > 0 ? ((vendas / totalVendedor) * 100).toFixed(1) : '0';
+    return { nome: v.nomeExibicao, leads: totalVendedor, vendas, receita, taxaConversao: `${taxaConversao}%` };
+  }).filter(v => v.leads > 0);
+
+  const receitaTotal = vendedoresResumo.reduce((sum, v) => sum + v.receita, 0);
+  const taxaConversaoGeral = totalLeads > 0 ? ((vendasGanhas / totalLeads) * 100).toFixed(1) : '0';
+
+  const dadosParaIA = {
+    periodo: `${inicio.toLocaleDateString('pt-BR')} a ${fim.toLocaleDateString('pt-BR')}`,
+    totalLeads,
+    distribuicaoClasse: { A: leadsA, B: leadsB, C: leadsC },
+    distribuicaoCanal: { bio: leadsBio, anuncio: leadsAnuncio },
+    vendasGanhas,
+    vendasPerdidas,
+    taxaConversaoGeral: `${taxaConversaoGeral}%`,
+    receitaTotal,
+    vendedores: vendedoresResumo,
+  };
+
+  const prompt = `Voce e um analista comercial do programa Compativeis (programa de transformacao de relacionamentos, ticket medio R$1.229). Analise as metricas do periodo e gere um resumo executivo em 4-6 frases.
+
+METRICAS DO PERIODO:
+${JSON.stringify(dadosParaIA, null, 2)}
+
+Inclua no resumo:
+- Volume de leads e tendencia (bom, ruim, estavel)
+- Performance de conversao (comparar com benchmark de 5-10% para leads frios, 15-25% para leads quentes)
+- Destaque positivo (melhor vendedor, melhor canal, etc)
+- Ponto de atencao ou alerta (se houver)
+- Sugestao pratica de 1 acao para melhorar resultado
+
+Seja direto, use numeros, nao seja generico. Escreva em portugues do Brasil.
+Retorne APENAS o texto do resumo, sem JSON, sem markdown.`;
+
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [
+      { role: 'system', content: 'Voce e um analista comercial objetivo e direto. Responde em texto corrido, sem bullets, sem markdown.' },
+      { role: 'user', content: prompt },
+    ],
+    temperature: 0.4,
+    max_tokens: 500,
+  });
+
+  const resumo = completion.choices[0]?.message?.content?.trim();
+  return { metricas: dadosParaIA, resumoIA: resumo };
+}
+
+module.exports = { transcreverAudio, analisarTranscricao, processarCall, analisarPrintWhatsApp, gerarResumoEProximaAcao, gerarResumoPeriodo };
