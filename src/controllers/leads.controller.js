@@ -751,7 +751,7 @@ async function listarFunil(req, res, next) {
 
     const leads = await prisma.lead.findMany({
       where,
-      orderBy: [{ pontuacao: 'desc' }, { createdAt: 'desc' }],
+      orderBy: { createdAt: 'desc' },
       take: 5000,
       include: {
         vendedor: { select: { id: true, nomeExibicao: true } },
