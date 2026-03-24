@@ -788,6 +788,48 @@ async function listarFunil(req, res, next) {
   }
 }
 
+async function buscar(req, res, next) {
+  try {
+    const { q } = req.query;
+    if (!q || q.length < 2) {
+      return res.json([]);
+    }
+
+    const termo = q.trim();
+    const where = {
+      OR: [
+        { nome: { contains: termo, mode: 'insensitive' } },
+        { telefone: { contains: termo.replace(/\D/g, '') } },
+        { email: { contains: termo, mode: 'insensitive' } },
+      ],
+    };
+
+    if (req.usuario.perfil === 'vendedor' && req.usuario.vendedorId) {
+      where.vendedorId = req.usuario.vendedorId;
+    }
+
+    const leads = await prisma.lead.findMany({
+      where,
+      select: {
+        id: true,
+        nome: true,
+        telefone: true,
+        email: true,
+        classe: true,
+        pontuacao: true,
+        etapaFunil: true,
+        vendedor: { select: { nomeExibicao: true } },
+      },
+      take: 10,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json(leads);
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   listar,
   detalhe,
@@ -805,4 +847,5 @@ module.exports = {
   atualizarResumo,
   excluir,
   listarFunil,
+  buscar,
 };
