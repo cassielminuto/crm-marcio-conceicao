@@ -108,7 +108,21 @@ async function receberLeadRespondi(req, res, next) {
     const vendedorFinal = vendedor || await prisma.vendedor.findFirst({ where: { ativo: true }, orderBy: { leadsAtivos: 'asc' } });
     const agora = new Date();
 
-    // 6. Criar lead — SEMPRE como 'novo' e 'aguardando'
+    // 6. Extrair dor principal das respostas do Respondi
+    let dorPrincipal = null;
+    if (dados.respondent?.answers) {
+      const answers = dados.respondent.answers;
+      for (const [pergunta, resposta] of Object.entries(answers)) {
+        const p = pergunta.toLowerCase();
+        if (p.includes('situação') || p.includes('situacao') || p.includes('relacionamento hoje') || p.includes('descreveria')) {
+          dorPrincipal = String(resposta);
+          break;
+        }
+      }
+    }
+    if (!dorPrincipal) dorPrincipal = respostas.dor_principal || null;
+
+    // 7. Criar lead — SEMPRE como 'novo' e 'aguardando'
     const lead = await prisma.lead.create({
       data: {
         respondiId,
@@ -123,7 +137,7 @@ async function receberLeadRespondi(req, res, next) {
         status: 'aguardando',
         vendedorId: vendedorFinal?.id || null,
         dadosRespondi: dados,
-        dorPrincipal: respostas.dor_principal || null,
+        dorPrincipal,
         dataPreenchimento: agora,
         dataAtribuicao: vendedorFinal ? agora : null,
       },

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ChevronDown, ChevronRight, Check, Bot } from 'lucide-react';
 
 const ETAPAS_SCRIPT = [
@@ -87,32 +87,9 @@ const ETAPAS_SCRIPT = [
   },
 ];
 
-function verificarEtapaPreenchida(etapa, lead, camposIa) {
-  for (const c of etapa.camposLead || []) {
-    if (lead?.[c]) return { completa: true, porIa: false };
-  }
-  for (const c of etapa.camposIa || []) {
-    if (camposIa?.[c]) return { completa: true, porIa: true };
-  }
-  return { completa: false, porIa: false };
-}
-
 export default function ScriptChecklist({ lead, resumoIa, camposIa }) {
   const [checkedSteps, setCheckedSteps] = useState({});
-  const [iaSteps, setIaSteps] = useState({});
   const [expandida, setExpandida] = useState(null);
-
-  useEffect(() => {
-    const checked = {};
-    const ia = {};
-    for (const etapa of ETAPAS_SCRIPT) {
-      const { completa, porIa } = verificarEtapaPreenchida(etapa, lead, camposIa);
-      checked[etapa.id] = completa || (checkedSteps[etapa.id] ?? false);
-      if (porIa || completa) ia[etapa.id] = true;
-    }
-    setCheckedSteps(checked);
-    setIaSteps(ia);
-  }, [lead, camposIa]);
 
   const toggleCheck = (id) => {
     setCheckedSteps((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -146,7 +123,7 @@ export default function ScriptChecklist({ lead, resumoIa, camposIa }) {
       <div className="space-y-1">
         {ETAPAS_SCRIPT.map((etapa) => {
           const isChecked = checkedSteps[etapa.id];
-          const isIa = iaSteps[etapa.id];
+          const isIa = false;
           const isExpanded = expandida === etapa.id;
 
           return (
