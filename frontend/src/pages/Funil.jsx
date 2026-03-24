@@ -172,8 +172,11 @@ export default function Funil() {
   const [filtroVendedor, setFiltroVendedor] = useState('');
   const [filtroClasse, setFiltroClasse] = useState('');
   const [filtroCanal, setFiltroCanal] = useState('');
-  const [dataInicio, setDataInicio] = useState('');
-  const [dataFim, setDataFim] = useState('');
+  const [dataInicio, setDataInicio] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+  });
+  const [dataFim, setDataFim] = useState(() => new Date().toISOString().slice(0, 10));
 
   const carregarFunil = useCallback(async () => {
     setCarregando(true);
@@ -241,7 +244,7 @@ export default function Funil() {
     }
   };
 
-  const temFiltro = filtroVendedor || filtroClasse || filtroCanal || dataInicio || dataFim;
+  const temFiltro = filtroVendedor || filtroClasse || filtroCanal;
 
   if (carregando && !funilData) {
     return (
@@ -340,7 +343,7 @@ export default function Funil() {
 
         {temFiltro && (
           <button
-            onClick={() => { setFiltroVendedor(''); setFiltroClasse(''); setFiltroCanal(''); setDataInicio(''); setDataFim(''); }}
+            onClick={() => { setFiltroVendedor(''); setFiltroClasse(''); setFiltroCanal(''); const n = new Date(); setDataInicio(new Date(n.getFullYear(), n.getMonth(), 1).toISOString().slice(0, 10)); setDataFim(n.toISOString().slice(0, 10)); }}
             className="text-[11px] text-accent-violet-light hover:underline"
           >
             Limpar filtros
