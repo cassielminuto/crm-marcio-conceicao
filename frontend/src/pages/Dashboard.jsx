@@ -6,7 +6,7 @@ import AIResumoPeriodo from '../components/AIResumoPeriodo';
 import { Users, TrendingUp, DollarSign, Target, Clock, Phone, MessageSquare, AlertTriangle } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-function MetricCard({ titulo, valor, icone: Icon, cor, subtitulo, variacao }) {
+function MetricCard({ titulo, valor, icone: Icon, cor, subtitulo }) {
   const corMap = {
     blue: { bg: 'rgba(116,185,255,0.1)', text: 'text-accent-info' },
     green: { bg: 'rgba(0,184,148,0.1)', text: 'text-accent-emerald' },
@@ -23,15 +23,8 @@ function MetricCard({ titulo, valor, icone: Icon, cor, subtitulo, variacao }) {
           <p className="text-[26px] font-extrabold text-white tracking-tight mt-1">{valor}</p>
           {subtitulo && <p className="text-[11px] text-text-muted mt-1">{subtitulo}</p>}
         </div>
-        <div className="flex flex-col items-end gap-2">
-          <div className="w-[42px] h-[42px] rounded-[10px] flex items-center justify-center" style={{ background: c.bg }}>
-            <Icon size={20} className={c.text} />
-          </div>
-          {variacao && (
-            <span className="text-[10px] font-medium bg-[rgba(0,184,148,0.1)] text-accent-emerald px-1.5 py-0.5 rounded">
-              {variacao}
-            </span>
-          )}
+        <div className="w-[42px] h-[42px] rounded-[10px] flex items-center justify-center" style={{ background: c.bg }}>
+          <Icon size={20} className={c.text} />
         </div>
       </div>
     </div>
@@ -56,7 +49,6 @@ const coresUrgencia = {
 };
 
 const labelUrgencia = { atrasado: 'Atrasado', hoje: 'Hoje', futuro: 'Futuro' };
-
 const tipoIcone = { whatsapp: MessageSquare, call: Phone, email: MessageSquare };
 
 const CustomTooltip = ({ active, payload, label }) => {
@@ -72,11 +64,12 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 export default function Dashboard() {
   const { usuario } = useAuth();
-  const [dash, setDash] = useState(null);
+  const [metricas, setMetricas] = useState(null);
   const [followUps, setFollowUps] = useState([]);
   const [ranking, setRanking] = useState([]);
   const [graficoDados, setGraficoDados] = useState([]);
   const [carregando, setCarregando] = useState(true);
+  const [vendedorInfo, setVendedorInfo] = useState(null);
 
   const [dataInicio, setDataInicio] = useState(() => {
     const now = new Date();
@@ -88,35 +81,70 @@ export default function Dashboard() {
   const isAdmin = usuario?.perfil === 'admin' || usuario?.perfil === 'gestor';
 
   const carregarDados = useCallback(async () => {
+    setCarregando(true);
     try {
-      const dateParams = `data_inicio=${dataInicio.toISOString()}&data_fim=${dataFim.toISOString()}`;
+      const dp = `data_inicio=${dataInicio.toISOString()}&data_fim=${dataFim.toISOString()}`;
+
       const promises = [
         api.get('/vendedores'),
-        api.get(`/leads/por-dia?${dateParams}`),
+        api.get(`/leads/por-dia?${dp}`),
+        api.get(`/leads?${dp}&limit=5000`),
       ];
 
       if (vendedorId) {
-        promises.push(
-          api.get(`/vendedores/${vendedorId}/dashboard`),
-          api.get(`/vendedores/${vendedorId}/followups`),
-        );
+        promises.push(api.get(`/vendedores/${vendedorId}/followups`));
       }
 
       const resultados = await Promise.all(promises);
       setRanking(resultados[0].data);
       setGraficoDados(resultados[1].data);
 
+      // Calcular metricas client-side a partir dos leads filtrados
+      const leadsData = resultados[2].data?.dados || resultados[2].data || [];
+      const leads = Array.isArray(leadsData) ? leadsData : [];
+
+      const totalLeads = leads.length;
+      const leadsConvertidos = leads.filter(l => l.etapaFunil === 'fechado_ganho' || l.vendaRealizada).length;
+      const leadsPerdidos = leads.filter(l => l.etapaFunil === 'fechado_perdido').length;
+      const leadsAtivos = leads.filter(l => !['fechado_ganho', 'fechado_perdido', 'nurturing'].includes(l.etapaFunil)).length;
+      const taxaConversao = totalLeads > 0 ? Math.round((leadsConvertidos / totalLeads) * 10000) / 100 : 0;
+      const faturamento = leads.reduce((sum, l) => sum + (l.valorVenda ? Number(l.valorVenda) : 0), 0)
+        || leadsConvertidos * 1229;
+
+      // Filtrar leads do vendedor logado se aplicavel
+      let myLeads = leads;
       if (vendedorId) {
-        setDash(resultados[2].data);
-        setFollowUps(resultados[3].data);
-      } else if (isAdmin && resultados[0].data.length > 0) {
-        const primeiro = resultados[0].data[0];
-        const [dashRes, fuRes] = await Promise.all([
-          api.get(`/vendedores/${primeiro.id}/dashboard`),
-          api.get(`/vendedores/${primeiro.id}/followups`),
-        ]);
-        setDash(dashRes.data);
-        setFollowUps(fuRes.data);
+        myLeads = leads.filter(l => l.vendedorId === vendedorId);
+      }
+      const myTotal = myLeads.length;
+      const myConvertidos = myLeads.filter(l => l.etapaFunil === 'fechado_ganho' || l.vendaRealizada).length;
+      const myAtivos = myLeads.filter(l => !['fechado_ganho', 'fechado_perdido', 'nurturing'].includes(l.etapaFunil)).length;
+      const myTaxa = myTotal > 0 ? Math.round((myConvertidos / myTotal) * 10000) / 100 : 0;
+      const myFaturamento = myLeads.reduce((sum, l) => sum + (l.valorVenda ? Number(l.valorVenda) : 0), 0)
+        || myConvertidos * 1229;
+
+      setMetricas(vendedorId ? {
+        totalLeads: myTotal,
+        leadsConvertidos: myConvertidos,
+        leadsAtivos: myAtivos,
+        taxaConversao: myTaxa,
+        faturamento: myFaturamento,
+      } : {
+        totalLeads,
+        leadsConvertidos,
+        leadsAtivos,
+        taxaConversao,
+        faturamento,
+      });
+
+      // Vendedor info (leads max, etc) — nao depende de data
+      if (vendedorId) {
+        const vInfo = resultados[0].data.find(v => v.id === vendedorId);
+        setVendedorInfo(vInfo);
+        setFollowUps(resultados[3]?.data || []);
+      } else if (isAdmin) {
+        setVendedorInfo(null);
+        setFollowUps([]);
       }
     } catch (err) {
       console.error('Erro ao carregar dashboard:', err);
@@ -137,7 +165,6 @@ export default function Dashboard() {
     );
   }
 
-  const metricas = dash?.metricas;
   const posicaoRanking = vendedorId
     ? ranking.find((v) => v.id === vendedorId)?.rankingPosicao || '-'
     : '-';
@@ -161,11 +188,11 @@ export default function Dashboard() {
       {/* Cards de metricas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-[14px]">
         <MetricCard
-          titulo="Leads Ativos"
-          valor={dash?.vendedor?.leadsAtivos ?? 0}
+          titulo="Leads no Periodo"
+          valor={metricas?.totalLeads ?? 0}
           icone={Users}
           cor="blue"
-          subtitulo={`de ${dash?.vendedor?.leadsMax ?? 30} max`}
+          subtitulo={vendedorId ? `${metricas?.leadsAtivos ?? 0} ativos` : `${metricas?.leadsAtivos ?? 0} em negociacao`}
         />
         <MetricCard
           titulo="Taxa de Conversao"
@@ -175,18 +202,18 @@ export default function Dashboard() {
           subtitulo={`${metricas?.leadsConvertidos ?? 0} de ${metricas?.totalLeads ?? 0}`}
         />
         <MetricCard
-          titulo="Pipeline Total"
-          valor={`R$ ${((metricas?.leadsConvertidos ?? 0) * 1229).toLocaleString('pt-BR')}`}
+          titulo="Faturamento"
+          valor={`R$ ${(metricas?.faturamento ?? 0).toLocaleString('pt-BR')}`}
           icone={DollarSign}
           cor="yellow"
-          subtitulo="Ticket medio R$ 1.229"
+          subtitulo={`${metricas?.leadsConvertidos ?? 0} vendas no periodo`}
         />
         <MetricCard
-          titulo="% da Meta"
-          valor={`${metricas ? Math.round((metricas.leadsConvertidos / Math.max(metricas.totalLeads, 1)) * 100) : 0}%`}
+          titulo="Conversoes"
+          valor={metricas?.leadsConvertidos ?? 0}
           icone={Target}
           cor="purple"
-          subtitulo={`${dash?.mes?.conversoes ?? 0} conversoes no mes`}
+          subtitulo={`de ${metricas?.totalLeads ?? 0} leads`}
         />
       </div>
 
@@ -195,7 +222,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Grafico */}
         <div className="lg:col-span-2 bg-bg-card border border-border-subtle rounded-[14px] p-[22px]">
-          <h2 className="text-[14px] font-semibold text-white mb-4">Leads por dia (30 dias)</h2>
+          <h2 className="text-[14px] font-semibold text-white mb-4">Leads por dia</h2>
           {graficoDados.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
               <AreaChart data={graficoDados}>

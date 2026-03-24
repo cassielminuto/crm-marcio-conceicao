@@ -20,7 +20,7 @@ async function listar(req, res, next) {
     } = req.query;
 
     const pag = Math.max(1, parseInt(page, 10));
-    const lim = Math.min(100, Math.max(1, parseInt(limit, 10)));
+    const lim = Math.min(5000, Math.max(1, parseInt(limit, 10)));
     const skip = (pag - 1) * lim;
 
     const where = {};
