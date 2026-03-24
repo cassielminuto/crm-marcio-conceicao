@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   ArrowLeft, Phone, Mail, Instagram, Megaphone, Clock, User, Save,
   MessageSquare, PhoneCall, FileText, ChevronDown, ChevronUp, Bot, Camera,
-  Zap, CalendarPlus, RefreshCw, Loader, ChevronRight, Trash2, MessageCircle,
+  Zap, CalendarPlus, RefreshCw, Loader, ChevronRight, Trash2, MessageCircle, ClipboardList,
 } from 'lucide-react';
 
 const ETAPA_COR = {
@@ -522,6 +522,42 @@ export default function LeadCard() {
               </div>
             </div>
           </div>
+
+          {/* Respostas do Formulario */}
+          {lead.dadosRespondi?.respondent?.answers && (
+            <div className="bg-bg-card border border-border-subtle rounded-[14px] p-[22px]">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-[rgba(108,92,231,0.1)] flex items-center justify-center">
+                  <ClipboardList size={16} className="text-accent-violet-light" />
+                </div>
+                <div>
+                  <h3 className="text-[13px] font-bold text-white">Respostas do Formulario</h3>
+                  <p className="text-[10px] text-text-muted">{lead.dadosRespondi?.form?.form_name || lead.formularioTitulo || 'Respondi'}</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {Object.entries(lead.dadosRespondi.respondent.answers)
+                  .filter(([pergunta]) => !pergunta.toLowerCase().includes('nome') && !pergunta.toLowerCase().includes('email') && !pergunta.toLowerCase().includes('whatsapp'))
+                  .map(([pergunta, resposta], idx) => (
+                    <div key={idx} className="border-b border-border-subtle pb-3 last:border-0 last:pb-0">
+                      <p className="text-[10px] text-text-muted font-semibold uppercase tracking-wide mb-1">{pergunta}</p>
+                      <p className="text-[12px] text-text-primary">{String(resposta)}</p>
+                    </div>
+                  ))
+                }
+              </div>
+            </div>
+          )}
+
+          {lead.dadosRespondi && !lead.dadosRespondi?.respondent?.answers && lead.dadosRespondi?.statusOriginal && (
+            <div className="bg-bg-card border border-border-subtle rounded-[14px] p-[22px]">
+              <div className="flex items-center gap-2 mb-3">
+                <ClipboardList size={16} className="text-text-muted" />
+                <h3 className="text-[13px] font-bold text-white">Dados da Importacao</h3>
+              </div>
+              <p className="text-[12px] text-text-secondary">Status original: {lead.dadosRespondi.statusOriginal}</p>
+            </div>
+          )}
 
           {/* Timeline */}
           <div className="bg-bg-card border border-border-subtle rounded-[14px] overflow-hidden">

@@ -103,11 +103,12 @@ async function receberLeadRespondi(req, res, next) {
       });
     }
 
-    // 5. Distribuir
+    // 5. Distribuir — SEMPRE atribuir vendedor (fallback: menor fila)
     const vendedor = await distribuir(classe);
+    const vendedorFinal = vendedor || await prisma.vendedor.findFirst({ where: { ativo: true }, orderBy: { leadsAtivos: 'asc' } });
     const agora = new Date();
 
-    // 6. Criar lead
+    // 6. Criar lead — SEMPRE como 'novo' e 'aguardando'
     const lead = await prisma.lead.create({
       data: {
         respondiId,
@@ -118,13 +119,13 @@ async function receberLeadRespondi(req, res, next) {
         formularioTitulo: tituloFormulario,
         pontuacao,
         classe,
-        etapaFunil: classe === 'C' ? 'nurturing' : 'novo',
-        status: classe === 'C' ? 'nurturing' : 'aguardando',
-        vendedorId: vendedor?.id || null,
+        etapaFunil: 'novo',
+        status: 'aguardando',
+        vendedorId: vendedorFinal?.id || null,
         dadosRespondi: dados,
         dorPrincipal: respostas.dor_principal || null,
         dataPreenchimento: agora,
-        dataAtribuicao: vendedor ? agora : null,
+        dataAtribuicao: vendedorFinal ? agora : null,
       },
     });
 
@@ -133,14 +134,14 @@ async function receberLeadRespondi(req, res, next) {
       data: {
         leadId: lead.id,
         etapaNova: lead.etapaFunil,
-        vendedorId: vendedor?.id || null,
+        vendedorId: vendedorFinal?.id || null,
         motivo: `Lead via Respondi — ${tituloFormulario} — canal ${canal}, score ${pontuacao}, classe ${classe}`,
       },
     });
 
     // 8. Incrementar leads ativos
-    if (vendedor) {
-      await incrementarLeadsAtivos(vendedor.id);
+    if (vendedorFinal) {
+      await incrementarLeadsAtivos(vendedorFinal.id);
     }
 
     // 9. Duplicatas parciais
@@ -158,20 +159,20 @@ async function receberLeadRespondi(req, res, next) {
 
     // 10. WebSocket
     const io = req.app.get('io');
-    if (io && vendedor) {
+    if (io && vendedorFinal) {
       io.emit('novo_lead', {
         leadId: lead.id, nome: lead.nome, classe, pontuacao, canal,
-        vendedorId: vendedor.id, vendedorNome: vendedor.nomeExibicao,
+        vendedorId: vendedorFinal.id, vendedorNome: vendedorFinal.nomeExibicao,
         urgente: classe === 'A',
       });
     }
 
     // 11. Notificacao + WhatsApp para vendedor
-    if (vendedor) {
+    if (vendedorFinal) {
       try {
         const { criarNotificacao } = require('../services/notificacaoService');
         const vendedorCompleto = await prisma.vendedor.findUnique({
-          where: { id: vendedor.id },
+          where: { id: vendedorFinal.id },
           select: { usuarioId: true, telefoneWhatsapp: true, nomeExibicao: true },
         });
         if (vendedorCompleto) {
@@ -197,11 +198,11 @@ async function receberLeadRespondi(req, res, next) {
       }
     }
 
-    logger.info(`Lead Respondi: ${nome} | Canal: ${canal} | Score: ${pontuacao} | Classe: ${classe} | Closer: ${vendedor?.nomeExibicao || 'nurturing'}`);
+    logger.info(`Lead Respondi: ${nome} | Canal: ${canal} | Score: ${pontuacao} | Classe: ${classe} | Closer: ${vendedorFinal?.nomeExibicao || 'sem vendedor'}`);
 
     res.status(201).json({
       leadId: lead.id, nome: lead.nome, canal, pontuacao, classe, etapa: lead.etapaFunil,
-      vendedor: vendedor ? { id: vendedor.id, nome: vendedor.nomeExibicao } : null,
+      vendedor: vendedorFinal ? { id: vendedorFinal.id, nome: vendedorFinal.nomeExibicao } : null,
     });
   } catch (err) {
     next(err);
