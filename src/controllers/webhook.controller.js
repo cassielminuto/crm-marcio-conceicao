@@ -12,11 +12,6 @@ async function receberLeadRespondi(req, res, next) {
 
     // 1. Identificar canal pelo título
     const canal = identificarCanal(tituloFormulario);
-    if (!canal) {
-      return res.status(400).json({
-        error: 'Canal não identificado. O título deve começar com [BIO] ou [ANÚNCIO].',
-      });
-    }
 
     // 2. Calcular pontuação e classificar
     const { pontuacao, classe, respostas } = calcularScore(canal, dados);

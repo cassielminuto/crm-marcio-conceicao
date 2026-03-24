@@ -9,11 +9,18 @@
  */
 
 function identificarCanal(tituloFormulario) {
-  if (!tituloFormulario) return null;
+  if (!tituloFormulario) return 'bio';
   const titulo = tituloFormulario.trim().toUpperCase();
-  if (titulo.startsWith('[BIO]')) return 'bio';
-  if (titulo.startsWith('[ANÚNCIO]') || titulo.startsWith('[ANUNCIO]')) return 'anuncio';
-  return null;
+
+  if (titulo.includes('ANUNCIO') || titulo.includes('ANÚNCIO') || titulo.includes('ANUNCIOS') || titulo.includes('ANÚNCIOS') || titulo.includes('ADS') || titulo.includes('TRÁFEGO') || titulo.includes('TRAFEGO')) {
+    return 'anuncio';
+  }
+
+  if (titulo.includes('BIO') || titulo.includes('ORGÂNICO') || titulo.includes('ORGANICO')) {
+    return 'bio';
+  }
+
+  return 'bio';
 }
 
 function calcularScoreBio(respostas) {
