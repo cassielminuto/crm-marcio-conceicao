@@ -8,6 +8,7 @@ import DuplicateAlert from '../components/DuplicateAlert';
 import {
   ArrowLeft, Phone, Mail, Instagram, Megaphone, Clock, User, Save,
   MessageSquare, PhoneCall, FileText, ChevronDown, ChevronUp, Bot, Camera,
+  Zap, CalendarPlus, RefreshCw, Loader,
 } from 'lucide-react';
 
 const ETAPA_COR = {
@@ -98,6 +99,7 @@ export default function LeadCard() {
   const [salvoMsg, setSalvoMsg] = useState('');
   const [timelineAberta, setTimelineAberta] = useState(true);
   const [duplicatas, setDuplicatas] = useState([]);
+  const [atualizandoResumo, setAtualizandoResumo] = useState(false);
 
   const [campos, setCampos] = useState({
     dorPrincipal: '',
@@ -221,6 +223,88 @@ export default function LeadCard() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Coluna esquerda */}
         <div className="lg:col-span-3 space-y-4">
+          {/* Resumo + Proxima Acao */}
+          {(lead.resumoConversa || lead.proximaAcao) ? (
+            <div className="bg-bg-card border border-border-subtle rounded-[14px] p-[22px] space-y-4">
+              {lead.proximaAcao && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-[rgba(108,92,231,0.1)] flex items-center justify-center">
+                        <Zap size={16} className="text-accent-violet-light" />
+                      </div>
+                      <span className="text-[12px] font-bold text-white uppercase tracking-[0.5px]">Proxima Acao</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={async () => {
+                          setAtualizandoResumo(true);
+                          try {
+                            const { data } = await api.post(`/leads/${lead.id}/resumo`);
+                            if (data.lead) setLead(data.lead);
+                          } catch (err) {
+                            console.error('Erro ao atualizar resumo:', err);
+                          } finally {
+                            setAtualizandoResumo(false);
+                          }
+                        }}
+                        disabled={atualizandoResumo}
+                        className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] text-text-muted hover:text-accent-violet-light hover:bg-[rgba(108,92,231,0.06)] transition-all disabled:opacity-50"
+                        title="Atualizar resumo com IA"
+                      >
+                        {atualizandoResumo ? <Loader size={10} className="animate-spin" /> : <RefreshCw size={10} />}
+                        Atualizar
+                      </button>
+                      {lead.proximaAcaoData && (
+                        <a
+                          href={`/api/leads/${lead.id}/agenda.ics`}
+                          download
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-[#6c5ce7] to-[#00cec9] text-white text-[10px] font-semibold hover:shadow-[0_4px_12px_rgba(108,92,231,0.25)] transition-all"
+                        >
+                          <CalendarPlus size={12} />
+                          Adicionar a agenda
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-[13px] text-text-primary leading-relaxed">{lead.proximaAcao}</p>
+                  {lead.proximaAcaoData && (
+                    <p className="text-[11px] text-accent-violet-light mt-2 flex items-center gap-1.5">
+                      <Clock size={12} />
+                      {new Date(lead.proximaAcaoData).toLocaleDateString('pt-BR')} as {new Date(lead.proximaAcaoData).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {lead.proximaAcao && lead.resumoConversa && (
+                <div className="border-t border-border-subtle" />
+              )}
+
+              {lead.resumoConversa && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-8 h-8 rounded-lg bg-[rgba(0,206,201,0.1)] flex items-center justify-center">
+                      <FileText size={16} className="text-accent-cyan" />
+                    </div>
+                    <span className="text-[12px] font-bold text-white uppercase tracking-[0.5px]">Resumo da Conversa</span>
+                    <span className="px-1.5 py-0.5 rounded bg-[rgba(108,92,231,0.1)] text-accent-violet-light text-[8px] font-bold flex items-center gap-1">
+                      <Bot size={9} /> IA
+                    </span>
+                  </div>
+                  <p className="text-[12px] text-text-secondary leading-relaxed whitespace-pre-wrap">{lead.resumoConversa}</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="bg-bg-card border border-border-subtle border-dashed rounded-[14px] p-[22px] text-center">
+              <div className="w-10 h-10 rounded-xl bg-[rgba(108,92,231,0.06)] flex items-center justify-center mx-auto mb-3">
+                <Zap size={18} className="text-text-muted" />
+              </div>
+              <p className="text-[12px] text-text-muted">Grave uma call ou envie prints para gerar o resumo e a proxima acao automaticamente.</p>
+            </div>
+          )}
+
           {/* Informacoes de contato */}
           <div className="bg-bg-card border border-border-subtle rounded-[14px] p-[22px] space-y-4">
             <h2 className="text-[12px] font-semibold text-text-secondary">Informacoes do Lead</h2>

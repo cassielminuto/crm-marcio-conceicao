@@ -40,6 +40,12 @@ const atualizarLeadSchema = z.object({
   motivoPerda: z.string().optional().nullable(),
   motivo_perda: z.string().optional().nullable(),
   status: z.enum(['aguardando', 'em_abordagem', 'convertido', 'perdido', 'nurturing']).optional(),
+  resumoConversa: z.string().optional().nullable(),
+  resumo_conversa: z.string().optional().nullable(),
+  proximaAcao: z.string().optional().nullable(),
+  proxima_acao: z.string().optional().nullable(),
+  proximaAcaoData: z.string().optional().nullable(),
+  proxima_acao_data: z.string().optional().nullable(),
 }).strict(false);
 
 const moverEtapaSchema = z.object({
@@ -71,5 +77,7 @@ router.post('/:id/interacoes', autenticar, validar(criarInteracaoSchema), leadsC
 router.get('/:id/duplicatas', autenticar, leadsController.duplicatas);
 router.post('/:id/merge/:duplicateId', autenticar, autorizar('admin', 'gestor'), leadsController.merge);
 router.delete('/:id/duplicatas/:duplicateId', autenticar, autorizar('admin', 'gestor'), leadsController.descartarDuplicata);
+router.get('/:id/agenda.ics', autenticar, leadsController.gerarIcs);
+router.post('/:id/resumo', autenticar, leadsController.atualizarResumo);
 
 module.exports = router;

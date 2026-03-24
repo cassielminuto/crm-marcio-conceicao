@@ -1,6 +1,6 @@
 const path = require('path');
 const prisma = require('../config/database');
-const { processarCall } = require('../services/aiService');
+const { processarCall, gerarResumoEProximaAcao } = require('../services/aiService');
 const logger = require('../utils/logger');
 
 async function upload(req, res, next) {
@@ -140,6 +140,16 @@ async function transcribe(req, res, next) {
         interacao: resultado.interacao,
       });
     }
+
+    // Gerar resumo e proxima acao em background
+    const leadIdForSummary = leadId;
+    setImmediate(async () => {
+      try {
+        await gerarResumoEProximaAcao(leadIdForSummary);
+      } catch (err) {
+        logger.error(`Erro ao gerar resumo para lead #${leadIdForSummary}: ${err.message}`);
+      }
+    });
   } catch (err) {
     next(err);
   }

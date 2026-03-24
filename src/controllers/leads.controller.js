@@ -2,6 +2,7 @@ const prisma = require('../config/database');
 const { identificarCanal, calcularScore } = require('../services/scoreEngine');
 const { distribuir, incrementarLeadsAtivos } = require('../services/distribuidor');
 const { verificarDuplicidade, registrarDuplicatas, buscarDuplicatas, mergearLeads } = require('../services/deduplicador');
+const logger = require('../utils/logger');
 
 async function listar(req, res, next) {
   try {
@@ -195,6 +196,7 @@ async function atualizar(req, res, next) {
       'nome', 'telefone', 'email', 'dorPrincipal', 'tracoCarater',
       'objecaoPrincipal', 'resultadoCall', 'vendaRealizada', 'valorVenda',
       'dataAbordagem', 'dataConversao', 'motivoPerda', 'status',
+      'resumoConversa', 'proximaAcao', 'proximaAcaoData',
     ];
 
     const dados = {};
@@ -420,6 +422,17 @@ async function criarInteracao(req, res, next) {
     });
 
     res.status(201).json(interacao);
+
+    // Gerar resumo e proxima acao em background
+    const leadIdForSummary = leadId;
+    setImmediate(async () => {
+      try {
+        const { gerarResumoEProximaAcao } = require('../services/aiService');
+        await gerarResumoEProximaAcao(leadIdForSummary);
+      } catch (err) {
+        // Silenciar erro — resumo e complementar
+      }
+    });
   } catch (err) {
     next(err);
   }
@@ -508,6 +521,103 @@ async function descartarDuplicata(req, res, next) {
   }
 }
 
+async function gerarIcs(req, res, next) {
+  try {
+    const { id } = req.params;
+    const lead = await prisma.lead.findUnique({
+      where: { id: parseInt(id, 10) },
+      select: {
+        nome: true,
+        telefone: true,
+        proximaAcao: true,
+        proximaAcaoData: true,
+        vendedor: { select: { nomeExibicao: true } },
+      },
+    });
+
+    if (!lead) {
+      return res.status(404).json({ error: 'Lead nao encontrado' });
+    }
+
+    if (!lead.proximaAcaoData) {
+      return res.status(400).json({ error: 'Nenhuma data de proxima acao definida' });
+    }
+
+    const inicio = new Date(lead.proximaAcaoData);
+    const fim = new Date(inicio.getTime() + 30 * 60 * 1000);
+
+    const formatIcalDate = (date) => {
+      return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    };
+
+    const uid = `lead-${id}-${Date.now()}@crm-compativeis`;
+    const agora = formatIcalDate(new Date());
+    const dtStart = formatIcalDate(inicio);
+    const dtEnd = formatIcalDate(fim);
+
+    const descricao = [
+      lead.proximaAcao || 'Acao pendente',
+      '',
+      `Lead: ${lead.nome}`,
+      `Telefone: ${lead.telefone}`,
+      lead.vendedor?.nomeExibicao ? `Vendedor: ${lead.vendedor.nomeExibicao}` : '',
+    ].filter(Boolean).join('\\n');
+
+    const ics = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//CRM Compativeis//PT',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'BEGIN:VEVENT',
+      `UID:${uid}`,
+      `DTSTAMP:${agora}`,
+      `DTSTART:${dtStart}`,
+      `DTEND:${dtEnd}`,
+      `SUMMARY:CRM — ${lead.nome}`,
+      `DESCRIPTION:${descricao}`,
+      'BEGIN:VALARM',
+      'TRIGGER:-PT15M',
+      'ACTION:DISPLAY',
+      `DESCRIPTION:Lembrete: ${lead.proximaAcao || 'Acao com ' + lead.nome}`,
+      'END:VALARM',
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].join('\r\n');
+
+    res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="crm-${lead.nome.replace(/[^a-zA-Z0-9]/g, '_')}.ics"`);
+    res.send(ics);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function atualizarResumo(req, res, next) {
+  try {
+    const { id } = req.params;
+    const leadId = parseInt(id, 10);
+
+    const { gerarResumoEProximaAcao } = require('../services/aiService');
+    const resultado = await gerarResumoEProximaAcao(leadId);
+
+    if (!resultado) {
+      return res.status(400).json({ error: 'Sem interacoes para gerar resumo' });
+    }
+
+    const lead = await prisma.lead.findUnique({
+      where: { id: leadId },
+      include: {
+        vendedor: { select: { id: true, nomeExibicao: true, papel: true } },
+      },
+    });
+
+    res.json({ lead, resumo: resultado });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   listar,
   detalhe,
@@ -521,4 +631,6 @@ module.exports = {
   duplicatas,
   merge,
   descartarDuplicata,
+  gerarIcs,
+  atualizarResumo,
 };

@@ -214,4 +214,108 @@ Sem markdown, sem explicacoes, apenas JSON.`;
   return dados;
 }
 
-module.exports = { transcreverAudio, analisarTranscricao, processarCall, analisarPrintWhatsApp };
+async function gerarResumoEProximaAcao(leadId) {
+  const lead = await prisma.lead.findUnique({
+    where: { id: leadId },
+    include: {
+      interacoes: {
+        orderBy: { createdAt: 'asc' },
+        select: {
+          tipo: true,
+          conteudo: true,
+          transcricao: true,
+          resumoIa: true,
+          camposIa: true,
+          duracao: true,
+          createdAt: true,
+        },
+      },
+      vendedor: { select: { nomeExibicao: true } },
+    },
+  });
+
+  if (!lead || lead.interacoes.length === 0) return null;
+
+  const interacoesTexto = lead.interacoes.map((int) => {
+    const data = new Date(int.createdAt).toLocaleDateString('pt-BR');
+    const hora = new Date(int.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    let texto = `[${data} ${hora}] ${int.tipo.toUpperCase()}`;
+    if (int.transcricao) texto += `\nTranscricao: ${int.transcricao}`;
+    else if (int.conteudo) texto += `\nConteudo: ${int.conteudo}`;
+    if (int.resumoIa) texto += `\nResumo IA: ${int.resumoIa}`;
+    if (int.duracao) texto += ` (${Math.round(int.duracao / 60)}min)`;
+    return texto;
+  }).join('\n\n---\n\n');
+
+  const dadosLead = [];
+  if (lead.nome) dadosLead.push(`Nome: ${lead.nome}`);
+  if (lead.classe) dadosLead.push(`Classe: ${lead.classe}`);
+  if (lead.pontuacao) dadosLead.push(`Score: ${lead.pontuacao}`);
+  if (lead.etapaFunil) dadosLead.push(`Etapa: ${lead.etapaFunil}`);
+  if (lead.dorPrincipal) dadosLead.push(`Dor principal: ${lead.dorPrincipal}`);
+  if (lead.tracoCarater) dadosLead.push(`Traco carater: ${lead.tracoCarater}`);
+  if (lead.objecaoPrincipal) dadosLead.push(`Objecao: ${lead.objecaoPrincipal}`);
+  if (lead.resultadoCall) dadosLead.push(`Resultado call: ${lead.resultadoCall}`);
+  if (lead.vendedor?.nomeExibicao) dadosLead.push(`Vendedor: ${lead.vendedor.nomeExibicao}`);
+
+  const prompt = `Voce e um gestor comercial experiente do Programa Compativeis (programa de transformacao de relacionamentos para casais, ticket R$1.229). Analise o historico completo de interacoes com este lead e retorne:
+
+DADOS DO LEAD:
+${dadosLead.join('\n')}
+
+HISTORICO COMPLETO DE INTERACOES:
+${interacoesTexto}
+
+DATA E HORA ATUAL: ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+
+Retorne APENAS JSON valido com esta estrutura:
+{
+  "resumo_conversa": "Resumo completo e cronologico de toda a conversa com o lead em 5-8 frases. Inclua: como o lead chegou, principais dores identificadas, objecoes levantadas, o que foi discutido em cada interacao, e o status atual do relacionamento comercial.",
+  "proxima_acao": "Sugestao concreta e especifica do proximo passo. Exemplos: 'Ligar para confirmar reagendamento e reforcar urgencia', 'Enviar proposta com condicao especial de Pix', 'Aguardar 3 dias e enviar conteudo sobre depoimento de aluno'. Sempre comece com um verbo de acao.",
+  "proxima_acao_data": "Data e hora sugerida no formato ISO 8601 (YYYY-MM-DDTHH:mm:ss). Considere: se precisa ligar, sugira o proximo dia util as 10h ou 14h. Se precisa enviar mensagem, sugira dentro de 1-2h. Se e reengajamento, sugira 3-7 dias. Se nao ha data clara, retorne null.",
+  "urgencia": "alta" | "media" | "baixa"
+}
+
+Sem markdown, sem explicacoes, apenas JSON.`;
+
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [
+      { role: 'system', content: 'Voce retorna apenas JSON valido. Sem markdown, sem codigo, sem explicacoes.' },
+      { role: 'user', content: prompt },
+    ],
+    temperature: 0.3,
+    max_tokens: 1000,
+  });
+
+  const conteudo = completion.choices[0]?.message?.content?.trim();
+  let jsonStr = conteudo;
+  if (jsonStr.startsWith('```')) {
+    jsonStr = jsonStr.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+  }
+
+  const dados = JSON.parse(jsonStr);
+
+  const updateData = {};
+  if (dados.resumo_conversa) updateData.resumoConversa = dados.resumo_conversa;
+  if (dados.proxima_acao) updateData.proximaAcao = dados.proxima_acao;
+  if (dados.proxima_acao_data) {
+    try {
+      updateData.proximaAcaoData = new Date(dados.proxima_acao_data);
+    } catch (e) {
+      // Data invalida, ignorar
+    }
+  }
+
+  if (Object.keys(updateData).length > 0) {
+    await prisma.lead.update({
+      where: { id: leadId },
+      data: updateData,
+    });
+    logger.info(`Lead #${leadId} — resumo e proxima acao atualizados`);
+  }
+
+  return dados;
+}
+
+module.exports = { transcreverAudio, analisarTranscricao, processarCall, analisarPrintWhatsApp, gerarResumoEProximaAcao };

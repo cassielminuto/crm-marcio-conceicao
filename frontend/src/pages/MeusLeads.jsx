@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Search, ChevronLeft, ChevronRight, Phone, Mail, Instagram, Megaphone } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Phone, Mail, Instagram, Megaphone, Zap } from 'lucide-react';
 
 const ETAPAS_LABEL = {
   novo: 'Novo', em_abordagem: 'Em Abordagem', qualificado: 'Qualificado',
@@ -166,7 +166,13 @@ export default function MeusLeads() {
                           className="text-[12px] font-medium text-text-primary hover:text-accent-violet-light cursor-pointer"
                           onClick={() => navigate(`/leads/${lead.id}`)}
                         >{lead.nome}</p>
-                        {lead.dorPrincipal && (
+                        {lead.proximaAcao && (
+                          <p className="text-[10px] text-accent-violet-light truncate max-w-[250px] flex items-center gap-1">
+                            <Zap size={9} />
+                            {lead.proximaAcao}
+                          </p>
+                        )}
+                        {!lead.proximaAcao && lead.dorPrincipal && (
                           <p className="text-[10px] text-text-muted truncate max-w-[200px]">{lead.dorPrincipal}</p>
                         )}
                       </td>

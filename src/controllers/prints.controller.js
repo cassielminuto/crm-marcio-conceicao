@@ -1,5 +1,5 @@
 const prisma = require('../config/database');
-const { analisarPrintWhatsApp } = require('../services/aiService');
+const { analisarPrintWhatsApp, gerarResumoEProximaAcao } = require('../services/aiService');
 const logger = require('../utils/logger');
 
 async function uploadPrints(req, res, next) {
@@ -95,6 +95,16 @@ async function uploadPrints(req, res, next) {
       analise,
       lead: leadAtualizado,
       camposAtualizados: Object.keys(dadosLead),
+    });
+
+    // Gerar resumo e proxima acao em background
+    const leadIdForSummary = leadId;
+    setImmediate(async () => {
+      try {
+        await gerarResumoEProximaAcao(leadIdForSummary);
+      } catch (err) {
+        logger.error(`Erro ao gerar resumo para lead #${leadIdForSummary}: ${err.message}`);
+      }
     });
   } catch (err) {
     next(err);
