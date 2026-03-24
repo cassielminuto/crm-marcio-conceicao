@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Search, ChevronLeft, ChevronRight, Phone, Mail, Instagram, Megaphone, Zap, Trash2 } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Phone, Mail, Instagram, Megaphone, Zap, Trash2, MessageCircle } from 'lucide-react';
 
 const ETAPAS_LABEL = {
   novo: 'Novo', em_abordagem: 'Em Abordagem', qualificado: 'Qualificado',
@@ -218,6 +218,16 @@ export default function MeusLeads() {
                         <div className="flex items-center gap-1 text-[12px] text-text-secondary">
                           <Phone size={12} />
                           <span>{lead.telefone}</span>
+                          <a
+                            href={`https://wa.me/${lead.telefone.replace(/\D/g, '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1 rounded-md text-accent-emerald hover:bg-[rgba(0,184,148,0.08)] transition-all"
+                            title="Abrir WhatsApp"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MessageCircle size={13} />
+                          </a>
                         </div>
                         {lead.email && (
                           <div className="flex items-center gap-1 text-[10px] text-text-muted mt-0.5">

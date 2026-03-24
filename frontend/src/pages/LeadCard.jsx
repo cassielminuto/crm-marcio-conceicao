@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   ArrowLeft, Phone, Mail, Instagram, Megaphone, Clock, User, Save,
   MessageSquare, PhoneCall, FileText, ChevronDown, ChevronUp, Bot, Camera,
-  Zap, CalendarPlus, RefreshCw, Loader, ChevronRight, Trash2,
+  Zap, CalendarPlus, RefreshCw, Loader, ChevronRight, Trash2, MessageCircle,
 } from 'lucide-react';
 
 const ETAPA_COR = {
@@ -379,6 +379,16 @@ export default function LeadCard() {
               <div className="flex items-center gap-2 text-[12px]">
                 <Phone size={14} className="text-text-muted" />
                 <span className="text-text-primary">{lead.telefone}</span>
+                <a
+                  href={`https://wa.me/${lead.telefone.replace(/\D/g, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[rgba(0,184,148,0.08)] border border-[rgba(0,184,148,0.15)] text-accent-emerald text-[10px] font-semibold hover:bg-[rgba(0,184,148,0.15)] transition-all"
+                  title="Abrir WhatsApp"
+                >
+                  <MessageCircle size={12} />
+                  WhatsApp
+                </a>
               </div>
               {lead.email && (
                 <div className="flex items-center gap-2 text-[12px]">
