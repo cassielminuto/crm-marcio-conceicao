@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { ToastContainer } from '../Toast';
+import NotificationPanel from '../NotificationPanel';
 import useSocket from '../../hooks/useSocket';
 import { useAuth } from '../../context/AuthContext';
 import { Search, Bell } from 'lucide-react';
@@ -19,6 +20,8 @@ function UserAvatar({ nome }) {
 
 export default function AppLayout() {
   const [toasts, setToasts] = useState([]);
+  const [notifAberto, setNotifAberto] = useState(false);
+  const [totalNaoLidas, setTotalNaoLidas] = useState(0);
   const { usuario } = useAuth();
 
   const adicionarToast = useCallback((mensagem, tipo = 'info') => {
@@ -85,10 +88,25 @@ export default function AppLayout() {
             />
           </div>
           <div className="flex items-center gap-4">
-            <button className="relative p-2 text-text-muted hover:text-text-secondary transition-colors">
-              <Bell size={18} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-accent-danger" />
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setNotifAberto(!notifAberto)}
+                className="relative p-2 text-text-muted hover:text-text-secondary transition-colors"
+              >
+                <Bell size={18} />
+                {totalNaoLidas > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-[18px] h-[18px] bg-red-500 rounded-full text-[9px] font-bold text-white flex items-center justify-center">
+                    {totalNaoLidas > 9 ? '9+' : totalNaoLidas}
+                  </span>
+                )}
+              </button>
+              {notifAberto && (
+                <NotificationPanel
+                  onClose={() => setNotifAberto(false)}
+                  onCountUpdate={setTotalNaoLidas}
+                />
+              )}
+            </div>
             <UserAvatar nome={usuario?.nome} />
           </div>
         </header>

@@ -138,6 +138,46 @@ async function receberLeadRespondi(req, res, next) {
       });
     }
 
+    // 11. Criar notificacao no banco + enviar WhatsApp para o vendedor
+    if (vendedor) {
+      const { criarNotificacao } = require('../services/notificacaoService');
+
+      const vendedorCompleto = await prisma.vendedor.findUnique({
+        where: { id: vendedor.id },
+        select: { usuarioId: true, telefoneWhatsapp: true, nomeExibicao: true },
+      });
+
+      if (vendedorCompleto) {
+        const tituloNotif = `Novo lead ${classe === 'A' ? 'URGENTE' : ''}: ${nome}`;
+        const mensagemNotif = `Lead Classe ${classe} | Score: ${pontuacao} | Canal: ${canal === 'bio' ? 'Bio' : 'Anuncio'} | Telefone: ${telefone}`;
+
+        await criarNotificacao({
+          usuarioId: vendedorCompleto.usuarioId,
+          tipo: 'novo_lead',
+          titulo: tituloNotif,
+          mensagem: mensagemNotif,
+          dados: { leadId: lead.id, classe, pontuacao, canal, nome, telefone },
+        });
+
+        if (vendedorCompleto.telefoneWhatsapp) {
+          const { enviarMensagem } = require('../services/whatsappService');
+
+          const textoWhatsApp = classe === 'A'
+            ? `*LEAD URGENTE — CLASSE A*\n\n*${nome}*\nScore: ${pontuacao} | Canal: ${canal === 'bio' ? 'Bio' : 'Anuncio'}\nTel: ${telefone}\n\nSLA: 5 minutos!\nAcesse o CRM agora.`
+            : `*Novo Lead — Classe ${classe}*\n\n*${nome}*\nScore: ${pontuacao} | Canal: ${canal === 'bio' ? 'Bio' : 'Anuncio'}\nTel: ${telefone}\n\nAcesse o CRM para iniciar abordagem.`;
+
+          setImmediate(async () => {
+            try {
+              await enviarMensagem(vendedorCompleto.telefoneWhatsapp, textoWhatsApp);
+              logger.info(`WhatsApp enviado para vendedor ${vendedorCompleto.nomeExibicao} (${vendedorCompleto.telefoneWhatsapp})`);
+            } catch (err) {
+              logger.error(`Erro ao enviar WhatsApp para vendedor: ${err.message}`);
+            }
+          });
+        }
+      }
+    }
+
     logger.info(
       `Lead recebido: ${nome} | Canal: ${canal} | Score: ${pontuacao} | Classe: ${classe} | Closer: ${vendedor?.nomeExibicao || 'nurturing'}`
     );

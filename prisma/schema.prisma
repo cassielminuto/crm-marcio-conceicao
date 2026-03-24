@@ -130,8 +130,9 @@ model Usuario {
   ativo      Boolean  @default(true)
   createdAt  DateTime @default(now()) @map("created_at")
 
-  vendedor   Vendedor?
-  auditLogs  AuditLog[]
+  vendedor     Vendedor?
+  auditLogs    AuditLog[]
+  notificacoes Notificacao[]
 
   @@map("usuarios")
 }
@@ -141,6 +142,7 @@ model Vendedor {
   id               Int            @id @default(autoincrement())
   usuarioId        Int            @unique @map("usuario_id")
   nomeExibicao     String?        @map("nome_exibicao") @db.VarChar(100)
+  telefoneWhatsapp String?        @map("telefone_whatsapp") @db.VarChar(20)
   papel            PapelVendedor
   classesAtendidas String[]       @map("classes_atendidas")
   scorePerformance Float          @default(0) @map("score_performance")
@@ -374,4 +376,20 @@ model Proposta {
   vendedor        Vendedor       @relation(fields: [vendedorId], references: [id])
 
   @@map("propostas")
+}
+
+/// Tabela 14: notificacoes
+model Notificacao {
+  id        Int      @id @default(autoincrement())
+  usuarioId Int      @map("usuario_id")
+  tipo      String   @db.VarChar(50)
+  titulo    String   @db.VarChar(255)
+  mensagem  String
+  dados     Json?
+  lida      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
+
+  @@map("notificacoes")
 }

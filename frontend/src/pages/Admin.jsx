@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { Settings, Clock, Smartphone, FileText } from 'lucide-react';
+import { Settings, Clock, Smartphone, FileText, Users } from 'lucide-react';
 
 export default function Admin() {
   const location = useLocation();
@@ -24,6 +24,18 @@ export default function Admin() {
           }
         >
           <Clock size={16} /> SLA Config
+        </NavLink>
+        <NavLink
+          to="/admin/vendedores"
+          className={({ isActive }) =>
+            `flex items-center gap-2 px-4 py-2 rounded-[10px] text-[12px] font-semibold transition-all duration-250 ${
+              isActive
+                ? 'bg-gradient-to-r from-[#6c5ce7] to-[#a78bfa] text-white shadow-[0_4px_16px_rgba(108,92,231,0.25)]'
+                : 'bg-bg-elevated border border-border-default text-text-secondary hover:border-border-active hover:text-[#b0b0d0]'
+            }`
+          }
+        >
+          <Users size={16} /> Vendedores
         </NavLink>
         <NavLink
           to="/admin/whatsapp"

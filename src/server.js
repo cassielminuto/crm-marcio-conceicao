@@ -38,6 +38,7 @@ const adminRoutes = require('./routes/admin.routes');
 const whatsappRoutes = require('./routes/whatsapp.routes');
 const templatesRoutes = require('./routes/templates.routes');
 const printsRoutes = require('./routes/prints.routes');
+const notificacoesRoutes = require('./routes/notificacoes.routes');
 const { iniciarSlaChecker } = require('./jobs/slaChecker.job');
 const { iniciarWhatsappDispatcher } = require('./jobs/whatsappDispatcher.job');
 
@@ -59,6 +60,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/templates', templatesRoutes);
 app.use('/api/prints', printsRoutes);
+app.use('/api/notificacoes', notificacoesRoutes);
 
 // Servir uploads (prints, calls) como arquivos estaticos
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));

@@ -213,4 +213,27 @@ async function followUpsVendedor(req, res, next) {
   }
 }
 
-module.exports = { listar, dashboard, leadsAtivos, followUpsVendedor };
+async function atualizar(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { nomeExibicao, telefoneWhatsapp, leadsMax, ativo } = req.body;
+
+    const dados = {};
+    if (nomeExibicao !== undefined) dados.nomeExibicao = nomeExibicao;
+    if (telefoneWhatsapp !== undefined) dados.telefoneWhatsapp = telefoneWhatsapp;
+    if (leadsMax !== undefined) dados.leadsMax = parseInt(leadsMax, 10);
+    if (ativo !== undefined) dados.ativo = ativo;
+
+    const vendedor = await prisma.vendedor.update({
+      where: { id: parseInt(id, 10) },
+      data: dados,
+      include: { usuario: { select: { nome: true, email: true } } },
+    });
+
+    res.json(vendedor);
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { listar, dashboard, leadsAtivos, followUpsVendedor, atualizar };

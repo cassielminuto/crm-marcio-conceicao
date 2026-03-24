@@ -2,6 +2,7 @@ const { Queue, Worker } = require('bullmq');
 const prisma = require('../config/database');
 const redis = require('../config/redis');
 const { distribuir, incrementarLeadsAtivos } = require('../services/distribuidor');
+const { criarNotificacao } = require('../services/notificacaoService');
 const logger = require('../utils/logger');
 
 const SLA_QUEUE = 'sla-checker';
@@ -100,6 +101,21 @@ function criarSlaWorker(io) {
                 vendedorAnterior: lead.vendedor?.nomeExibicao,
                 vendedorNovo: novoVendedor.nomeExibicao,
                 tempoMinutos: limiteMinutos,
+              });
+            }
+
+            // Notificar novo vendedor
+            const novoVendedorData = await prisma.vendedor.findUnique({
+              where: { id: novoVendedor.id },
+              select: { usuarioId: true },
+            });
+            if (novoVendedorData) {
+              await criarNotificacao({
+                usuarioId: novoVendedorData.usuarioId,
+                tipo: 'sla_alerta',
+                titulo: `Lead redistribuido: ${lead.nome}`,
+                mensagem: `SLA Classe ${lead.classe} estourado (${limiteMinutos}min). Lead transferido de ${lead.vendedor?.nomeExibicao}.`,
+                dados: { leadId: lead.id, classe: lead.classe },
               });
             }
           } else {
