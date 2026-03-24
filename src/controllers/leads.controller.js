@@ -114,21 +114,22 @@ async function detalhe(req, res, next) {
 
 async function criar(req, res, next) {
   try {
-    const { nome, telefone, email, canal, formulario_titulo, dados_respondi } = req.body;
+    const { nome, telefone, email, canal, formulario_titulo, dados_respondi, classe: classeManual, vendedor_id, observacao } = req.body;
 
     // Verificar duplicidade exata
     const { exato } = await verificarDuplicidade(telefone, email);
     if (exato) {
       return res.status(409).json({
-        error: 'Lead duplicado (telefone + email)',
+        error: 'Lead duplicado (telefone ou email ja existe)',
         leadId: exato.id,
         leadExistente: { id: exato.id, nome: exato.nome, telefone: exato.telefone },
       });
     }
 
     let pontuacao = 0;
-    let classe = 'C';
+    let classe = classeManual || 'B';
 
+    // Se tem dados do Respondi, calcular score normalmente
     if (dados_respondi && formulario_titulo) {
       const canalDetectado = identificarCanal(formulario_titulo);
       if (canalDetectado) {
@@ -136,9 +137,25 @@ async function criar(req, res, next) {
         pontuacao = resultado.pontuacao;
         classe = resultado.classe;
       }
+    } else if (classeManual) {
+      if (classeManual === 'A') pontuacao = 80;
+      else if (classeManual === 'B') pontuacao = 55;
+      else pontuacao = 30;
+    } else {
+      pontuacao = 50;
     }
 
-    const vendedor = await distribuir(classe);
+    // Determinar vendedor
+    let vendedorId = null;
+    if (vendedor_id) {
+      vendedorId = vendedor_id;
+    } else if (req.usuario.vendedorId) {
+      vendedorId = req.usuario.vendedorId;
+    } else {
+      const vendedor = await distribuir(classe);
+      vendedorId = vendedor?.id || null;
+    }
+
     const agora = new Date();
 
     const lead = await prisma.lead.create({
@@ -147,15 +164,15 @@ async function criar(req, res, next) {
         telefone,
         email: email || null,
         canal: canal || 'bio',
-        formularioTitulo: formulario_titulo || null,
+        formularioTitulo: formulario_titulo || 'Manual',
         pontuacao,
         classe,
         etapaFunil: classe === 'C' ? 'nurturing' : 'novo',
         status: classe === 'C' ? 'nurturing' : 'aguardando',
-        vendedorId: vendedor?.id || null,
+        vendedorId,
         dadosRespondi: dados_respondi || null,
         dataPreenchimento: agora,
-        dataAtribuicao: vendedor ? agora : null,
+        dataAtribuicao: vendedorId ? agora : null,
       },
       include: {
         vendedor: { select: { id: true, nomeExibicao: true, papel: true } },
@@ -166,13 +183,40 @@ async function criar(req, res, next) {
       data: {
         leadId: lead.id,
         etapaNova: lead.etapaFunil,
-        vendedorId: vendedor?.id || null,
-        motivo: 'Lead criado manualmente',
+        vendedorId: vendedorId || null,
+        motivo: `Lead criado manualmente por ${req.usuario.email}`,
       },
     });
 
-    if (vendedor) {
-      await incrementarLeadsAtivos(vendedor.id);
+    if (vendedorId) {
+      await incrementarLeadsAtivos(vendedorId);
+    }
+
+    // Criar nota inicial se tem observacao
+    if (observacao && observacao.trim()) {
+      await prisma.interacao.create({
+        data: {
+          leadId: lead.id,
+          vendedorId: vendedorId || req.usuario.vendedorId || 1,
+          tipo: 'nota',
+          conteudo: observacao.trim(),
+        },
+      });
+    }
+
+    // Notificar via WebSocket
+    const io = req.app.get('io');
+    if (io && vendedorId) {
+      io.emit('novo_lead', {
+        leadId: lead.id,
+        nome: lead.nome,
+        classe,
+        pontuacao,
+        canal: canal || 'bio',
+        vendedorId,
+        vendedorNome: lead.vendedor?.nomeExibicao,
+        urgente: classe === 'A',
+      });
     }
 
     res.status(201).json(lead);

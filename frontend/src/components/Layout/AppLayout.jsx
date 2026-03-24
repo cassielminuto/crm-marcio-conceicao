@@ -1,11 +1,13 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { ToastContainer } from '../Toast';
 import NotificationPanel from '../NotificationPanel';
+import AddLeadModal from '../AddLeadModal';
 import useSocket from '../../hooks/useSocket';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Bell } from 'lucide-react';
+import api from '../../services/api';
+import { Search, Bell, Plus } from 'lucide-react';
 
 let toastIdCounter = 0;
 
@@ -26,7 +28,17 @@ export default function AppLayout() {
   const [toasts, setToasts] = useState([]);
   const [notifAberto, setNotifAberto] = useState(false);
   const [totalNaoLidas, setTotalNaoLidas] = useState(0);
+  const [modalLeadAberto, setModalLeadAberto] = useState(false);
+  const [vendedores, setVendedores] = useState([]);
   const { usuario } = useAuth();
+
+  // Carregar vendedores para o modal
+  useEffect(() => {
+    api.get('/vendedores').then(res => {
+      const data = Array.isArray(res.data) ? res.data : [];
+      setVendedores(data);
+    }).catch(() => {});
+  }, []);
 
   const adicionarToast = useCallback((mensagem, tipo = 'info') => {
     const id = ++toastIdCounter;
@@ -83,13 +95,22 @@ export default function AppLayout() {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Topbar */}
         <header className="h-[56px] shrink-0 flex items-center justify-between px-8 border-b border-border-subtle bg-bg-secondary/50 backdrop-blur-sm">
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-            <input
-              type="text"
-              placeholder="Buscar leads, vendedores..."
-              className="w-[360px] bg-bg-card border border-border-default rounded-[10px] pl-9 pr-3 py-2 text-[12px] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)] transition-all"
-            />
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+              <input
+                type="text"
+                placeholder="Buscar leads, vendedores..."
+                className="w-[360px] bg-bg-card border border-border-default rounded-[10px] pl-9 pr-3 py-2 text-[12px] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)] transition-all"
+              />
+            </div>
+            <button
+              onClick={() => setModalLeadAberto(true)}
+              className="w-[38px] h-[38px] rounded-[10px] bg-gradient-to-r from-[#6c5ce7] to-[#00cec9] flex items-center justify-center hover:shadow-[0_4px_12px_rgba(108,92,231,0.25)] transition-all shrink-0"
+              title="Adicionar lead"
+            >
+              <Plus size={16} className="text-white" />
+            </button>
           </div>
           <div className="flex items-center gap-4">
             <div className="relative">
@@ -123,6 +144,15 @@ export default function AppLayout() {
         </main>
       </div>
       <ToastContainer toasts={toasts} removerToast={removerToast} />
+
+      <AddLeadModal
+        isOpen={modalLeadAberto}
+        onClose={() => setModalLeadAberto(false)}
+        onLeadCriado={(lead) => {
+          adicionarToast(`Lead criado: ${lead.nome} (Classe ${lead.classe})`, 'sucesso');
+        }}
+        vendedores={vendedores}
+      />
     </div>
   );
 }

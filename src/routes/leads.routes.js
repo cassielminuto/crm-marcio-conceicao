@@ -15,6 +15,9 @@ const criarLeadSchema = z.object({
   canal: z.enum(['bio', 'anuncio', 'evento']).optional(),
   formulario_titulo: z.string().optional().nullable(),
   dados_respondi: z.record(z.any()).optional().nullable(),
+  classe: z.enum(['A', 'B', 'C']).optional(),
+  vendedor_id: z.number().int().positive().optional().nullable(),
+  observacao: z.string().optional().nullable(),
 });
 
 const atualizarLeadSchema = z.object({
