@@ -256,14 +256,29 @@ export default function LeadCard() {
                         Atualizar
                       </button>
                       {lead.proximaAcaoData && (
-                        <a
-                          href={`/api/leads/${lead.id}/agenda.ics`}
-                          download
+                        <button
+                          onClick={async () => {
+                            try {
+                              const response = await api.get(`/leads/${lead.id}/agenda.ics`, {
+                                responseType: 'blob',
+                              });
+                              const url = window.URL.createObjectURL(new Blob([response.data], { type: 'text/calendar' }));
+                              const link = document.createElement('a');
+                              link.href = url;
+                              link.download = `crm-${lead.nome.replace(/[^a-zA-Z0-9]/g, '_')}.ics`;
+                              document.body.appendChild(link);
+                              link.click();
+                              link.remove();
+                              window.URL.revokeObjectURL(url);
+                            } catch (err) {
+                              console.error('Erro ao baixar .ics:', err);
+                            }
+                          }}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-[#6c5ce7] to-[#00cec9] text-white text-[10px] font-semibold hover:shadow-[0_4px_12px_rgba(108,92,231,0.25)] transition-all"
                         >
                           <CalendarPlus size={12} />
                           Adicionar a agenda
-                        </a>
+                        </button>
                       )}
                     </div>
                   </div>
