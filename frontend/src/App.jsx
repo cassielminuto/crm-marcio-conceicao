@@ -16,6 +16,7 @@ import SLAConfig from './pages/SLAConfig';
 import WhatsAppAdmin from './pages/WhatsAppAdmin';
 import VendedoresAdmin from './pages/VendedoresAdmin';
 import LeadCard from './pages/LeadCard';
+import Perfil from './pages/Perfil';
 
 export default function App() {
   return (
@@ -40,6 +41,7 @@ export default function App() {
             <Route path="relatorios" element={<Relatorios />} />
             <Route path="templates" element={<Templates />} />
             <Route path="leads/:id" element={<LeadCard />} />
+            <Route path="perfil" element={<Perfil />} />
             <Route path="admin" element={<Admin />}>
               <Route path="sla" element={<SLAConfig />} />
               <Route path="vendedores" element={<VendedoresAdmin />} />

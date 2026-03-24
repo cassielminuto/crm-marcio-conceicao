@@ -128,6 +128,7 @@ model Usuario {
   senhaHash  String   @map("senha_hash") @db.VarChar(255)
   perfil     Perfil
   ativo      Boolean  @default(true)
+  fotoUrl    String?  @map("foto_url") @db.VarChar(500)
   createdAt  DateTime @default(now()) @map("created_at")
 
   vendedor     Vendedor?

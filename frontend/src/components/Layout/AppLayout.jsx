@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { ToastContainer } from '../Toast';
 import NotificationPanel from '../NotificationPanel';
@@ -9,8 +9,11 @@ import { Search, Bell } from 'lucide-react';
 
 let toastIdCounter = 0;
 
-function UserAvatar({ nome }) {
+function UserAvatar({ nome, fotoUrl }) {
   const iniciais = (nome || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  if (fotoUrl) {
+    return <img src={fotoUrl} alt={nome} className="w-[34px] h-[34px] rounded-lg object-cover" />;
+  }
   return (
     <div className="w-[34px] h-[34px] rounded-lg bg-gradient-to-br from-[#6c5ce7] to-[#00cec9] flex items-center justify-center text-[11px] font-bold text-white">
       {iniciais}
@@ -19,6 +22,7 @@ function UserAvatar({ nome }) {
 }
 
 export default function AppLayout() {
+  const navigate = useNavigate();
   const [toasts, setToasts] = useState([]);
   const [notifAberto, setNotifAberto] = useState(false);
   const [totalNaoLidas, setTotalNaoLidas] = useState(0);
@@ -107,7 +111,9 @@ export default function AppLayout() {
                 />
               )}
             </div>
-            <UserAvatar nome={usuario?.nome} />
+            <button onClick={() => navigate('/perfil')} className="hover:opacity-80 transition-opacity">
+              <UserAvatar nome={usuario?.nome} fotoUrl={usuario?.fotoUrl} />
+            </button>
           </div>
         </header>
 

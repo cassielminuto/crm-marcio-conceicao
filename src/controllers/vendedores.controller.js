@@ -6,7 +6,7 @@ async function listar(req, res, next) {
       where: { ativo: true },
       orderBy: { totalConversoes: 'desc' },
       include: {
-        usuario: { select: { nome: true, email: true } },
+        usuario: { select: { nome: true, email: true, fotoUrl: true } },
       },
     });
 
@@ -30,7 +30,7 @@ async function dashboard(req, res, next) {
     const vendedor = await prisma.vendedor.findUnique({
       where: { id: vendedorId },
       include: {
-        usuario: { select: { nome: true, email: true } },
+        usuario: { select: { nome: true, email: true, fotoUrl: true } },
       },
     });
 

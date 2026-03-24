@@ -36,6 +36,7 @@ async function login(email, senha) {
       nome: usuario.nome,
       email: usuario.email,
       perfil: usuario.perfil,
+      fotoUrl: usuario.fotoUrl || null,
       vendedorId: usuario.vendedor?.id || null,
     },
   };
@@ -85,6 +86,7 @@ async function me(usuarioId) {
     nome: usuario.nome,
     email: usuario.email,
     perfil: usuario.perfil,
+    fotoUrl: usuario.fotoUrl || null,
     ativo: usuario.ativo,
     createdAt: usuario.createdAt,
     vendedor: usuario.vendedor

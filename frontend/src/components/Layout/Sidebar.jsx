@@ -27,10 +27,23 @@ const adminItems = [
   { to: '/admin', label: 'Admin', icon: Settings },
 ];
 
-function UserAvatar({ nome }) {
+function UserAvatar({ nome, fotoUrl, size = 34 }) {
   const iniciais = (nome || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  if (fotoUrl) {
+    return (
+      <img
+        src={fotoUrl}
+        alt={nome}
+        className="rounded-lg object-cover shrink-0"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
   return (
-    <div className="w-[34px] h-[34px] rounded-lg bg-gradient-to-br from-[#6c5ce7] to-[#00cec9] flex items-center justify-center text-[11px] font-bold text-white shrink-0">
+    <div
+      className="rounded-lg bg-gradient-to-br from-[#6c5ce7] to-[#00cec9] flex items-center justify-center font-bold text-white shrink-0"
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.32) }}
+    >
       {iniciais}
     </div>
   );
@@ -109,11 +122,13 @@ export default function Sidebar() {
 
       <div className="px-4 py-4 border-t border-border-subtle">
         <div className="flex items-center gap-3">
-          <UserAvatar nome={usuario?.nome} />
-          <div className="flex-1 min-w-0">
+          <NavLink to="/perfil" className="shrink-0">
+            <UserAvatar nome={usuario?.nome} fotoUrl={usuario?.fotoUrl} />
+          </NavLink>
+          <NavLink to="/perfil" className="flex-1 min-w-0 hover:opacity-80 transition-opacity">
             <p className="text-[12px] font-semibold text-white truncate">{usuario?.nome}</p>
             <p className="text-[10px] text-text-muted truncate">{usuario?.perfil}</p>
-          </div>
+          </NavLink>
           <button
             onClick={logout}
             className="p-2 text-text-muted hover:text-text-secondary hover:bg-white/[0.03] rounded-[10px] transition-colors"
