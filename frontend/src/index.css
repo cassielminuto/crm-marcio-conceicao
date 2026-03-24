@@ -1,16 +1,54 @@
 @import "tailwindcss";
 
-@keyframes slide-in {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+@theme {
+  --font-family-sans: 'Plus Jakarta Sans', sans-serif;
+
+  /* Backgrounds */
+  --color-bg-primary: #0b0b12;
+  --color-bg-secondary: #0f0f18;
+  --color-bg-card: #14141e;
+  --color-bg-elevated: #1a1a28;
+  --color-bg-input: #1a1a28;
+
+  /* Borders */
+  --color-border-subtle: rgba(255, 255, 255, 0.04);
+  --color-border-default: rgba(255, 255, 255, 0.06);
+  --color-border-hover: rgba(255, 255, 255, 0.08);
+  --color-border-active: rgba(255, 255, 255, 0.12);
+
+  /* Text */
+  --color-text-primary: #e2e2ef;
+  --color-text-secondary: #7a7a9a;
+  --color-text-muted: #5a5a7a;
+  --color-text-faint: #3a3a5a;
+
+  /* Accent */
+  --color-accent-violet: #6c5ce7;
+  --color-accent-violet-light: #a78bfa;
+  --color-accent-cyan: #00cec9;
+  --color-accent-emerald: #00b894;
+  --color-accent-amber: #fdcb6e;
+  --color-accent-danger: #e17055;
+  --color-accent-info: #74b9ff;
+
+  /* Specific UI */
+  --color-classe-a: #e17055;
+  --color-classe-b: #fdcb6e;
+  --color-classe-c: #74b9ff;
 }
 
-.animate-slide-in {
-  animation: slide-in 0.3s ease-out;
+@keyframes slide-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-in { animation: slide-in 0.3s ease-out; }
+.animate-fade-in { animation: fade-in 0.3s ease-out; }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.12); }

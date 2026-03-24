@@ -10,6 +10,7 @@ import {
   BarChart3,
   Settings,
   LogOut,
+  Layers,
 } from 'lucide-react';
 
 const navItems = [
@@ -26,54 +27,73 @@ const adminItems = [
   { to: '/admin', label: 'Admin', icon: Settings },
 ];
 
+function UserAvatar({ nome }) {
+  const iniciais = (nome || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  return (
+    <div className="w-[34px] h-[34px] rounded-lg bg-gradient-to-br from-[#6c5ce7] to-[#00cec9] flex items-center justify-center text-[11px] font-bold text-white shrink-0">
+      {iniciais}
+    </div>
+  );
+}
+
 export default function Sidebar() {
   const { usuario, logout } = useAuth();
 
   const isAdmin = usuario?.perfil === 'admin' || usuario?.perfil === 'gestor';
 
   return (
-    <aside className="w-64 bg-gray-900 text-white flex flex-col min-h-screen">
-      <div className="p-6 border-b border-gray-700">
-        <h1 className="text-lg font-bold">CRM Compatíveis</h1>
-        <p className="text-sm text-gray-400 mt-1">Márcio Conceição</p>
+    <aside className="w-[240px] shrink-0 bg-bg-secondary flex flex-col min-h-screen border-r border-border-subtle">
+      <div className="px-5 py-5">
+        <div className="flex items-center gap-3">
+          <div className="w-[36px] h-[36px] rounded-[10px] bg-gradient-to-br from-[#6c5ce7] to-[#00cec9] flex items-center justify-center shrink-0">
+            <Layers size={18} className="text-white" />
+          </div>
+          <div>
+            <h1 className="text-[15px] font-bold text-white leading-tight">Compativeis</h1>
+            <span className="text-[10px] text-text-muted">CRM &bull; v2.0</span>
+          </div>
+        </div>
       </div>
 
-      <nav className="flex-1 py-4">
-        <ul className="space-y-1 px-3">
+      <nav className="flex-1 px-3 py-2">
+        <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-[1.5px] text-text-faint">
+          Menu
+        </p>
+        <ul className="space-y-0.5">
           {navItems.filter((item) => !item.adminOnly || isAdmin).map(({ to, label, icon: Icon }) => (
             <li key={to}>
               <NavLink
                 to={to}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  `flex items-center gap-3 px-3 py-[10px] rounded-[10px] text-[13px] font-medium transition-all duration-200 ${
                     isActive
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                      ? 'bg-[rgba(108,92,231,0.15)] text-accent-violet-light'
+                      : 'text-text-secondary hover:bg-white/[0.03] hover:text-[#b0b0d0]'
                   }`
                 }
               >
-                <Icon size={18} />
+                <Icon size={18} className={undefined} />
                 {label}
               </NavLink>
             </li>
           ))}
+        </ul>
 
-          {isAdmin && (
-            <>
-              <li className="pt-4 pb-2">
-                <span className="px-3 text-xs font-semibold text-gray-500 uppercase">
-                  Administração
-                </span>
-              </li>
+        {isAdmin && (
+          <>
+            <p className="px-3 mt-6 mb-2 text-[10px] font-semibold uppercase tracking-[1.5px] text-text-faint">
+              Administracao
+            </p>
+            <ul className="space-y-0.5">
               {adminItems.map(({ to, label, icon: Icon }) => (
                 <li key={to}>
                   <NavLink
                     to={to}
                     className={({ isActive }) =>
-                      `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                      `flex items-center gap-3 px-3 py-[10px] rounded-[10px] text-[13px] font-medium transition-all duration-200 ${
                         isActive
-                          ? 'bg-blue-600 text-white'
-                          : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                          ? 'bg-[rgba(108,92,231,0.15)] text-accent-violet-light'
+                          : 'text-text-secondary hover:bg-white/[0.03] hover:text-[#b0b0d0]'
                       }`
                     }
                   >
@@ -82,20 +102,21 @@ export default function Sidebar() {
                   </NavLink>
                 </li>
               ))}
-            </>
-          )}
-        </ul>
+            </ul>
+          </>
+        )}
       </nav>
 
-      <div className="p-4 border-t border-gray-700">
-        <div className="flex items-center justify-between">
-          <div className="min-w-0">
-            <p className="text-sm font-medium truncate">{usuario?.nome}</p>
-            <p className="text-xs text-gray-400 truncate">{usuario?.perfil}</p>
+      <div className="px-4 py-4 border-t border-border-subtle">
+        <div className="flex items-center gap-3">
+          <UserAvatar nome={usuario?.nome} />
+          <div className="flex-1 min-w-0">
+            <p className="text-[12px] font-semibold text-white truncate">{usuario?.nome}</p>
+            <p className="text-[10px] text-text-muted truncate">{usuario?.perfil}</p>
           </div>
           <button
             onClick={logout}
-            className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+            className="p-2 text-text-muted hover:text-text-secondary hover:bg-white/[0.03] rounded-[10px] transition-colors"
             title="Sair"
           >
             <LogOut size={18} />

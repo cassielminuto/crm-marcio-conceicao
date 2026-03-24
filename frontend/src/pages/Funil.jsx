@@ -6,12 +6,12 @@ import { useAuth } from '../context/AuthContext';
 import { Filter, DollarSign, Clock, User, Instagram, Megaphone } from 'lucide-react';
 
 const ETAPAS = [
-  { id: 'novo', label: 'Novo', cor: 'border-blue-400', headerBg: 'bg-blue-50' },
-  { id: 'em_abordagem', label: 'Em Abordagem', cor: 'border-yellow-400', headerBg: 'bg-yellow-50' },
-  { id: 'qualificado', label: 'Qualificado', cor: 'border-purple-400', headerBg: 'bg-purple-50' },
-  { id: 'proposta', label: 'Proposta', cor: 'border-orange-400', headerBg: 'bg-orange-50' },
-  { id: 'fechado_ganho', label: 'Fechado Ganho', cor: 'border-green-400', headerBg: 'bg-green-50' },
-  { id: 'fechado_perdido', label: 'Fechado Perdido', cor: 'border-red-400', headerBg: 'bg-red-50' },
+  { id: 'novo', label: 'Novo', cor: 'border-accent-info' },
+  { id: 'em_abordagem', label: 'Em Abordagem', cor: 'border-accent-amber' },
+  { id: 'qualificado', label: 'Qualificado', cor: 'border-accent-violet-light' },
+  { id: 'proposta', label: 'Proposta', cor: 'border-accent-danger' },
+  { id: 'fechado_ganho', label: 'Fechado Ganho', cor: 'border-accent-emerald' },
+  { id: 'fechado_perdido', label: 'Fechado Perdido', cor: 'border-[#e17055]' },
 ];
 
 const TICKET_MEDIO = 1229;
@@ -28,9 +28,9 @@ function tempoDesdeEntrada(data) {
 }
 
 function scoreCor(pontuacao) {
-  if (pontuacao >= 75) return { bg: 'bg-red-100', text: 'text-red-700', label: 'Quente' };
-  if (pontuacao >= 45) return { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Morno' };
-  return { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Frio' };
+  if (pontuacao >= 75) return { bg: 'bg-[rgba(225,112,85,0.12)]', text: 'text-[#e17055]', label: 'Quente' };
+  if (pontuacao >= 45) return { bg: 'bg-[rgba(253,203,110,0.12)]', text: 'text-[#fdcb6e]', label: 'Morno' };
+  return { bg: 'bg-[rgba(116,185,255,0.1)]', text: 'text-[#74b9ff]', label: 'Frio' };
 }
 
 function LeadCard({ lead, index, onClickLead }) {
@@ -45,12 +45,12 @@ function LeadCard({ lead, index, onClickLead }) {
           {...provided.draggableProps}
           {...provided.dragHandleProps}
           onClick={() => onClickLead(lead.id)}
-          className={`bg-white rounded-lg border p-3 mb-2 cursor-grab active:cursor-grabbing transition-shadow ${
-            snapshot.isDragging ? 'shadow-lg ring-2 ring-blue-300' : 'shadow-sm hover:shadow-md'
+          className={`bg-bg-card border border-border-subtle rounded-[10px] p-3 mb-2 cursor-grab active:cursor-grabbing transition-all ${
+            snapshot.isDragging ? 'shadow-lg ring-1 ring-accent-violet/30 border-border-active' : 'hover:border-border-hover'
           }`}
         >
           <div className="flex items-start justify-between gap-2 mb-2">
-            <p className="text-sm font-medium text-gray-800 truncate flex-1 hover:text-blue-600">{lead.nome}</p>
+            <p className="text-[12px] font-medium text-text-primary truncate flex-1 hover:text-accent-violet-light">{lead.nome}</p>
             <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${score.bg} ${score.text} shrink-0`}>
               {lead.pontuacao}
             </span>
@@ -60,20 +60,18 @@ function LeadCard({ lead, index, onClickLead }) {
             <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${score.bg} ${score.text}`}>
               {score.label}
             </span>
-
-            <span className="inline-flex items-center gap-1 text-[10px] text-gray-500">
+            <span className="inline-flex items-center gap-1 text-[10px] text-text-muted">
               <CanalIcone size={10} />
               {lead.canal === 'bio' ? 'Bio' : 'Anuncio'}
             </span>
-
-            <span className="inline-flex items-center gap-1 text-[10px] text-gray-400">
+            <span className="inline-flex items-center gap-1 text-[10px] text-text-faint">
               <Clock size={10} />
               {tempoDesdeEntrada(lead.dataPreenchimento || lead.createdAt)}
             </span>
           </div>
 
           {lead.vendedor && (
-            <div className="flex items-center gap-1 mt-2 text-[10px] text-gray-500">
+            <div className="flex items-center gap-1 mt-2 text-[10px] text-text-muted">
               <User size={10} />
               {lead.vendedor.nomeExibicao}
             </div>
@@ -89,16 +87,16 @@ function KanbanColuna({ etapa, leads, onClickLead }) {
 
   return (
     <div className="flex flex-col w-72 shrink-0">
-      <div className={`rounded-t-lg px-3 py-2 border-t-4 ${etapa.cor} ${etapa.headerBg}`}>
+      <div className={`rounded-t-[10px] px-3 py-2.5 border-t-2 ${etapa.cor} bg-bg-card`}>
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-700">{etapa.label}</h3>
-          <span className="text-xs font-bold text-gray-500 bg-white px-2 py-0.5 rounded-full">
+          <h3 className="text-[12px] font-semibold text-text-primary">{etapa.label}</h3>
+          <span className="text-[10px] font-bold text-text-muted bg-bg-elevated px-2 py-0.5 rounded-full">
             {leads.length}
           </span>
         </div>
         {pipelineValor !== null && pipelineValor > 0 && (
-          <div className="flex items-center gap-1 mt-1 text-[11px] text-orange-600 font-medium">
-            <DollarSign size={11} />
+          <div className="flex items-center gap-1 mt-1 text-[10px] text-accent-amber font-medium">
+            <DollarSign size={10} />
             R$ {pipelineValor.toLocaleString('pt-BR')}
           </div>
         )}
@@ -109,8 +107,8 @@ function KanbanColuna({ etapa, leads, onClickLead }) {
           <div
             ref={provided.innerRef}
             {...provided.droppableProps}
-            className={`flex-1 p-2 rounded-b-lg border border-t-0 border-gray-200 min-h-[200px] transition-colors ${
-              snapshot.isDraggingOver ? 'bg-blue-50' : 'bg-gray-50'
+            className={`flex-1 p-2 rounded-b-[10px] border border-t-0 border-border-subtle min-h-[200px] transition-colors ${
+              snapshot.isDraggingOver ? 'bg-[rgba(108,92,231,0.04)]' : 'bg-bg-secondary'
             }`}
           >
             {leads.map((lead, idx) => (
@@ -131,7 +129,6 @@ export default function Funil() {
   const [vendedores, setVendedores] = useState([]);
   const [carregando, setCarregando] = useState(true);
 
-  // Filtros
   const [filtroVendedor, setFiltroVendedor] = useState('');
   const [filtroClasse, setFiltroClasse] = useState('');
   const [filtroCanal, setFiltroCanal] = useState('');
@@ -168,7 +165,6 @@ export default function Funil() {
     const leadId = parseInt(draggableId, 10);
     const novaEtapa = destination.droppableId;
 
-    // Atualizar otimisticamente
     setLeads((prev) =>
       prev.map((l) => (l.id === leadId ? { ...l, etapaFunil: novaEtapa } : l))
     );
@@ -181,7 +177,6 @@ export default function Funil() {
     }
   };
 
-  // Agrupar leads por etapa
   const leadsPorEtapa = {};
   for (const etapa of ETAPAS) {
     leadsPorEtapa[etapa.id] = [];
@@ -192,27 +187,25 @@ export default function Funil() {
     }
   }
 
-  // Pipeline total (leads em proposta)
   const pipelineTotal = (leadsPorEtapa.proposta?.length || 0) * TICKET_MEDIO;
 
   if (carregando) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-violet" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
+    <div className="space-y-4 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Funil de Vendas</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-[22px] font-bold text-white">Funil de Vendas</h1>
+          <p className="text-[13px] text-text-secondary mt-1">
             {leads.length} leads no funil
             {pipelineTotal > 0 && (
-              <span className="ml-2 text-orange-600 font-medium">
+              <span className="ml-2 text-accent-amber font-medium">
                 | Pipeline: R$ {pipelineTotal.toLocaleString('pt-BR')}
               </span>
             )}
@@ -221,13 +214,13 @@ export default function Funil() {
       </div>
 
       {/* Filtros */}
-      <div className="flex items-center gap-3 bg-white rounded-lg border border-gray-200 p-3">
-        <Filter size={16} className="text-gray-400" />
+      <div className="flex items-center gap-3 bg-bg-card border border-border-subtle rounded-[14px] p-3">
+        <Filter size={16} className="text-text-muted" />
 
         <select
           value={filtroVendedor}
           onChange={(e) => setFiltroVendedor(e.target.value)}
-          className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="bg-bg-input border border-border-default rounded-lg px-3 py-1.5 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)]"
         >
           <option value="">Todos os vendedores</option>
           {vendedores.map((v) => (
@@ -238,7 +231,7 @@ export default function Funil() {
         <select
           value={filtroClasse}
           onChange={(e) => setFiltroClasse(e.target.value)}
-          className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="bg-bg-input border border-border-default rounded-lg px-3 py-1.5 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)]"
         >
           <option value="">Todas as classes</option>
           <option value="A">Classe A</option>
@@ -249,7 +242,7 @@ export default function Funil() {
         <select
           value={filtroCanal}
           onChange={(e) => setFiltroCanal(e.target.value)}
-          className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="bg-bg-input border border-border-default rounded-lg px-3 py-1.5 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)]"
         >
           <option value="">Todos os canais</option>
           <option value="bio">Bio</option>
@@ -260,14 +253,14 @@ export default function Funil() {
         {(filtroVendedor || filtroClasse || filtroCanal) && (
           <button
             onClick={() => { setFiltroVendedor(''); setFiltroClasse(''); setFiltroCanal(''); }}
-            className="text-xs text-blue-600 hover:underline"
+            className="text-[11px] text-accent-violet-light hover:underline"
           >
             Limpar filtros
           </button>
         )}
       </div>
 
-      {/* Kanban Board */}
+      {/* Kanban */}
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex gap-4 overflow-x-auto pb-4">
           {ETAPAS.map((etapa) => (

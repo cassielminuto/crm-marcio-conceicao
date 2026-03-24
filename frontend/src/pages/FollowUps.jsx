@@ -16,10 +16,10 @@ function classificarUrgencia(dataProgramada, status) {
 }
 
 const GRUPOS = [
-  { id: 'atrasado', label: 'Atrasados', cor: 'border-red-300', headerBg: 'bg-red-50', textCor: 'text-red-700', icone: AlertTriangle },
-  { id: 'pendente', label: 'Pendentes Hoje', cor: 'border-yellow-300', headerBg: 'bg-yellow-50', textCor: 'text-yellow-700', icone: Clock },
-  { id: 'futuro', label: 'Futuros', cor: 'border-blue-300', headerBg: 'bg-blue-50', textCor: 'text-blue-600', icone: CalendarCheck },
-  { id: 'executado', label: 'Executados', cor: 'border-green-300', headerBg: 'bg-green-50', textCor: 'text-green-700', icone: Check },
+  { id: 'atrasado', label: 'Atrasados', dot: 'bg-[#e17055]', icone: AlertTriangle },
+  { id: 'pendente', label: 'Pendentes Hoje', dot: 'bg-[#fdcb6e]', icone: Clock },
+  { id: 'futuro', label: 'Futuros', dot: 'bg-[#74b9ff]', icone: CalendarCheck },
+  { id: 'executado', label: 'Executados', dot: 'bg-[#00b894]', icone: Check },
 ];
 
 const tipoIcone = { whatsapp: MessageSquare, call: Phone, email: Mail };
@@ -31,18 +31,13 @@ export default function FollowUps() {
 
   const carregar = useCallback(async () => {
     try {
-      // Buscar follow-ups do vendedor logado (ou todos se admin)
       const vendedorId = usuario?.vendedorId;
       const params = vendedorId ? `?vendedor_id=${vendedorId}` : '';
-
-      // Buscar pendentes de todos os dias (não só hoje) para ver atrasados
       const { data } = await api.get(`/followups${params}`);
 
-      // Buscar também atrasados (dias anteriores)
       let todos = data;
       if (vendedorId) {
         const { data: pendentes } = await api.get(`/vendedores/${vendedorId}/followups`);
-        // Merge sem duplicatas
         const ids = new Set(data.map((f) => f.id));
         for (const p of pendentes) {
           if (!ids.has(p.id)) todos.push(p);
@@ -75,7 +70,6 @@ export default function FollowUps() {
 
     try {
       await api.patch(`/followups/${id}`, { status: 'cancelado' });
-      // Buscar dados do follow-up original para reagendar
       const fu = followUps.find((f) => f.id === id);
       if (fu) {
         await api.post('/followups', {
@@ -90,7 +84,6 @@ export default function FollowUps() {
     }
   };
 
-  // Agrupar por urgência
   const agrupados = {};
   for (const g of GRUPOS) agrupados[g.id] = [];
   for (const fu of followUps) {
@@ -101,22 +94,22 @@ export default function FollowUps() {
   if (carregando) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-violet" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-bold text-gray-800">Follow-ups</h1>
-        <p className="text-sm text-gray-500 mt-1">{followUps.length} follow-ups</p>
+        <h1 className="text-[22px] font-bold text-white">Follow-ups</h1>
+        <p className="text-[13px] text-text-secondary mt-1">{followUps.length} follow-ups</p>
       </div>
 
       {followUps.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-          <CalendarCheck size={40} className="text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-400">Nenhum follow-up pendente</p>
+        <div className="bg-bg-card border border-border-subtle rounded-[14px] p-12 text-center">
+          <CalendarCheck size={40} className="text-text-faint mx-auto mb-3" />
+          <p className="text-text-muted">Nenhum follow-up pendente</p>
         </div>
       ) : (
         GRUPOS.map((grupo) => {
@@ -125,31 +118,32 @@ export default function FollowUps() {
           const GrupoIcone = grupo.icone;
 
           return (
-            <div key={grupo.id} className={`rounded-xl border ${grupo.cor} overflow-hidden`}>
-              <div className={`px-4 py-3 ${grupo.headerBg} flex items-center gap-2`}>
-                <GrupoIcone size={16} className={grupo.textCor} />
-                <h2 className={`text-sm font-semibold ${grupo.textCor}`}>
+            <div key={grupo.id}>
+              <div className="flex items-center gap-2 mb-3 px-1">
+                <div className={`w-2 h-2 rounded-full ${grupo.dot}`} />
+                <GrupoIcone size={14} className="text-text-muted" />
+                <h2 className="text-[12px] font-semibold text-text-secondary">
                   {grupo.label} ({items.length})
                 </h2>
               </div>
 
-              <div className="bg-white divide-y divide-gray-100">
+              <div className="space-y-2">
                 {items.map((fu) => {
                   const TipoIcone = tipoIcone[fu.tipo] || MessageSquare;
                   const isAcionavel = grupo.id === 'atrasado' || grupo.id === 'pendente';
 
                   return (
-                    <div key={fu.id} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
+                    <div key={fu.id} className="bg-bg-elevated border border-border-subtle rounded-[10px] flex items-center justify-between px-4 py-3 hover:border-border-hover transition-all">
                       <div className="flex items-center gap-3">
-                        <TipoIcone size={16} className="text-gray-400" />
+                        <TipoIcone size={16} className="text-text-muted" />
                         <div>
-                          <p className="text-sm font-medium text-gray-800">
+                          <p className="text-[12px] font-medium text-text-primary">
                             {fu.lead?.nome || `Lead #${fu.leadId}`}
                           </p>
-                          <div className="flex items-center gap-2 text-xs text-gray-400">
+                          <div className="flex items-center gap-2 text-[10px] text-text-muted">
                             <span>{fu.lead?.telefone}</span>
                             {fu.lead?.classe && (
-                              <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium">
+                              <span className="px-1.5 py-0.5 rounded bg-[rgba(255,255,255,0.04)] text-text-secondary font-medium">
                                 {fu.lead.classe}
                               </span>
                             )}
@@ -160,10 +154,10 @@ export default function FollowUps() {
 
                       <div className="flex items-center gap-3">
                         <div className="text-right">
-                          <p className="text-xs text-gray-500">
+                          <p className="text-[11px] text-text-secondary">
                             {new Date(fu.dataProgramada).toLocaleDateString('pt-BR')}
                           </p>
-                          <p className="text-xs text-gray-400">
+                          <p className="text-[10px] text-text-muted">
                             {new Date(fu.dataProgramada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                           </p>
                         </div>
@@ -172,14 +166,14 @@ export default function FollowUps() {
                           <div className="flex items-center gap-1">
                             <button
                               onClick={() => marcarExecutado(fu.id)}
-                              className="p-1.5 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition-colors"
+                              className="p-1.5 rounded-lg bg-[rgba(0,184,148,0.1)] text-accent-emerald hover:bg-[rgba(0,184,148,0.15)] transition-colors"
                               title="Marcar como executado"
                             >
                               <Check size={14} />
                             </button>
                             <button
                               onClick={() => reagendar(fu.id)}
-                              className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                              className="p-1.5 rounded-lg bg-[rgba(108,92,231,0.1)] text-accent-violet-light hover:bg-[rgba(108,92,231,0.15)] transition-colors"
                               title="Reagendar para amanha"
                             >
                               <RotateCcw size={14} />
@@ -188,7 +182,7 @@ export default function FollowUps() {
                         )}
 
                         {grupo.id === 'executado' && fu.dataExecutada && (
-                          <span className="text-[10px] text-green-500">
+                          <span className="text-[10px] text-accent-emerald">
                             {new Date(fu.dataExecutada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         )}

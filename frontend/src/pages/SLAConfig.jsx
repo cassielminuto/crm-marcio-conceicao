@@ -3,9 +3,9 @@ import api from '../services/api';
 import { Clock, Save, Shield } from 'lucide-react';
 
 const CLASSE_INFO = {
-  A: { cor: 'border-red-300 bg-red-50', text: 'text-red-700', desc: 'Leads quentes — closers lideres' },
-  B: { cor: 'border-yellow-300 bg-yellow-50', text: 'text-yellow-700', desc: 'Leads mornos — closers independentes/trainees' },
-  C: { cor: 'border-blue-300 bg-blue-50', text: 'text-blue-700', desc: 'Leads frios — nurturing automatico' },
+  A: { border: 'border-[rgba(225,112,85,0.3)]', text: 'text-[#e17055]', desc: 'Leads quentes — closers lideres' },
+  B: { border: 'border-[rgba(253,203,110,0.3)]', text: 'text-[#fdcb6e]', desc: 'Leads mornos — closers independentes/trainees' },
+  C: { border: 'border-[rgba(116,185,255,0.3)]', text: 'text-[#74b9ff]', desc: 'Leads frios — nurturing automatico' },
 };
 
 function formatarTempo(minutos) {
@@ -66,7 +66,7 @@ export default function SLAConfig() {
   if (carregando) {
     return (
       <div className="flex items-center justify-center h-32">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-accent-violet" />
       </div>
     );
   }
@@ -74,7 +74,7 @@ export default function SLAConfig() {
   return (
     <div className="space-y-4">
       {salvoMsg && (
-        <div className={`text-sm px-3 py-2 rounded-lg ${salvoMsg === 'Salvo!' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+        <div className={`text-[12px] px-3 py-2 rounded-[10px] ${salvoMsg === 'Salvo!' ? 'bg-[rgba(0,184,148,0.1)] text-accent-emerald' : 'bg-[rgba(225,112,85,0.1)] text-accent-danger'}`}>
           {salvoMsg}
         </div>
       )}
@@ -84,15 +84,15 @@ export default function SLAConfig() {
         const isEditing = editando === config.classeLead;
 
         return (
-          <div key={config.classeLead} className={`rounded-xl border-2 ${info.cor} p-5`}>
+          <div key={config.classeLead} className={`bg-bg-card rounded-[14px] border-2 ${info.border} p-[22px]`}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${info.text} bg-white`}>
+                <div className={`w-10 h-10 rounded-lg bg-bg-elevated flex items-center justify-center text-[16px] font-bold ${info.text}`}>
                   {config.classeLead}
                 </div>
                 <div>
-                  <h3 className={`font-semibold ${info.text}`}>Classe {config.classeLead}</h3>
-                  <p className="text-xs text-gray-500">{info.desc}</p>
+                  <h3 className={`font-semibold text-[13px] ${info.text}`}>Classe {config.classeLead}</h3>
+                  <p className="text-[10px] text-text-muted">{info.desc}</p>
                 </div>
               </div>
 
@@ -101,13 +101,13 @@ export default function SLAConfig() {
                   <button
                     onClick={() => salvar(config.classeLead)}
                     disabled={salvando}
-                    className="flex items-center gap-1 bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-green-700 disabled:opacity-50"
+                    className="flex items-center gap-1 bg-accent-emerald text-white px-3 py-1.5 rounded-[10px] text-[11px] font-semibold hover:shadow-[0_4px_16px_rgba(0,184,148,0.25)] disabled:opacity-50 transition-all"
                   >
                     <Save size={12} /> {salvando ? 'Salvando...' : 'Salvar'}
                   </button>
                   <button
                     onClick={() => setEditando(null)}
-                    className="px-3 py-1.5 rounded-lg text-xs text-gray-500 hover:bg-white"
+                    className="px-3 py-1.5 rounded-[10px] text-[11px] text-text-muted hover:bg-white/[0.03]"
                   >
                     Cancelar
                   </button>
@@ -115,7 +115,7 @@ export default function SLAConfig() {
               ) : (
                 <button
                   onClick={() => iniciarEdicao(config)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+                  className="px-3 py-1.5 rounded-[10px] text-[11px] font-medium bg-bg-elevated text-text-secondary hover:border-border-active border border-border-default transition-all"
                 >
                   Editar
                 </button>
@@ -125,38 +125,38 @@ export default function SLAConfig() {
             {isEditing ? (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Tempo maximo (min)</label>
+                  <label className="block text-[10px] text-text-muted mb-1">Tempo maximo (min)</label>
                   <input
                     type="number"
                     value={form.tempo_maximo_minutos}
                     onChange={(e) => setForm({ ...form, tempo_maximo_minutos: parseInt(e.target.value, 10) })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Alerta amarelo (%)</label>
+                  <label className="block text-[10px] text-text-muted mb-1">Alerta amarelo (%)</label>
                   <input
                     type="number"
                     value={form.alerta_amarelo_pct}
                     onChange={(e) => setForm({ ...form, alerta_amarelo_pct: parseInt(e.target.value, 10) })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Alerta vermelho (%)</label>
+                  <label className="block text-[10px] text-text-muted mb-1">Alerta vermelho (%)</label>
                   <input
                     type="number"
                     value={form.alerta_vermelho_pct}
                     onChange={(e) => setForm({ ...form, alerta_vermelho_pct: parseInt(e.target.value, 10) })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Redistribuir ao estourar</label>
+                  <label className="block text-[10px] text-text-muted mb-1">Redistribuir ao estourar</label>
                   <select
                     value={form.redistribuir_ao_estourar ? 'true' : 'false'}
                     onChange={(e) => setForm({ ...form, redistribuir_ao_estourar: e.target.value === 'true' })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)]"
                   >
                     <option value="true">Sim</option>
                     <option value="false">Nao</option>
@@ -165,25 +165,25 @@ export default function SLAConfig() {
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-white rounded-lg p-3">
-                  <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
+                <div className="bg-bg-elevated rounded-[10px] p-3">
+                  <div className="flex items-center gap-1 text-[10px] text-text-muted mb-1">
                     <Clock size={10} /> Tempo maximo
                   </div>
-                  <p className="text-sm font-bold text-gray-800">{formatarTempo(config.tempoMaximoMinutos)}</p>
+                  <p className="text-[13px] font-bold text-white">{formatarTempo(config.tempoMaximoMinutos)}</p>
                 </div>
-                <div className="bg-white rounded-lg p-3">
-                  <div className="text-xs text-gray-500 mb-1">Alerta amarelo</div>
-                  <p className="text-sm font-bold text-yellow-600">{config.alertaAmareloPct}%</p>
+                <div className="bg-bg-elevated rounded-[10px] p-3">
+                  <div className="text-[10px] text-text-muted mb-1">Alerta amarelo</div>
+                  <p className="text-[13px] font-bold text-accent-amber">{config.alertaAmareloPct}%</p>
                 </div>
-                <div className="bg-white rounded-lg p-3">
-                  <div className="text-xs text-gray-500 mb-1">Alerta vermelho</div>
-                  <p className="text-sm font-bold text-red-600">{config.alertaVermelhoPct}%</p>
+                <div className="bg-bg-elevated rounded-[10px] p-3">
+                  <div className="text-[10px] text-text-muted mb-1">Alerta vermelho</div>
+                  <p className="text-[13px] font-bold text-accent-danger">{config.alertaVermelhoPct}%</p>
                 </div>
-                <div className="bg-white rounded-lg p-3">
-                  <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
+                <div className="bg-bg-elevated rounded-[10px] p-3">
+                  <div className="flex items-center gap-1 text-[10px] text-text-muted mb-1">
                     <Shield size={10} /> Redistribuir
                   </div>
-                  <p className={`text-sm font-bold ${config.redistribuirAoEstourar ? 'text-green-600' : 'text-gray-400'}`}>
+                  <p className={`text-[13px] font-bold ${config.redistribuirAoEstourar ? 'text-accent-emerald' : 'text-text-muted'}`}>
                     {config.redistribuirAoEstourar ? 'Sim' : 'Nao'}
                   </p>
                 </div>

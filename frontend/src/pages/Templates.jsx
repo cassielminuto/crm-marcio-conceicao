@@ -71,7 +71,6 @@ export default function Templates() {
     try {
       const payload = { ...form };
       if (!payload.etapa_funil) payload.etapa_funil = null;
-
       if (editandoId) {
         await api.patch(`/templates/${editandoId}`, payload);
       } else {
@@ -105,7 +104,7 @@ export default function Templates() {
   if (carregando) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-violet" />
       </div>
     );
   }
@@ -114,27 +113,26 @@ export default function Templates() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Templates de Mensagem</h1>
-          <p className="text-sm text-gray-500 mt-1">{templates.filter((t) => t.ativo).length} templates ativos</p>
+          <h2 className="text-[16px] font-bold text-white">Templates de Mensagem</h2>
+          <p className="text-[12px] text-text-secondary mt-1">{templates.filter((t) => t.ativo).length} templates ativos</p>
         </div>
         {isAdmin && (
           <button
             onClick={() => abrirForm()}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700"
+            className="flex items-center gap-2 bg-gradient-to-r from-[#6c5ce7] to-[#00cec9] text-white px-4 py-2 rounded-[10px] text-[12px] font-semibold hover:shadow-[0_4px_16px_rgba(108,92,231,0.25)] transition-all duration-250"
           >
             <Plus size={16} /> Novo Template
           </button>
         )}
       </div>
 
-      {/* Formulário */}
       {mostrarForm && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+        <div className="bg-bg-card border border-border-subtle rounded-[14px] p-[22px] space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-700">
+            <h3 className="text-[12px] font-semibold text-text-secondary">
               {editandoId ? 'Editar Template' : 'Novo Template'}
             </h3>
-            <button onClick={() => setMostrarForm(false)} className="text-gray-400 hover:text-gray-600">
+            <button onClick={() => setMostrarForm(false)} className="text-text-muted hover:text-text-secondary">
               <X size={16} />
             </button>
           </div>
@@ -146,20 +144,20 @@ export default function Templates() {
                 value={form.nome}
                 onChange={(e) => setForm({ ...form, nome: e.target.value })}
                 placeholder="Nome do template"
-                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)]"
                 required
               />
               <select
                 value={form.etapa_funil}
                 onChange={(e) => setForm({ ...form, etapa_funil: e.target.value })}
-                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)]"
               >
                 {ETAPA_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
               <select
                 value={form.classe_lead}
                 onChange={(e) => setForm({ ...form, classe_lead: e.target.value })}
-                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)]"
               >
                 {CLASSE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
@@ -167,7 +165,7 @@ export default function Templates() {
 
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-xs text-gray-500">Conteudo (clique nas variaveis para inserir)</label>
+                <label className="text-[10px] text-text-muted font-semibold uppercase tracking-[0.5px]">Conteudo (clique nas variaveis para inserir)</label>
               </div>
               <div className="flex flex-wrap gap-1 mb-2">
                 {VARIAVEIS.map((v) => (
@@ -175,7 +173,7 @@ export default function Templates() {
                     key={v}
                     type="button"
                     onClick={() => inserirVariavel(v)}
-                    className="px-2 py-0.5 bg-blue-100 text-blue-600 rounded text-[10px] font-mono hover:bg-blue-200"
+                    className="px-2 py-0.5 bg-[rgba(108,92,231,0.1)] text-accent-violet-light rounded text-[10px] font-mono hover:bg-[rgba(108,92,231,0.18)] transition-colors"
                   >
                     {v}
                   </button>
@@ -186,7 +184,7 @@ export default function Templates() {
                 onChange={(e) => setForm({ ...form, conteudo: e.target.value })}
                 rows={5}
                 placeholder="Ola {{nome}}! Aqui e do Programa Compativeis..."
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-mono"
+                className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)] resize-none font-mono"
                 required
               />
             </div>
@@ -195,14 +193,14 @@ export default function Templates() {
               <button
                 type="submit"
                 disabled={salvando}
-                className="bg-green-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50"
+                className="bg-accent-emerald text-white px-6 py-2 rounded-[10px] text-[12px] font-semibold hover:shadow-[0_4px_16px_rgba(0,184,148,0.25)] disabled:opacity-50 transition-all"
               >
                 {salvando ? 'Salvando...' : editandoId ? 'Atualizar' : 'Criar'}
               </button>
               <button
                 type="button"
                 onClick={() => setMostrarForm(false)}
-                className="px-6 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-100"
+                className="px-6 py-2 rounded-[10px] text-[12px] text-text-muted hover:bg-white/[0.03]"
               >
                 Cancelar
               </button>
@@ -211,58 +209,56 @@ export default function Templates() {
         </div>
       )}
 
-      {/* Preview */}
       {preview && (
-        <div className="bg-green-50 rounded-xl border border-green-200 p-4">
+        <div className="bg-[rgba(0,184,148,0.06)] border border-[rgba(0,184,148,0.15)] rounded-[14px] p-4">
           <div className="flex items-center justify-between mb-2">
-            <h4 className="text-xs font-semibold text-green-700">Preview: {preview.nome}</h4>
-            <button onClick={() => setPreview(null)} className="text-green-400 hover:text-green-600">
+            <h4 className="text-[11px] font-semibold text-accent-emerald">Preview: {preview.nome}</h4>
+            <button onClick={() => setPreview(null)} className="text-text-muted hover:text-text-secondary">
               <X size={14} />
             </button>
           </div>
-          <div className="bg-white rounded-lg p-3 text-sm text-gray-700 whitespace-pre-wrap shadow-sm">
+          <div className="bg-bg-elevated rounded-lg p-3 text-[12px] text-text-primary whitespace-pre-wrap">
             {preview.conteudo}
           </div>
         </div>
       )}
 
-      {/* Lista de templates */}
       {templates.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-          <FileText size={40} className="text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-400">Nenhum template criado</p>
+        <div className="bg-bg-card border border-border-subtle rounded-[14px] p-12 text-center">
+          <FileText size={40} className="text-text-faint mx-auto mb-3" />
+          <p className="text-text-muted">Nenhum template criado</p>
         </div>
       ) : (
         <div className="space-y-3">
           {templates.map((t) => (
             <div
               key={t.id}
-              className={`bg-white rounded-xl border border-gray-200 p-4 ${!t.ativo ? 'opacity-50' : ''}`}
+              className={`bg-bg-card border border-border-subtle rounded-[14px] p-4 hover:border-border-hover transition-all duration-300 ${!t.ativo ? 'opacity-50' : ''}`}
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-sm font-semibold text-gray-800">{t.nome}</h3>
-                    <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-[10px]">
+                    <h3 className="text-[12px] font-semibold text-text-primary">{t.nome}</h3>
+                    <span className="px-2 py-0.5 bg-[rgba(255,255,255,0.04)] text-text-muted rounded text-[10px]">
                       {t.tipo}
                     </span>
                     {t.etapaFunil && (
-                      <span className="px-2 py-0.5 bg-blue-100 text-blue-600 rounded text-[10px]">
+                      <span className="px-2 py-0.5 bg-[rgba(108,92,231,0.1)] text-accent-violet-light rounded text-[10px]">
                         {t.etapaFunil}
                       </span>
                     )}
                     {t.classeLead !== 'todos' && (
-                      <span className="px-2 py-0.5 bg-yellow-100 text-yellow-600 rounded text-[10px]">
+                      <span className="px-2 py-0.5 bg-[rgba(253,203,110,0.1)] text-accent-amber rounded text-[10px]">
                         Classe {t.classeLead}
                       </span>
                     )}
                     {!t.ativo && (
-                      <span className="px-2 py-0.5 bg-red-100 text-red-600 rounded text-[10px]">
+                      <span className="px-2 py-0.5 bg-[rgba(225,112,85,0.1)] text-accent-danger rounded text-[10px]">
                         Inativo
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 font-mono whitespace-pre-wrap line-clamp-2">
+                  <p className="text-[11px] text-text-muted font-mono whitespace-pre-wrap line-clamp-2">
                     {t.conteudo}
                   </p>
                 </div>
@@ -271,21 +267,21 @@ export default function Templates() {
                   <div className="flex items-center gap-1 shrink-0 ml-3">
                     <button
                       onClick={() => setPreview(t)}
-                      className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                      className="p-1.5 rounded-lg text-text-muted hover:bg-white/[0.03] hover:text-text-secondary transition-colors"
                       title="Preview"
                     >
                       <Eye size={14} />
                     </button>
                     <button
                       onClick={() => abrirForm(t)}
-                      className="p-1.5 rounded-lg text-gray-400 hover:bg-blue-50 hover:text-blue-600"
+                      className="p-1.5 rounded-lg text-text-muted hover:bg-[rgba(108,92,231,0.1)] hover:text-accent-violet-light transition-colors"
                       title="Editar"
                     >
                       <Edit2 size={14} />
                     </button>
                     <button
                       onClick={() => excluir(t.id)}
-                      className="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600"
+                      className="p-1.5 rounded-lg text-text-muted hover:bg-[rgba(225,112,85,0.1)] hover:text-accent-danger transition-colors"
                       title="Desativar"
                     >
                       <Trash2 size={14} />

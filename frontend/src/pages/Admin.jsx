@@ -6,18 +6,20 @@ export default function Admin() {
   const isRoot = location.pathname === '/admin';
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-bold text-gray-800">Administracao</h1>
-        <p className="text-sm text-gray-500 mt-1">Configuracoes do sistema</p>
+        <h1 className="text-[22px] font-bold text-white">Administracao</h1>
+        <p className="text-[13px] text-text-secondary mt-1">Configuracoes do sistema</p>
       </div>
 
       <div className="flex gap-3 flex-wrap">
         <NavLink
           to="/admin/sla"
           className={({ isActive }) =>
-            `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              isActive ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+            `flex items-center gap-2 px-4 py-2 rounded-[10px] text-[12px] font-semibold transition-all duration-250 ${
+              isActive
+                ? 'bg-gradient-to-r from-[#6c5ce7] to-[#00cec9] text-white shadow-[0_4px_16px_rgba(108,92,231,0.25)]'
+                : 'bg-bg-elevated border border-border-default text-text-secondary hover:border-border-active hover:text-[#b0b0d0]'
             }`
           }
         >
@@ -26,8 +28,10 @@ export default function Admin() {
         <NavLink
           to="/admin/whatsapp"
           className={({ isActive }) =>
-            `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              isActive ? 'bg-green-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+            `flex items-center gap-2 px-4 py-2 rounded-[10px] text-[12px] font-semibold transition-all duration-250 ${
+              isActive
+                ? 'bg-gradient-to-r from-[#00b894] to-[#00cec9] text-white shadow-[0_4px_16px_rgba(0,184,148,0.25)]'
+                : 'bg-bg-elevated border border-border-default text-text-secondary hover:border-border-active hover:text-[#b0b0d0]'
             }`
           }
         >
@@ -36,8 +40,10 @@ export default function Admin() {
         <NavLink
           to="/admin/templates"
           className={({ isActive }) =>
-            `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              isActive ? 'bg-purple-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+            `flex items-center gap-2 px-4 py-2 rounded-[10px] text-[12px] font-semibold transition-all duration-250 ${
+              isActive
+                ? 'bg-gradient-to-r from-[#6c5ce7] to-[#a78bfa] text-white shadow-[0_4px_16px_rgba(108,92,231,0.25)]'
+                : 'bg-bg-elevated border border-border-default text-text-secondary hover:border-border-active hover:text-[#b0b0d0]'
             }`
           }
         >
@@ -46,9 +52,9 @@ export default function Admin() {
       </div>
 
       {isRoot && (
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-          <Settings size={40} className="text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-400">Selecione uma opcao acima</p>
+        <div className="bg-bg-card border border-border-subtle rounded-[14px] p-12 text-center">
+          <Settings size={40} className="text-text-faint mx-auto mb-3" />
+          <p className="text-text-muted">Selecione uma opcao acima</p>
         </div>
       )}
 

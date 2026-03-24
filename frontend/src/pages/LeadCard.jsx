@@ -10,13 +10,13 @@ import {
 } from 'lucide-react';
 
 const ETAPA_COR = {
-  novo: 'bg-blue-100 text-blue-700',
-  em_abordagem: 'bg-yellow-100 text-yellow-700',
-  qualificado: 'bg-purple-100 text-purple-700',
-  proposta: 'bg-orange-100 text-orange-700',
-  fechado_ganho: 'bg-green-100 text-green-700',
-  fechado_perdido: 'bg-red-100 text-red-700',
-  nurturing: 'bg-gray-100 text-gray-600',
+  novo: 'bg-[rgba(116,185,255,0.12)] text-accent-info',
+  em_abordagem: 'bg-[rgba(253,203,110,0.12)] text-accent-amber',
+  qualificado: 'bg-[rgba(108,92,231,0.12)] text-accent-violet-light',
+  proposta: 'bg-[rgba(225,112,85,0.12)] text-accent-danger',
+  fechado_ganho: 'bg-[rgba(0,184,148,0.12)] text-accent-emerald',
+  fechado_perdido: 'bg-[rgba(225,112,85,0.12)] text-accent-danger',
+  nurturing: 'bg-[rgba(255,255,255,0.06)] text-text-muted',
 };
 
 const ETAPA_LABEL = {
@@ -26,13 +26,15 @@ const ETAPA_LABEL = {
 };
 
 const CLASSE_COR = {
-  A: 'bg-red-100 text-red-700', B: 'bg-yellow-100 text-yellow-700', C: 'bg-blue-100 text-blue-700',
+  A: 'bg-[rgba(225,112,85,0.12)] text-[#e17055]',
+  B: 'bg-[rgba(253,203,110,0.12)] text-[#fdcb6e]',
+  C: 'bg-[rgba(116,185,255,0.1)] text-[#74b9ff]',
 };
 
 function scoreBadge(pontuacao) {
-  if (pontuacao >= 75) return { bg: 'bg-red-500', label: 'Quente' };
-  if (pontuacao >= 45) return { bg: 'bg-yellow-500', label: 'Morno' };
-  return { bg: 'bg-blue-500', label: 'Frio' };
+  if (pontuacao >= 75) return { bg: 'bg-gradient-to-r from-red-600 to-red-500', label: 'Quente' };
+  if (pontuacao >= 45) return { bg: 'bg-gradient-to-r from-amber-600 to-amber-500', label: 'Morno' };
+  return { bg: 'bg-gradient-to-r from-blue-600 to-blue-500', label: 'Frio' };
 }
 
 const TRACO_OPTIONS = [
@@ -62,13 +64,21 @@ const INTERACAO_LABEL = {
   nota: 'Nota', email: 'Email',
 };
 
+const INTERACAO_DOT = {
+  call: 'bg-[rgba(108,92,231,0.1)]',
+  whatsapp_enviado: 'bg-[rgba(0,184,148,0.1)]',
+  whatsapp_recebido: 'bg-[rgba(0,184,148,0.1)]',
+  nota: 'bg-[rgba(255,255,255,0.06)]',
+  email: 'bg-[rgba(116,185,255,0.1)]',
+};
+
 function CampoIA({ label, children }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center gap-1">
+      <label className="text-[10px] font-semibold text-text-muted uppercase tracking-[0.5px] mb-1 flex items-center gap-1">
         {label}
-        <span className="px-1 py-0.5 bg-purple-100 text-purple-600 rounded text-[9px] font-bold flex items-center gap-0.5">
-          <Bot size={8} /> IA
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-[rgba(108,92,231,0.1)] text-accent-violet-light rounded text-[8px] font-bold">
+          <Bot size={10} /> IA
         </span>
       </label>
       {children}
@@ -87,7 +97,6 @@ export default function LeadCard() {
   const [timelineAberta, setTimelineAberta] = useState(true);
   const [duplicatas, setDuplicatas] = useState([]);
 
-  // Campos editáveis
   const [campos, setCampos] = useState({
     dorPrincipal: '',
     tracoCarater: '',
@@ -152,38 +161,36 @@ export default function LeadCard() {
   if (carregando) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-violet" />
       </div>
     );
   }
 
   if (!lead) {
-    return <p className="text-gray-400 text-center py-12">Lead nao encontrado</p>;
+    return <p className="text-text-muted text-center py-12">Lead nao encontrado</p>;
   }
 
   const score = scoreBadge(lead.pontuacao);
   const CanalIcone = lead.canal === 'bio' ? Instagram : Megaphone;
-
-  // Buscar último resumo de IA das interações
   const ultimaCallComResumo = interacoes.find((i) => i.tipo === 'call' && i.resumoIa);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fade-in">
       {/* Header */}
       <div className="flex items-center gap-3">
         <button
           onClick={() => navigate(-1)}
-          className="p-2 rounded-lg hover:bg-gray-200 transition-colors"
+          className="p-2 rounded-[10px] hover:bg-white/[0.03] text-text-secondary transition-colors"
         >
           <ArrowLeft size={18} />
         </button>
         <div className="flex-1">
-          <h1 className="text-xl font-bold text-gray-800">{lead.nome}</h1>
+          <h1 className="text-xl font-bold text-white">{lead.nome}</h1>
           <div className="flex items-center gap-2 mt-1">
-            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${CLASSE_COR[lead.classe]}`}>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${CLASSE_COR[lead.classe]}`}>
               Classe {lead.classe}
             </span>
-            <span className={`px-2 py-0.5 rounded-full text-xs font-bold text-white ${score.bg}`}>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold text-white ${score.bg}`}>
               {lead.pontuacao} — {score.label}
             </span>
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${ETAPA_COR[lead.etapaFunil]}`}>
@@ -194,68 +201,65 @@ export default function LeadCard() {
         <button
           onClick={salvar}
           disabled={salvando}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          className="flex items-center gap-2 bg-gradient-to-r from-[#6c5ce7] to-[#00cec9] text-white px-4 py-2 rounded-[10px] text-[12px] font-semibold hover:shadow-[0_4px_16px_rgba(108,92,231,0.25)] disabled:opacity-50 transition-all duration-250"
         >
           <Save size={14} />
           {salvando ? 'Salvando...' : 'Salvar'}
         </button>
         {salvoMsg && (
-          <span className={`text-xs ${salvoMsg === 'Salvo!' ? 'text-green-600' : 'text-gray-400'}`}>
+          <span className={`text-[11px] ${salvoMsg === 'Salvo!' ? 'text-accent-emerald' : 'text-text-muted'}`}>
             {salvoMsg}
           </span>
         )}
       </div>
 
-      {/* Alerta de duplicata */}
       <DuplicateAlert leadId={lead.id} duplicatas={duplicatas} onResolvido={carregar} />
 
       {/* Layout 2 colunas */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Coluna esquerda — Dados do lead */}
+        {/* Coluna esquerda */}
         <div className="lg:col-span-3 space-y-4">
-          {/* Informações de contato */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-            <h2 className="text-sm font-semibold text-gray-700">Informacoes do Lead</h2>
-
+          {/* Informacoes de contato */}
+          <div className="bg-bg-card border border-border-subtle rounded-[14px] p-[22px] space-y-4">
+            <h2 className="text-[12px] font-semibold text-text-secondary">Informacoes do Lead</h2>
             <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center gap-2 text-sm">
-                <Phone size={14} className="text-gray-400" />
-                <span className="text-gray-700">{lead.telefone}</span>
+              <div className="flex items-center gap-2 text-[12px]">
+                <Phone size={14} className="text-text-muted" />
+                <span className="text-text-primary">{lead.telefone}</span>
               </div>
               {lead.email && (
-                <div className="flex items-center gap-2 text-sm">
-                  <Mail size={14} className="text-gray-400" />
-                  <span className="text-gray-700 truncate">{lead.email}</span>
+                <div className="flex items-center gap-2 text-[12px]">
+                  <Mail size={14} className="text-text-muted" />
+                  <span className="text-text-primary truncate">{lead.email}</span>
                 </div>
               )}
-              <div className="flex items-center gap-2 text-sm">
-                <CanalIcone size={14} className="text-gray-400" />
-                <span className="text-gray-700">{lead.canal === 'bio' ? 'Bio (organico)' : 'Anuncio (pago)'}</span>
+              <div className="flex items-center gap-2 text-[12px]">
+                <CanalIcone size={14} className="text-text-muted" />
+                <span className="text-text-primary">{lead.canal === 'bio' ? 'Bio (organico)' : 'Anuncio (pago)'}</span>
               </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Clock size={14} className="text-gray-400" />
-                <span className="text-gray-700">
+              <div className="flex items-center gap-2 text-[12px]">
+                <Clock size={14} className="text-text-muted" />
+                <span className="text-text-primary">
                   {new Date(lead.createdAt).toLocaleDateString('pt-BR')} {new Date(lead.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
-              <div className="flex items-center gap-2 text-sm">
-                <User size={14} className="text-gray-400" />
-                <span className="text-gray-700">{lead.vendedor?.nomeExibicao || 'Nao atribuido'}</span>
+              <div className="flex items-center gap-2 text-[12px]">
+                <User size={14} className="text-text-muted" />
+                <span className="text-text-primary">{lead.vendedor?.nomeExibicao || 'Nao atribuido'}</span>
               </div>
             </div>
           </div>
 
-          {/* Campos preenchíveis pela IA */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-            <h2 className="text-sm font-semibold text-gray-700">Analise do Lead</h2>
-
+          {/* Campos IA */}
+          <div className="bg-bg-card border border-border-subtle rounded-[14px] p-[22px] space-y-4">
+            <h2 className="text-[12px] font-semibold text-text-secondary">Analise do Lead</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <CampoIA label="Dor Principal">
                 <textarea
                   value={campos.dorPrincipal}
                   onChange={(e) => setCampos({ ...campos, dorPrincipal: e.target.value })}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)] resize-none transition-all"
                   placeholder="Descreva a dor principal do lead..."
                 />
               </CampoIA>
@@ -265,7 +269,7 @@ export default function LeadCard() {
                   value={campos.objecaoPrincipal}
                   onChange={(e) => setCampos({ ...campos, objecaoPrincipal: e.target.value })}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)] resize-none transition-all"
                   placeholder="Qual a principal objecao?"
                 />
               </CampoIA>
@@ -274,7 +278,7 @@ export default function LeadCard() {
                 <select
                   value={campos.tracoCarater}
                   onChange={(e) => setCampos({ ...campos, tracoCarater: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)] transition-all"
                 >
                   {TRACO_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>{o.label}</option>
@@ -286,7 +290,7 @@ export default function LeadCard() {
                 <select
                   value={campos.resultadoCall}
                   onChange={(e) => setCampos({ ...campos, resultadoCall: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)] transition-all"
                 >
                   {RESULTADO_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>{o.label}</option>
@@ -296,61 +300,62 @@ export default function LeadCard() {
             </div>
           </div>
 
-          {/* Timeline de interações */}
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          {/* Timeline */}
+          <div className="bg-bg-card border border-border-subtle rounded-[14px] overflow-hidden">
             <button
               onClick={() => setTimelineAberta(!timelineAberta)}
-              className="w-full flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors"
+              className="w-full flex items-center justify-between px-[22px] py-3 hover:bg-white/[0.02] transition-colors"
             >
-              <h2 className="text-sm font-semibold text-gray-700">
+              <h2 className="text-[12px] font-semibold text-text-secondary">
                 Timeline de Interacoes ({interacoes.length})
               </h2>
-              {timelineAberta ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              {timelineAberta ? <ChevronUp size={16} className="text-text-muted" /> : <ChevronDown size={16} className="text-text-muted" />}
             </button>
 
             {timelineAberta && (
-              <div className="border-t border-gray-100">
+              <div className="border-t border-border-subtle">
                 {interacoes.length === 0 ? (
-                  <p className="text-sm text-gray-400 text-center py-6">Nenhuma interacao registrada</p>
+                  <p className="text-[12px] text-text-muted text-center py-6">Nenhuma interacao registrada</p>
                 ) : (
-                  <div className="divide-y divide-gray-50">
+                  <div>
                     {interacoes.map((int) => {
                       const Icone = INTERACAO_ICONE[int.tipo] || FileText;
+                      const dotBg = INTERACAO_DOT[int.tipo] || 'bg-[rgba(255,255,255,0.06)]';
                       return (
-                        <div key={int.id} className="px-5 py-3 flex gap-3">
+                        <div key={int.id} className="flex gap-3 px-[22px] py-3 border-b border-border-subtle last:border-b-0">
                           <div className="mt-0.5">
-                            <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center">
-                              <Icone size={13} className="text-gray-500" />
+                            <div className={`w-8 h-8 rounded-lg ${dotBg} flex items-center justify-center`}>
+                              <Icone size={13} className="text-text-secondary" />
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs font-medium text-gray-700">
+                              <span className="text-[11px] font-medium text-text-primary">
                                 {INTERACAO_LABEL[int.tipo] || int.tipo}
                               </span>
-                              <span className="text-[10px] text-gray-400">
+                              <span className="text-[10px] text-text-muted">
                                 {int.vendedor?.nomeExibicao}
                               </span>
                               {int.duracao && (
-                                <span className="text-[10px] text-gray-400">
+                                <span className="text-[10px] text-text-muted">
                                   {Math.round(int.duracao / 60)}min
                                 </span>
                               )}
                               {int.resumoIa && (
-                                <span className="px-1 py-0.5 bg-purple-100 text-purple-600 rounded text-[9px] font-bold flex items-center gap-0.5">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-[rgba(108,92,231,0.1)] text-accent-violet-light rounded text-[8px] font-bold">
                                   <Bot size={8} /> IA
                                 </span>
                               )}
                             </div>
                             {int.conteudo && (
-                              <p className="text-xs text-gray-600 mt-1 whitespace-pre-wrap">{int.conteudo}</p>
+                              <p className="text-[11px] text-text-secondary mt-1 whitespace-pre-wrap">{int.conteudo}</p>
                             )}
                             {int.resumoIa && (
-                              <div className="mt-1 p-2 bg-purple-50 rounded text-xs text-purple-700">
+                              <div className="mt-1 bg-[rgba(108,92,231,0.06)] border border-[rgba(108,92,231,0.1)] rounded-lg p-[8px_10px] text-[11px] text-[#b0b0d0]">
                                 {int.resumoIa}
                               </div>
                             )}
-                            <p className="text-[10px] text-gray-400 mt-1">
+                            <p className="text-[10px] text-text-muted mt-1">
                               {new Date(int.createdAt).toLocaleDateString('pt-BR')}{' '}
                               {new Date(int.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                             </p>
@@ -365,13 +370,12 @@ export default function LeadCard() {
           </div>
         </div>
 
-        {/* Coluna direita — Call Recorder + Script Checklist */}
+        {/* Coluna direita */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="bg-bg-card border border-border-subtle rounded-[14px] p-[22px]">
             <CallRecorder
               leadId={lead.id}
               onTranscricaoConcluida={(resultado) => {
-                // Atualizar campos do lead com dados da IA
                 if (resultado.lead) {
                   setLead(resultado.lead);
                   setCampos({
@@ -381,7 +385,6 @@ export default function LeadCard() {
                     resultadoCall: resultado.lead.resultadoCall || '',
                   });
                 }
-                // Atualizar timeline
                 if (resultado.interacao) {
                   setInteracoes((prev) => [resultado.interacao, ...prev]);
                 }
@@ -389,7 +392,7 @@ export default function LeadCard() {
             />
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 p-5 sticky top-6">
+          <div className="bg-bg-card border border-border-subtle rounded-[14px] p-[22px] sticky top-6">
             <ScriptChecklist
               lead={lead}
               resumoIa={ultimaCallComResumo?.resumoIa || interacoes.find(i => i.resumoIa)?.resumoIa}

@@ -44,9 +44,8 @@ export default function WhatsAppAdmin() {
     setEnviando(true);
     setResultado('');
     try {
-      // Criar lead temporário ou usar lead existente
       await api.post('/whatsapp/send', {
-        lead_id: 1, // usar primeiro lead para teste
+        lead_id: 1,
         mensagem: testeMensagem,
       });
       setResultado('Mensagem enviada com sucesso!');
@@ -62,25 +61,25 @@ export default function WhatsAppAdmin() {
   if (carregando) {
     return (
       <div className="flex items-center justify-center h-32">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-accent-violet" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Status da conexão */}
-      <div className={`rounded-xl border-2 p-5 ${isConectado ? 'border-green-300 bg-green-50' : 'border-yellow-300 bg-yellow-50'}`}>
+      {/* Status */}
+      <div className={`bg-bg-card rounded-[14px] border-2 p-[22px] ${isConectado ? 'border-[rgba(0,184,148,0.3)]' : 'border-[rgba(253,203,110,0.3)]'}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isConectado ? 'bg-green-100' : 'bg-yellow-100'}`}>
-              {isConectado ? <Wifi size={24} className="text-green-600" /> : <WifiOff size={24} className="text-yellow-600" />}
+            <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${isConectado ? 'bg-[rgba(0,184,148,0.1)]' : 'bg-[rgba(253,203,110,0.1)]'}`}>
+              {isConectado ? <Wifi size={24} className="text-accent-emerald" /> : <WifiOff size={24} className="text-accent-amber" />}
             </div>
             <div>
-              <h3 className={`font-semibold ${isConectado ? 'text-green-700' : 'text-yellow-700'}`}>
+              <h3 className={`font-semibold text-[13px] ${isConectado ? 'text-accent-emerald' : 'text-accent-amber'}`}>
                 {isConectado ? 'WhatsApp Conectado' : 'WhatsApp Desconectado'}
               </h3>
-              <p className="text-xs text-gray-500">
+              <p className="text-[10px] text-text-muted">
                 Status: {status?.state || status?.instance?.state || 'desconhecido'}
               </p>
             </div>
@@ -89,7 +88,7 @@ export default function WhatsAppAdmin() {
           <div className="flex gap-2">
             <button
               onClick={verificarStatus}
-              className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+              className="flex items-center gap-1 px-3 py-2 rounded-[10px] text-[11px] font-medium bg-bg-elevated border border-border-default text-text-secondary hover:border-border-active transition-all"
             >
               <RefreshCw size={12} /> Atualizar
             </button>
@@ -97,7 +96,7 @@ export default function WhatsAppAdmin() {
               <button
                 onClick={gerarQR}
                 disabled={gerando}
-                className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                className="flex items-center gap-1 px-3 py-2 rounded-[10px] text-[11px] font-semibold bg-gradient-to-r from-[#6c5ce7] to-[#00cec9] text-white hover:shadow-[0_4px_16px_rgba(108,92,231,0.25)] disabled:opacity-50 transition-all"
               >
                 <QrCode size={12} /> {gerando ? 'Gerando...' : 'Conectar'}
               </button>
@@ -108,80 +107,65 @@ export default function WhatsAppAdmin() {
 
       {/* QR Code */}
       {qrData && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6 text-center">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">Escaneie o QR Code com o WhatsApp</h3>
+        <div className="bg-bg-card border border-border-subtle rounded-[14px] p-6 text-center">
+          <h3 className="text-[13px] font-semibold text-white mb-4">Escaneie o QR Code com o WhatsApp</h3>
           {qrData.qrcode?.base64 ? (
-            <img
-              src={qrData.qrcode.base64}
-              alt="QR Code WhatsApp"
-              className="mx-auto max-w-[300px] rounded-lg border border-gray-200"
-            />
+            <img src={qrData.qrcode.base64} alt="QR Code WhatsApp" className="mx-auto max-w-[300px] rounded-lg border border-border-subtle" />
           ) : qrData.base64 ? (
-            <img
-              src={qrData.base64}
-              alt="QR Code WhatsApp"
-              className="mx-auto max-w-[300px] rounded-lg border border-gray-200"
-            />
+            <img src={qrData.base64} alt="QR Code WhatsApp" className="mx-auto max-w-[300px] rounded-lg border border-border-subtle" />
           ) : (
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <p className="text-xs text-gray-500 font-mono break-all">
-                {JSON.stringify(qrData, null, 2)}
-              </p>
+            <div className="p-4 bg-bg-elevated rounded-lg">
+              <p className="text-[10px] text-text-muted font-mono break-all">{JSON.stringify(qrData, null, 2)}</p>
             </div>
           )}
-          <p className="text-xs text-gray-400 mt-3">
-            Abra o WhatsApp → Aparelhos Conectados → Conectar Aparelho
-          </p>
-          <button
-            onClick={verificarStatus}
-            className="mt-3 text-xs text-blue-600 hover:underline"
-          >
+          <p className="text-[10px] text-text-muted mt-3">Abra o WhatsApp &rarr; Aparelhos Conectados &rarr; Conectar Aparelho</p>
+          <button onClick={verificarStatus} className="mt-3 text-[11px] text-accent-violet-light hover:underline">
             Ja escaneei, verificar conexao
           </button>
         </div>
       )}
 
       {/* Teste de envio */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
-          <Send size={14} /> Teste de Envio
+      <div className="bg-bg-card border border-border-subtle rounded-[14px] p-[22px]">
+        <h3 className="text-[13px] font-semibold text-white mb-4 flex items-center gap-2">
+          <Send size={14} className="text-text-muted" /> Teste de Envio
         </h3>
 
         <form onSubmit={enviarTeste} className="space-y-3">
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Telefone (com DDD)</label>
+            <label className="block text-[10px] text-text-muted font-semibold uppercase tracking-[0.5px] mb-1">Telefone (com DDD)</label>
             <input
               type="text"
               value={testeTelefone}
               onChange={(e) => setTesteTelefone(e.target.value)}
               placeholder="11999990001"
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)]"
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Mensagem</label>
+            <label className="block text-[10px] text-text-muted font-semibold uppercase tracking-[0.5px] mb-1">Mensagem</label>
             <textarea
               value={testeMensagem}
               onChange={(e) => setTesteMensagem(e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)] resize-none"
             />
           </div>
           <button
             type="submit"
             disabled={enviando || !isConectado}
-            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50"
+            className="flex items-center gap-2 bg-accent-emerald text-white px-4 py-2 rounded-[10px] text-[12px] font-semibold hover:shadow-[0_4px_16px_rgba(0,184,148,0.25)] disabled:opacity-50 transition-all"
           >
             <Smartphone size={14} />
             {enviando ? 'Enviando...' : 'Enviar Teste'}
           </button>
           {!isConectado && (
-            <p className="text-xs text-yellow-600">Conecte o WhatsApp primeiro para enviar mensagens</p>
+            <p className="text-[10px] text-accent-amber">Conecte o WhatsApp primeiro para enviar mensagens</p>
           )}
         </form>
 
         {resultado && (
-          <div className={`mt-3 text-sm px-3 py-2 rounded-lg ${resultado.startsWith('Erro') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+          <div className={`mt-3 text-[12px] px-3 py-2 rounded-[10px] ${resultado.startsWith('Erro') ? 'bg-[rgba(225,112,85,0.1)] text-accent-danger' : 'bg-[rgba(0,184,148,0.1)] text-accent-emerald'}`}>
             {resultado}
           </div>
         )}

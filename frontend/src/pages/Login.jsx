@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogIn } from 'lucide-react';
+import { LogIn, Layers } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -28,24 +28,27 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900 px-4">
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen flex items-center justify-center bg-bg-primary px-4">
+      <div className="w-full max-w-[400px]">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white">CRM Compatíveis</h1>
-          <p className="text-gray-400 mt-2">Programa Márcio Conceição</p>
+          <div className="w-12 h-12 rounded-[14px] bg-gradient-to-br from-[#6c5ce7] to-[#00cec9] flex items-center justify-center mx-auto mb-4">
+            <Layers size={24} className="text-white" />
+          </div>
+          <h1 className="text-xl font-bold text-white">Compativeis</h1>
+          <p className="text-text-muted text-sm mt-1">CRM Marcio Conceicao</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-lg p-8 space-y-5">
-          <h2 className="text-xl font-semibold text-gray-800 text-center">Entrar</h2>
+        <form onSubmit={handleSubmit} className="bg-bg-card border border-border-subtle rounded-2xl p-8 space-y-5">
+          <h2 className="text-lg font-semibold text-text-primary text-center">Entrar</h2>
 
           {erro && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+            <div className="bg-[rgba(225,112,85,0.1)] border border-[rgba(225,112,85,0.2)] text-accent-danger text-sm rounded-lg px-4 py-3">
               {erro}
             </div>
           )}
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="email" className="block text-[10px] font-semibold text-text-muted uppercase tracking-[0.5px] mb-1.5">
               Email
             </label>
             <input
@@ -53,14 +56,14 @@ export default function Login() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2.5 text-[12px] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)] transition-all"
               placeholder="seu@email.com"
               required
             />
           </div>
 
           <div>
-            <label htmlFor="senha" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="senha" className="block text-[10px] font-semibold text-text-muted uppercase tracking-[0.5px] mb-1.5">
               Senha
             </label>
             <input
@@ -68,8 +71,8 @@ export default function Login() {
               type="password"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="••••••••"
+              className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2.5 text-[12px] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)] transition-all"
+              placeholder="********"
               required
             />
           </div>
@@ -77,7 +80,7 @@ export default function Login() {
           <button
             type="submit"
             disabled={carregando}
-            className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#6c5ce7] to-[#00cec9] text-white py-3 rounded-xl text-sm font-semibold hover:shadow-[0_4px_16px_rgba(108,92,231,0.25)] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-250"
           >
             {carregando ? (
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />

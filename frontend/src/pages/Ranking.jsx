@@ -1,21 +1,16 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Trophy, TrendingUp, Clock, Users, Star } from 'lucide-react';
+import { Trophy, Clock } from 'lucide-react';
 
-function MetricaBar({ valor, max, cor }) {
-  const pct = max > 0 ? Math.min((valor / max) * 100, 100) : 0;
-  return (
-    <div className="w-full bg-gray-100 rounded-full h-2">
-      <div
-        className={`h-2 rounded-full transition-all duration-500 ${cor}`}
-        style={{ width: `${pct}%` }}
-      />
-    </div>
-  );
-}
+const AVATAR_GRADIENTS = [
+  'from-[#6c5ce7] to-[#00cec9]',
+  'from-[#e17055] to-[#fdcb6e]',
+  'from-[#00b894] to-[#74b9ff]',
+  'from-[#a78bfa] to-[#e17055]',
+];
 
-const MEDALHAS = ['text-yellow-500', 'text-gray-400', 'text-amber-600'];
+const POS_COLORS = ['text-[#fdcb6e]', 'text-[#a0a0be]', 'text-[#e17055]'];
 
 export default function Ranking() {
   const { usuario } = useAuth();
@@ -29,7 +24,6 @@ export default function Ranking() {
         const { data: vends } = await api.get('/vendedores');
         setVendedores(vends);
 
-        // Buscar dashboard de cada vendedor em paralelo
         const dashResults = await Promise.all(
           vends.map((v) => api.get(`/vendedores/${v.id}/dashboard`).catch(() => null))
         );
@@ -53,61 +47,54 @@ export default function Ranking() {
   if (carregando) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-violet" />
       </div>
     );
   }
 
-  // Calcular valores máximos para barras relativas
-  const maxConversoes = Math.max(...vendedores.map((v) => v.totalConversoes), 1);
-  const maxTaxa = Math.max(
-    ...vendedores.map((v) => dashboards[v.id]?.metricas?.taxaConversao || 0),
-    1
-  );
+  const maxScore = Math.max(...vendedores.map((v) => v.scorePerformance || 0), 1);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-bold text-gray-800">Ranking</h1>
-        <p className="text-sm text-gray-500 mt-1">Performance do time</p>
+        <h1 className="text-[22px] font-bold text-white">Ranking</h1>
+        <p className="text-[13px] text-text-secondary mt-1">Performance do time</p>
       </div>
 
-      {/* Cards de destaques */}
+      {/* Top 3 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {vendedores.slice(0, 3).map((v, i) => {
           const dash = dashboards[v.id];
-          const medalha = MEDALHAS[i] || 'text-gray-400';
-
           return (
             <div
               key={v.id}
-              className={`bg-white rounded-xl border p-5 ${
-                v.id === usuario?.vendedorId ? 'border-blue-300 ring-2 ring-blue-100' : 'border-gray-200'
-              }`}
+              className={`bg-bg-card border rounded-[14px] p-[22px] ${
+                v.id === usuario?.vendedorId ? 'border-[rgba(108,92,231,0.3)]' : 'border-border-subtle'
+              } hover:border-border-hover transition-all duration-300`}
             >
               <div className="flex items-center gap-3 mb-4">
                 <div className="relative">
-                  <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-xl font-bold text-gray-600">
+                  <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${AVATAR_GRADIENTS[i]} flex items-center justify-center text-[16px] font-bold text-white`}>
                     {v.nomeExibicao?.[0]}
                   </div>
-                  <Trophy size={16} className={`absolute -top-1 -right-1 ${medalha}`} />
+                  <Trophy size={14} className={`absolute -top-1 -right-1 ${POS_COLORS[i]}`} />
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-800">{v.nomeExibicao}</p>
-                  <p className="text-xs text-gray-400">#{v.rankingPosicao} — {v.papel?.replace('_', ' ')}</p>
+                  <p className="font-semibold text-white text-[13px]">{v.nomeExibicao}</p>
+                  <p className="text-[10px] text-text-muted">#{v.rankingPosicao} — {v.papel?.replace('_', ' ')}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3 text-center">
-                <div className="bg-green-50 rounded-lg p-2">
-                  <p className="text-lg font-bold text-green-700">{v.totalConversoes}</p>
-                  <p className="text-[10px] text-green-500">Conversoes</p>
+                <div className="bg-[rgba(0,184,148,0.08)] rounded-[10px] p-2">
+                  <p className="text-[16px] font-bold text-accent-emerald">{v.totalConversoes}</p>
+                  <p className="text-[10px] text-text-muted">Conversoes</p>
                 </div>
-                <div className="bg-blue-50 rounded-lg p-2">
-                  <p className="text-lg font-bold text-blue-700">
+                <div className="bg-[rgba(108,92,231,0.08)] rounded-[10px] p-2">
+                  <p className="text-[16px] font-bold text-accent-violet-light">
                     {dash?.metricas?.taxaConversao ?? 0}%
                   </p>
-                  <p className="text-[10px] text-blue-500">Taxa</p>
+                  <p className="text-[10px] text-text-muted">Taxa</p>
                 </div>
               </div>
             </div>
@@ -115,84 +102,71 @@ export default function Ranking() {
         })}
       </div>
 
-      {/* Tabela de ranking */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="text-left text-xs font-semibold text-gray-500 uppercase px-4 py-3 w-12">#</th>
-              <th className="text-left text-xs font-semibold text-gray-500 uppercase px-4 py-3">Vendedor</th>
-              <th className="text-center text-xs font-semibold text-gray-500 uppercase px-4 py-3">Conversoes</th>
-              <th className="text-center text-xs font-semibold text-gray-500 uppercase px-4 py-3">Taxa</th>
-              <th className="text-center text-xs font-semibold text-gray-500 uppercase px-4 py-3">Tempo Medio</th>
-              <th className="text-left text-xs font-semibold text-gray-500 uppercase px-4 py-3 w-48">Performance</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {vendedores.map((v) => {
-              const dash = dashboards[v.id];
-              const taxa = dash?.metricas?.taxaConversao ?? 0;
-              const tempoMedio = dash?.metricas?.tempoMedioAbordagemMin;
-              const isMe = v.id === usuario?.vendedorId;
+      {/* Ranking completo */}
+      <div className="bg-bg-card border border-border-subtle rounded-[14px] p-[22px] space-y-2">
+        {vendedores.map((v, i) => {
+          const dash = dashboards[v.id];
+          const taxa = dash?.metricas?.taxaConversao ?? 0;
+          const tempoMedio = dash?.metricas?.tempoMedioAbordagemMin;
+          const isMe = v.id === usuario?.vendedorId;
+          const scorePct = maxScore > 0 ? Math.min(((v.scorePerformance || 0) / maxScore) * 100, 100) : 0;
 
-              return (
-                <tr key={v.id} className={isMe ? 'bg-blue-50' : 'hover:bg-gray-50'}>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      {v.rankingPosicao <= 3 ? (
-                        <Star size={14} className={MEDALHAS[v.rankingPosicao - 1]} fill="currentColor" />
-                      ) : (
-                        <span className="text-sm text-gray-400">{v.rankingPosicao}</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm font-bold text-gray-600">
-                        {v.nomeExibicao?.[0]}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-800">
-                          {v.nomeExibicao} {isMe && <span className="text-blue-500 text-xs">(voce)</span>}
-                        </p>
-                        <p className="text-xs text-gray-400">{v.papel?.replace('_', ' ')}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <div className="space-y-1">
-                      <span className="text-sm font-bold text-gray-800">{v.totalConversoes}</span>
-                      <MetricaBar valor={v.totalConversoes} max={maxConversoes} cor="bg-green-500" />
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <div className="space-y-1">
-                      <span className="text-sm font-bold text-gray-800">{taxa}%</span>
-                      <MetricaBar valor={taxa} max={maxTaxa} cor="bg-blue-500" />
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <Clock size={12} className="text-gray-400" />
-                      <span className="text-sm text-gray-600">
-                        {tempoMedio !== null && tempoMedio !== undefined ? `${tempoMedio}min` : '—'}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[10px] text-gray-400">
-                        <span>Score</span>
-                        <span>{v.scorePerformance?.toFixed(1) || '0.0'}</span>
-                      </div>
-                      <MetricaBar valor={v.scorePerformance || 0} max={100} cor="bg-purple-500" />
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+          return (
+            <div
+              key={v.id}
+              className={`flex items-center gap-12 p-[10px_12px] rounded-[10px] ${
+                isMe ? 'bg-[rgba(108,92,231,0.08)]' : 'hover:bg-white/[0.02]'
+              } transition-colors`}
+            >
+              <span className={`text-[13px] font-extrabold w-5 shrink-0 ${i < 3 ? POS_COLORS[i] : 'text-text-faint'}`}>
+                {v.rankingPosicao}
+              </span>
+
+              <div className="flex items-center gap-3 w-40 shrink-0">
+                <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${AVATAR_GRADIENTS[i % AVATAR_GRADIENTS.length]} flex items-center justify-center text-[10px] font-bold text-white`}>
+                  {v.nomeExibicao?.[0]}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[12px] font-medium text-text-primary truncate">
+                    {v.nomeExibicao} {isMe && <span className="text-accent-violet-light text-[10px]">(voce)</span>}
+                  </p>
+                  <p className="text-[10px] text-text-muted">{v.papel?.replace('_', ' ')}</p>
+                </div>
+              </div>
+
+              <div className="text-center w-16 shrink-0">
+                <p className="text-[12px] font-bold text-white">{v.totalConversoes}</p>
+                <p className="text-[9px] text-text-muted">conv.</p>
+              </div>
+
+              <div className="text-center w-16 shrink-0">
+                <p className="text-[12px] font-bold text-white">{taxa}%</p>
+                <p className="text-[9px] text-text-muted">taxa</p>
+              </div>
+
+              <div className="flex items-center gap-1 w-16 shrink-0 justify-center">
+                <Clock size={10} className="text-text-muted" />
+                <span className="text-[11px] text-text-secondary">
+                  {tempoMedio !== null && tempoMedio !== undefined ? `${tempoMedio}min` : '—'}
+                </span>
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-[6px] bg-bg-elevated rounded overflow-hidden">
+                    <div
+                      className="h-full rounded bg-gradient-to-r from-[#6c5ce7] to-[#00cec9] transition-all duration-500"
+                      style={{ width: `${scorePct}%` }}
+                    />
+                  </div>
+                  <span className="text-[12px] font-bold text-white shrink-0 w-8 text-right">
+                    {(v.scorePerformance || 0).toFixed(0)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

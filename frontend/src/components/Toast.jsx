@@ -10,18 +10,18 @@ export default function Toast({ mensagem, tipo = 'info', onClose, duracao = 6000
   }, [duracao, onClose]);
 
   const cores = {
-    info: 'bg-blue-600',
-    sucesso: 'bg-green-600',
-    urgente: 'bg-red-600',
-    aviso: 'bg-yellow-500',
+    info: 'border-l-2 border-accent-info',
+    sucesso: 'border-l-2 border-accent-emerald',
+    urgente: 'border-l-2 border-accent-danger',
+    aviso: 'border-l-2 border-accent-amber',
   };
 
   return (
-    <div className={`${cores[tipo]} text-white px-4 py-3 rounded-lg shadow-lg flex items-start gap-3 max-w-sm animate-slide-in`}>
-      <Bell size={18} className="mt-0.5 shrink-0" />
-      <p className="text-sm flex-1">{mensagem}</p>
-      <button onClick={onClose} className="shrink-0 hover:opacity-75">
-        <X size={16} />
+    <div className={`bg-bg-elevated border border-border-default ${cores[tipo]} rounded-xl backdrop-blur-sm px-4 py-3 flex items-start gap-3 max-w-sm animate-slide-in shadow-lg`}>
+      <Bell size={16} className="mt-0.5 shrink-0 text-text-muted" />
+      <p className="text-[12px] flex-1 text-text-primary">{mensagem}</p>
+      <button onClick={onClose} className="shrink-0 text-text-muted hover:text-text-secondary transition-colors">
+        <X size={14} />
       </button>
     </div>
   );

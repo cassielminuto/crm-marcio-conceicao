@@ -4,8 +4,18 @@ import Sidebar from './Sidebar';
 import { ToastContainer } from '../Toast';
 import useSocket from '../../hooks/useSocket';
 import { useAuth } from '../../context/AuthContext';
+import { Search, Bell } from 'lucide-react';
 
 let toastIdCounter = 0;
+
+function UserAvatar({ nome }) {
+  const iniciais = (nome || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  return (
+    <div className="w-[34px] h-[34px] rounded-lg bg-gradient-to-br from-[#6c5ce7] to-[#00cec9] flex items-center justify-center text-[11px] font-bold text-white">
+      {iniciais}
+    </div>
+  );
+}
 
 export default function AppLayout() {
   const [toasts, setToasts] = useState([]);
@@ -24,7 +34,6 @@ export default function AppLayout() {
     const tipo = data.urgente ? 'urgente' : 'info';
     const classeLabel = data.classe === 'A' ? 'URGENTE' : `Classe ${data.classe}`;
 
-    // Mostrar notificação se for para o vendedor logado ou se for admin
     if (
       usuario?.perfil === 'admin' ||
       usuario?.perfil === 'gestor' ||
@@ -62,11 +71,33 @@ export default function AppLayout() {
   useSocket(handleNovoLead, handleSlaAlerta, handleDuplicata);
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-bg-primary">
       <Sidebar />
-      <main className="flex-1 p-6 overflow-auto">
-        <Outlet />
-      </main>
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Topbar */}
+        <header className="h-[56px] shrink-0 flex items-center justify-between px-8 border-b border-border-subtle bg-bg-secondary/50 backdrop-blur-sm">
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+            <input
+              type="text"
+              placeholder="Buscar leads, vendedores..."
+              className="w-[360px] bg-bg-card border border-border-default rounded-[10px] pl-9 pr-3 py-2 text-[12px] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)] transition-all"
+            />
+          </div>
+          <div className="flex items-center gap-4">
+            <button className="relative p-2 text-text-muted hover:text-text-secondary transition-colors">
+              <Bell size={18} />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-accent-danger" />
+            </button>
+            <UserAvatar nome={usuario?.nome} />
+          </div>
+        </header>
+
+        {/* Content */}
+        <main className="flex-1 px-8 py-7 overflow-auto">
+          <Outlet />
+        </main>
+      </div>
       <ToastContainer toasts={toasts} removerToast={removerToast} />
     </div>
   );

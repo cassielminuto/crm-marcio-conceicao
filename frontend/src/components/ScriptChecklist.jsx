@@ -88,11 +88,9 @@ const ETAPAS_SCRIPT = [
 ];
 
 function verificarEtapaPreenchida(etapa, lead, camposIa) {
-  // Verificar campos do lead
   for (const c of etapa.camposLead || []) {
     if (lead?.[c]) return { completa: true, porIa: false };
   }
-  // Verificar campos IA (da última interação)
   for (const c of etapa.camposIa || []) {
     if (camposIa?.[c]) return { completa: true, porIa: true };
   }
@@ -104,7 +102,6 @@ export default function ScriptChecklist({ lead, resumoIa, camposIa }) {
   const [iaSteps, setIaSteps] = useState({});
   const [expandida, setExpandida] = useState(null);
 
-  // Recalcular quando lead ou camposIa mudam
   useEffect(() => {
     const checked = {};
     const ia = {};
@@ -128,23 +125,21 @@ export default function ScriptChecklist({ lead, resumoIa, camposIa }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-700">Script SPIN Selling</h3>
-        <span className={`text-xs font-medium ${pct === 100 ? 'text-green-600' : 'text-gray-400'}`}>
+        <h3 className="text-[10px] font-semibold text-text-muted uppercase tracking-[0.5px]">Script SPIN Selling</h3>
+        <span className="text-[11px] font-medium text-accent-violet-light">
           {etapasConcluidas}/{totalEtapas} etapas
         </span>
       </div>
 
       {/* Barra de progresso */}
       <div className="space-y-1">
-        <div className="w-full bg-gray-100 rounded-full h-2.5">
+        <div className="w-full bg-bg-elevated rounded-sm h-[4px]">
           <div
-            className={`h-2.5 rounded-full transition-all duration-500 ${
-              pct === 100 ? 'bg-green-500' : pct >= 50 ? 'bg-blue-500' : 'bg-yellow-500'
-            }`}
+            className="h-[4px] rounded-sm bg-gradient-to-r from-[#6c5ce7] to-[#00cec9] transition-all duration-500"
             style={{ width: `${pct}%` }}
           />
         </div>
-        <p className="text-[10px] text-gray-400 text-right">{pct}% completo</p>
+        <p className="text-[10px] text-text-muted text-right">{pct}% completo</p>
       </div>
 
       {/* Etapas */}
@@ -155,49 +150,49 @@ export default function ScriptChecklist({ lead, resumoIa, camposIa }) {
           const isExpanded = expandida === etapa.id;
 
           return (
-            <div key={etapa.id} className="border border-gray-100 rounded-lg overflow-hidden">
+            <div key={etapa.id} className="border border-border-subtle rounded-[10px] overflow-hidden">
               <div
                 className={`flex items-center gap-2 px-3 py-2.5 cursor-pointer transition-colors ${
-                  isChecked ? 'bg-green-50' : 'bg-white hover:bg-gray-50'
+                  isChecked ? 'bg-[rgba(108,92,231,0.06)]' : 'bg-bg-card hover:bg-white/[0.02]'
                 }`}
                 onClick={() => setExpandida(isExpanded ? null : etapa.id)}
               >
                 <button
                   onClick={(e) => { e.stopPropagation(); toggleCheck(etapa.id); }}
-                  className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                  className={`w-[18px] h-[18px] rounded-[6px] border-[1.5px] flex items-center justify-center shrink-0 transition-colors ${
                     isChecked
-                      ? 'bg-green-500 border-green-500 text-white'
-                      : 'border-gray-300 hover:border-blue-400'
+                      ? 'bg-accent-violet border-accent-violet text-white'
+                      : 'border-border-active hover:border-accent-violet-light'
                   }`}
                 >
-                  {isChecked && <Check size={12} />}
+                  {isChecked && <Check size={10} strokeWidth={3} />}
                 </button>
 
                 <div className="flex-1 min-w-0 flex items-center gap-1">
-                  <p className={`text-xs font-medium truncate ${isChecked ? 'text-green-700' : 'text-gray-700'}`}>
+                  <p className={`text-[12px] font-medium truncate ${isChecked ? 'text-accent-violet-light' : 'text-text-secondary'}`}>
                     {etapa.titulo}
                   </p>
                   {isIa && (
-                    <span className="px-1 py-0.5 bg-purple-100 text-purple-600 rounded text-[8px] font-bold flex items-center gap-0.5 shrink-0">
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-[rgba(108,92,231,0.1)] text-accent-violet-light rounded text-[8px] font-bold shrink-0">
                       <Bot size={8} /> IA
                     </span>
                   )}
                 </div>
 
-                <span className="text-[10px] text-gray-400 shrink-0">{etapa.duracao}</span>
+                <span className="text-[10px] text-text-faint shrink-0">{etapa.duracao}</span>
 
                 {isExpanded ? (
-                  <ChevronDown size={14} className="text-gray-400 shrink-0" />
+                  <ChevronDown size={14} className="text-text-muted shrink-0" />
                 ) : (
-                  <ChevronRight size={14} className="text-gray-400 shrink-0" />
+                  <ChevronRight size={14} className="text-text-muted shrink-0" />
                 )}
               </div>
 
               {isExpanded && (
-                <div className="px-3 py-2 bg-gray-50 border-t border-gray-100">
+                <div className="px-3 py-2 bg-bg-elevated border-t border-border-subtle">
                   <ul className="space-y-1.5">
                     {etapa.perguntas.map((p, i) => (
-                      <li key={i} className="text-xs text-gray-600 pl-2 border-l-2 border-blue-200">
+                      <li key={i} className="text-[11px] text-text-secondary pl-2 border-l-2 border-[rgba(108,92,231,0.3)]">
                         {p}
                       </li>
                     ))}
@@ -210,10 +205,10 @@ export default function ScriptChecklist({ lead, resumoIa, camposIa }) {
                           <span
                             key={c}
                             className={`px-1.5 py-0.5 rounded text-[10px] ${
-                              preenchido ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'
+                              preenchido ? 'bg-[rgba(0,184,148,0.1)] text-accent-emerald' : 'bg-[rgba(108,92,231,0.1)] text-accent-violet-light'
                             }`}
                           >
-                            {preenchido ? '✓ ' : ''}{c}
+                            {preenchido && <Check size={8} className="inline mr-0.5" />}{c}
                           </span>
                         );
                       })}
@@ -226,16 +221,20 @@ export default function ScriptChecklist({ lead, resumoIa, camposIa }) {
         })}
       </div>
 
-      {/* Resumo da call por IA */}
-      <div className="border border-gray-200 rounded-lg p-3">
-        <h4 className="text-xs font-semibold text-gray-500 mb-2 flex items-center gap-1">
+      {/* Resumo da call */}
+      <div className="border border-border-subtle rounded-[10px] p-3">
+        <h4 className="text-[10px] font-semibold text-text-muted uppercase tracking-[0.5px] mb-2 flex items-center gap-1">
           Resumo da Call
-          {resumoIa && <span className="px-1.5 py-0.5 bg-purple-100 text-purple-600 rounded text-[10px]">IA</span>}
+          {resumoIa && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-[rgba(108,92,231,0.1)] text-accent-violet-light rounded text-[8px] font-bold">
+              IA
+            </span>
+          )}
         </h4>
         {resumoIa ? (
-          <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-wrap">{resumoIa}</p>
+          <p className="text-[11px] text-text-secondary leading-relaxed whitespace-pre-wrap">{resumoIa}</p>
         ) : (
-          <p className="text-xs text-gray-400 italic">
+          <p className="text-[11px] text-text-muted italic">
             Nenhum resumo disponivel. Grave uma call para gerar automaticamente.
           </p>
         )}
