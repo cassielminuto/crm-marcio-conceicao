@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Search, ChevronLeft, ChevronRight, Phone, Mail, Instagram, Megaphone, Zap } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Phone, Mail, Instagram, Megaphone, Zap, Trash2 } from 'lucide-react';
 
 const ETAPAS_LABEL = {
   novo: 'Novo', em_abordagem: 'Em Abordagem', qualificado: 'Qualificado',
@@ -44,6 +44,8 @@ export default function MeusLeads() {
   const [filtroEtapa, setFiltroEtapa] = useState('');
   const [filtroClasse, setFiltroClasse] = useState('');
   const [pagina, setPagina] = useState(1);
+  const [leadParaExcluir, setLeadParaExcluir] = useState(null);
+  const [excluindo, setExcluindo] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -74,6 +76,20 @@ export default function MeusLeads() {
   useEffect(() => {
     carregarLeads();
   }, [carregarLeads]);
+
+  const confirmarExclusao = async () => {
+    if (!leadParaExcluir) return;
+    setExcluindo(true);
+    try {
+      await api.delete(`/leads/${leadParaExcluir.id}`);
+      setLeadParaExcluir(null);
+      carregarLeads();
+    } catch (err) {
+      console.error('Erro ao excluir:', err);
+    } finally {
+      setExcluindo(false);
+    }
+  };
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -141,6 +157,7 @@ export default function MeusLeads() {
                 <th className="text-center text-[11px] font-semibold text-text-muted uppercase px-4 py-3">Etapa</th>
                 <th className="text-left text-[11px] font-semibold text-text-muted uppercase px-4 py-3">Vendedor</th>
                 <th className="text-left text-[11px] font-semibold text-text-muted uppercase px-4 py-3">Entrada</th>
+                <th className="w-[50px]"></th>
               </tr>
             </thead>
             <tbody>
@@ -215,6 +232,15 @@ export default function MeusLeads() {
                       <td className="px-4 py-3 text-[11px] text-text-muted">
                         {new Date(lead.createdAt).toLocaleDateString('pt-BR')}
                       </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setLeadParaExcluir(lead); }}
+                          className="p-1.5 rounded-lg text-text-muted hover:text-accent-danger hover:bg-[rgba(225,112,85,0.06)] transition-all"
+                          title="Excluir lead"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
                     </tr>
                   );
                 })
@@ -264,6 +290,42 @@ export default function MeusLeads() {
           </div>
         )}
       </div>
+
+      {leadParaExcluir && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-bg-card border border-border-default rounded-2xl p-6 max-w-[400px] w-full mx-4 animate-fade-in">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-[rgba(225,112,85,0.1)] flex items-center justify-center">
+                <Trash2 size={20} className="text-accent-danger" />
+              </div>
+              <div>
+                <h3 className="text-[14px] font-bold text-white">Excluir lead?</h3>
+                <p className="text-[11px] text-text-muted">Esta acao nao pode ser desfeita</p>
+              </div>
+            </div>
+            <p className="text-[12px] text-text-secondary mb-5">
+              O lead <strong className="text-white">{leadParaExcluir.nome}</strong> e todo o seu historico serao excluidos permanentemente.
+            </p>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => setLeadParaExcluir(null)}
+                disabled={excluindo}
+                className="px-4 py-2 rounded-lg text-[12px] font-semibold text-text-secondary bg-bg-elevated border border-border-default hover:border-border-hover transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarExclusao}
+                disabled={excluindo}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12px] font-semibold text-white bg-accent-danger hover:bg-[#c0392b] transition-all disabled:opacity-50"
+              >
+                <Trash2 size={13} />
+                {excluindo ? 'Excluindo...' : 'Excluir permanentemente'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

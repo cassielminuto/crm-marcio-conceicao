@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   ArrowLeft, Phone, Mail, Instagram, Megaphone, Clock, User, Save,
   MessageSquare, PhoneCall, FileText, ChevronDown, ChevronUp, Bot, Camera,
-  Zap, CalendarPlus, RefreshCw, Loader, ChevronRight,
+  Zap, CalendarPlus, RefreshCw, Loader, ChevronRight, Trash2,
 } from 'lucide-react';
 
 const ETAPA_COR = {
@@ -106,6 +106,8 @@ export default function LeadCard() {
   const [vendedores, setVendedores] = useState([]);
   const [editandoCloser, setEditandoCloser] = useState(false);
   const [redistribuindo, setRedistribuindo] = useState(false);
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
 
   const [campos, setCampos] = useState({
     dorPrincipal: '',
@@ -127,6 +129,18 @@ export default function LeadCard() {
       console.error('Erro ao redistribuir:', err);
     } finally {
       setRedistribuindo(false);
+    }
+  };
+
+  const excluirLead = async () => {
+    setExcluindo(true);
+    try {
+      await api.delete(`/leads/${id}`);
+      navigate('/meus-leads');
+    } catch (err) {
+      console.error('Erro ao excluir:', err);
+      setExcluindo(false);
+      setConfirmandoExclusao(false);
     }
   };
 
@@ -226,6 +240,13 @@ export default function LeadCard() {
             </span>
           </div>
         </div>
+        <button
+          onClick={() => setConfirmandoExclusao(true)}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-[10px] text-[12px] font-semibold text-accent-danger/70 hover:text-accent-danger hover:bg-[rgba(225,112,85,0.06)] transition-all"
+          title="Excluir lead"
+        >
+          <Trash2 size={14} />
+        </button>
         <button
           onClick={salvar}
           disabled={salvando}
@@ -603,6 +624,42 @@ export default function LeadCard() {
           </div>
         </div>
       </div>
+
+      {confirmandoExclusao && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-bg-card border border-border-default rounded-2xl p-6 max-w-[400px] w-full mx-4 animate-fade-in">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-[rgba(225,112,85,0.1)] flex items-center justify-center">
+                <Trash2 size={20} className="text-accent-danger" />
+              </div>
+              <div>
+                <h3 className="text-[14px] font-bold text-white">Excluir lead?</h3>
+                <p className="text-[11px] text-text-muted">Esta acao nao pode ser desfeita</p>
+              </div>
+            </div>
+            <p className="text-[12px] text-text-secondary mb-5">
+              O lead <strong className="text-white">{lead.nome}</strong> e todo o seu historico (interacoes, follow-ups, gravacoes) serao excluidos permanentemente.
+            </p>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => setConfirmandoExclusao(false)}
+                disabled={excluindo}
+                className="px-4 py-2 rounded-lg text-[12px] font-semibold text-text-secondary bg-bg-elevated border border-border-default hover:border-border-hover transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={excluirLead}
+                disabled={excluindo}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12px] font-semibold text-white bg-accent-danger hover:bg-[#c0392b] transition-all disabled:opacity-50"
+              >
+                <Trash2 size={13} />
+                {excluindo ? 'Excluindo...' : 'Excluir permanentemente'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

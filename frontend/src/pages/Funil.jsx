@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Filter, DollarSign, Clock, User, Instagram, Megaphone } from 'lucide-react';
+import { Filter, DollarSign, Clock, User, Instagram, Megaphone, Trash2 } from 'lucide-react';
 
 const ETAPAS = [
   { id: 'novo', label: 'Novo', cor: 'border-accent-info' },
@@ -33,7 +33,7 @@ function scoreCor(pontuacao) {
   return { bg: 'bg-[rgba(116,185,255,0.1)]', text: 'text-[#74b9ff]', label: 'Frio' };
 }
 
-function LeadCard({ lead, index, onClickLead }) {
+function LeadCard({ lead, index, onClickLead, onDeleteLead }) {
   const score = scoreCor(lead.pontuacao);
   const CanalIcone = lead.canal === 'bio' ? Instagram : Megaphone;
 
@@ -45,10 +45,16 @@ function LeadCard({ lead, index, onClickLead }) {
           {...provided.draggableProps}
           {...provided.dragHandleProps}
           onClick={() => onClickLead(lead.id)}
-          className={`bg-bg-card border border-border-subtle rounded-[10px] p-3 mb-2 cursor-grab active:cursor-grabbing transition-all ${
+          className={`group relative bg-bg-card border border-border-subtle rounded-[10px] p-3 mb-2 cursor-grab active:cursor-grabbing transition-all ${
             snapshot.isDragging ? 'shadow-lg ring-1 ring-accent-violet/30 border-border-active' : 'hover:border-border-hover'
           }`}
         >
+          <button
+            onClick={(e) => { e.stopPropagation(); onDeleteLead(lead); }}
+            className="absolute top-2 right-2 p-1 rounded-md text-text-muted hover:text-accent-danger hover:bg-[rgba(225,112,85,0.08)] opacity-0 group-hover:opacity-100 transition-all"
+          >
+            <Trash2 size={12} />
+          </button>
           <div className="flex items-start justify-between gap-2 mb-2">
             <p className="text-[12px] font-medium text-text-primary truncate flex-1 hover:text-accent-violet-light">{lead.nome}</p>
             <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${score.bg} ${score.text} shrink-0`}>
@@ -82,7 +88,7 @@ function LeadCard({ lead, index, onClickLead }) {
   );
 }
 
-function KanbanColuna({ etapa, leads, onClickLead }) {
+function KanbanColuna({ etapa, leads, onClickLead, onDeleteLead }) {
   const pipelineValor = etapa.id === 'proposta' ? leads.length * TICKET_MEDIO : null;
 
   return (
@@ -112,7 +118,7 @@ function KanbanColuna({ etapa, leads, onClickLead }) {
             }`}
           >
             {leads.map((lead, idx) => (
-              <LeadCard key={lead.id} lead={lead} index={idx} onClickLead={onClickLead} />
+              <LeadCard key={lead.id} lead={lead} index={idx} onClickLead={onClickLead} onDeleteLead={onDeleteLead} />
             ))}
             {provided.placeholder}
           </div>
@@ -128,6 +134,9 @@ export default function Funil() {
   const [leads, setLeads] = useState([]);
   const [vendedores, setVendedores] = useState([]);
   const [carregando, setCarregando] = useState(true);
+
+  const [leadParaExcluir, setLeadParaExcluir] = useState(null);
+  const [excluindo, setExcluindo] = useState(false);
 
   const [filtroVendedor, setFiltroVendedor] = useState('');
   const [filtroClasse, setFiltroClasse] = useState('');
@@ -269,10 +278,58 @@ export default function Funil() {
               etapa={etapa}
               leads={leadsPorEtapa[etapa.id] || []}
               onClickLead={(leadId) => navigate(`/leads/${leadId}`)}
+              onDeleteLead={(lead) => setLeadParaExcluir(lead)}
             />
           ))}
         </div>
       </DragDropContext>
+
+      {leadParaExcluir && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-bg-card border border-border-default rounded-2xl p-6 max-w-[400px] w-full mx-4 animate-fade-in">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-[rgba(225,112,85,0.1)] flex items-center justify-center">
+                <Trash2 size={20} className="text-accent-danger" />
+              </div>
+              <div>
+                <h3 className="text-[14px] font-bold text-white">Excluir lead?</h3>
+                <p className="text-[11px] text-text-muted">Esta acao nao pode ser desfeita</p>
+              </div>
+            </div>
+            <p className="text-[12px] text-text-secondary mb-5">
+              O lead <strong className="text-white">{leadParaExcluir.nome}</strong> e todo o seu historico serao excluidos permanentemente.
+            </p>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => setLeadParaExcluir(null)}
+                disabled={excluindo}
+                className="px-4 py-2 rounded-lg text-[12px] font-semibold text-text-secondary bg-bg-elevated border border-border-default hover:border-border-hover transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={async () => {
+                  setExcluindo(true);
+                  try {
+                    await api.delete(`/leads/${leadParaExcluir.id}`);
+                    setLeadParaExcluir(null);
+                    carregarDados();
+                  } catch (err) {
+                    console.error('Erro ao excluir:', err);
+                  } finally {
+                    setExcluindo(false);
+                  }
+                }}
+                disabled={excluindo}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12px] font-semibold text-white bg-accent-danger hover:bg-[#c0392b] transition-all disabled:opacity-50"
+              >
+                <Trash2 size={13} />
+                {excluindo ? 'Excluindo...' : 'Excluir permanentemente'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

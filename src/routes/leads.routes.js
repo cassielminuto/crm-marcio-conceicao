@@ -82,5 +82,6 @@ router.post('/:id/merge/:duplicateId', autenticar, autorizar('admin', 'gestor'),
 router.delete('/:id/duplicatas/:duplicateId', autenticar, autorizar('admin', 'gestor'), leadsController.descartarDuplicata);
 router.get('/:id/agenda.ics', autenticar, leadsController.gerarIcs);
 router.post('/:id/resumo', autenticar, leadsController.atualizarResumo);
+router.delete('/:id', autenticar, leadsController.excluir);
 
 module.exports = router;

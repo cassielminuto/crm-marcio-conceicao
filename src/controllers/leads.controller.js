@@ -662,6 +662,54 @@ async function atualizarResumo(req, res, next) {
   }
 }
 
+async function excluir(req, res, next) {
+  try {
+    const { id } = req.params;
+    const leadId = parseInt(id, 10);
+
+    const lead = await prisma.lead.findUnique({ where: { id: leadId } });
+    if (!lead) {
+      return res.status(404).json({ error: 'Lead nao encontrado' });
+    }
+
+    // Deletar registros relacionados (ordem importa por foreign keys)
+    await prisma.possivelDuplicata.deleteMany({
+      where: { OR: [{ leadOrigemId: leadId }, { leadDuplicataId: leadId }] },
+    });
+    await prisma.proposta.deleteMany({ where: { leadId } });
+    await prisma.followUp.deleteMany({ where: { leadId } });
+    await prisma.interacao.deleteMany({ where: { leadId } });
+    await prisma.funilHistorico.deleteMany({ where: { leadId } });
+
+    // Decrementar leads ativos do vendedor
+    if (lead.vendedorId && !['convertido', 'perdido'].includes(lead.status)) {
+      await prisma.vendedor.update({
+        where: { id: lead.vendedorId },
+        data: { leadsAtivos: { decrement: 1 } },
+      }).catch(() => {});
+    }
+
+    // Audit log
+    await prisma.auditLog.create({
+      data: {
+        usuarioId: req.usuario.id,
+        acao: 'DELETE',
+        entidade: 'leads',
+        entidadeId: leadId,
+        dadosAnteriores: { nome: lead.nome, telefone: lead.telefone, classe: lead.classe, etapaFunil: lead.etapaFunil },
+        ip: req.ip,
+      },
+    });
+
+    await prisma.lead.delete({ where: { id: leadId } });
+
+    logger.info(`Lead #${leadId} (${lead.nome}) excluido por usuario #${req.usuario.id}`);
+    res.json({ ok: true, mensagem: `Lead "${lead.nome}" excluido permanentemente` });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   listar,
   detalhe,
@@ -677,4 +725,5 @@ module.exports = {
   descartarDuplicata,
   gerarIcs,
   atualizarResumo,
+  excluir,
 };
