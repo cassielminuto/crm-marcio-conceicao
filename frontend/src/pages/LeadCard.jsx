@@ -3,10 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import ScriptChecklist from '../components/ScriptChecklist';
 import CallRecorder from '../components/CallRecorder';
+import PrintUploader from '../components/PrintUploader';
 import DuplicateAlert from '../components/DuplicateAlert';
 import {
   ArrowLeft, Phone, Mail, Instagram, Megaphone, Clock, User, Save,
-  MessageSquare, PhoneCall, FileText, ChevronDown, ChevronUp, Bot,
+  MessageSquare, PhoneCall, FileText, ChevronDown, ChevronUp, Bot, Camera,
 } from 'lucide-react';
 
 const ETAPA_COR = {
@@ -56,12 +57,12 @@ const RESULTADO_OPTIONS = [
 
 const INTERACAO_ICONE = {
   call: PhoneCall, whatsapp_enviado: MessageSquare, whatsapp_recebido: MessageSquare,
-  nota: FileText, email: Mail,
+  nota: FileText, email: Mail, print_whatsapp: Camera,
 };
 
 const INTERACAO_LABEL = {
   call: 'Call', whatsapp_enviado: 'WhatsApp enviado', whatsapp_recebido: 'WhatsApp recebido',
-  nota: 'Nota', email: 'Email',
+  nota: 'Nota', email: 'Email', print_whatsapp: 'Print WhatsApp',
 };
 
 const INTERACAO_DOT = {
@@ -70,6 +71,7 @@ const INTERACAO_DOT = {
   whatsapp_recebido: 'bg-[rgba(0,184,148,0.1)]',
   nota: 'bg-[rgba(255,255,255,0.06)]',
   email: 'bg-[rgba(116,185,255,0.1)]',
+  print_whatsapp: 'bg-[rgba(0,184,148,0.1)]',
 };
 
 function CampoIA({ label, children }) {
@@ -350,10 +352,33 @@ export default function LeadCard() {
                             {int.conteudo && (
                               <p className="text-[11px] text-text-secondary mt-1 whitespace-pre-wrap">{int.conteudo}</p>
                             )}
+                            {int.tipo === 'print_whatsapp' && int.gravacaoUrl && (
+                              <div className="flex gap-2 mt-2 flex-wrap">
+                                {int.gravacaoUrl.split(',').map((url, idx) => (
+                                  <a key={idx} href={url} target="_blank" rel="noopener noreferrer">
+                                    <img
+                                      src={url}
+                                      alt={`Print ${idx + 1}`}
+                                      className="w-20 h-20 object-cover rounded-lg border border-border-default hover:border-accent-violet transition-colors cursor-pointer"
+                                    />
+                                  </a>
+                                ))}
+                              </div>
+                            )}
                             {int.resumoIa && (
                               <div className="mt-1 bg-[rgba(108,92,231,0.06)] border border-[rgba(108,92,231,0.1)] rounded-lg p-[8px_10px] text-[11px] text-[#b0b0d0]">
                                 {int.resumoIa}
                               </div>
+                            )}
+                            {int.tipo === 'print_whatsapp' && int.transcricao && (
+                              <details className="mt-1 text-[11px]">
+                                <summary className="cursor-pointer text-accent-violet-light hover:underline">
+                                  Ver conversa extraida
+                                </summary>
+                                <p className="mt-1 text-[#b0b0d0] leading-relaxed whitespace-pre-wrap bg-bg-elevated rounded-[10px] p-2 max-h-40 overflow-y-auto">
+                                  {int.transcricao}
+                                </p>
+                              </details>
                             )}
                             <p className="text-[10px] text-text-muted mt-1">
                               {new Date(int.createdAt).toLocaleDateString('pt-BR')}{' '}
@@ -376,6 +401,26 @@ export default function LeadCard() {
             <CallRecorder
               leadId={lead.id}
               onTranscricaoConcluida={(resultado) => {
+                if (resultado.lead) {
+                  setLead(resultado.lead);
+                  setCampos({
+                    dorPrincipal: resultado.lead.dorPrincipal || '',
+                    tracoCarater: resultado.lead.tracoCarater || '',
+                    objecaoPrincipal: resultado.lead.objecaoPrincipal || '',
+                    resultadoCall: resultado.lead.resultadoCall || '',
+                  });
+                }
+                if (resultado.interacao) {
+                  setInteracoes((prev) => [resultado.interacao, ...prev]);
+                }
+              }}
+            />
+          </div>
+
+          <div className="bg-bg-card border border-border-subtle rounded-[14px] p-[22px]">
+            <PrintUploader
+              leadId={lead.id}
+              onPrintAnalisado={(resultado) => {
                 if (resultado.lead) {
                   setLead(resultado.lead);
                   setCampos({

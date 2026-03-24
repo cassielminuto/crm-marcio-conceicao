@@ -37,7 +37,7 @@ RUN npx prisma generate
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
 # Criar diretório de uploads
-RUN mkdir -p uploads/calls
+RUN mkdir -p uploads/calls uploads/prints
 
 EXPOSE 3001
 

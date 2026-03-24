@@ -136,4 +136,82 @@ async function processarCall({ leadId, vendedorId, caminhoAudio, duracao }) {
   };
 }
 
-module.exports = { transcreverAudio, analisarTranscricao, processarCall };
+async function analisarPrintWhatsApp(imagePaths, historicoAnterior = '') {
+  logger.info(`Analisando ${imagePaths.length} print(s) de WhatsApp com GPT-4 Vision...`);
+
+  const imageContents = [];
+  for (const imgPath of imagePaths) {
+    const imageBuffer = fs.readFileSync(imgPath);
+    const base64Image = imageBuffer.toString('base64');
+    const mimeType = imgPath.endsWith('.png') ? 'image/png' : 'image/jpeg';
+    imageContents.push({
+      type: 'image_url',
+      image_url: {
+        url: `data:${mimeType};base64,${base64Image}`,
+        detail: 'high',
+      },
+    });
+  }
+
+  const systemPrompt = `Voce e um assistente que analisa screenshots de conversas do WhatsApp para um CRM de vendas do Programa Compativeis (programa de transformacao de relacionamentos para casais do Marcio Conceicao).
+
+Sua tarefa:
+1. EXTRAIR o texto completo da conversa visivel no(s) print(s), identificando quem e o vendedor e quem e o lead
+2. FORMATAR a conversa extraida como dialogo (Vendedor: ... / Lead: ...)
+3. ANALISAR o conteudo e gerar um resumo de 3-5 frases com os pontos mais importantes
+4. IDENTIFICAR campos relevantes para o CRM se possiveis:
+   - dor_principal: qual o problema/dor do lead no relacionamento
+   - objecao_principal: se o lead levantou alguma objecao
+   - nivel_interesse: alto / medio / baixo / indefinido
+   - proximo_passo: qual o proximo passo combinado (se houver)
+   - sentimento_geral: positivo / neutro / negativo / misto
+
+Retorne APENAS JSON valido com esta estrutura:
+{
+  "conversa_extraida": "Vendedor: ...\\nLead: ...\\n...",
+  "resumo": "Resumo de 3-5 frases...",
+  "campos": {
+    "dor_principal": "..." ou null,
+    "objecao_principal": "..." ou null,
+    "nivel_interesse": "alto" | "medio" | "baixo" | "indefinido",
+    "proximo_passo": "..." ou null,
+    "sentimento_geral": "positivo" | "neutro" | "negativo" | "misto"
+  }
+}
+
+Sem markdown, sem explicacoes, apenas JSON.`;
+
+  let userText = 'Analise o(s) print(s) de conversa do WhatsApp abaixo.';
+  if (historicoAnterior) {
+    userText += `\n\nCONTEXTO: Ja existem conversas anteriores com esse lead. Aqui esta o historico acumulado ate agora:\n---\n${historicoAnterior}\n---\nConsidere esse contexto ao gerar o resumo atualizado. O resumo deve cobrir TODA a conversa (antiga + nova).`;
+  }
+
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-4o',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: userText },
+          ...imageContents,
+        ],
+      },
+    ],
+    temperature: 0.3,
+    max_tokens: 2000,
+  });
+
+  const conteudo = completion.choices[0]?.message?.content?.trim();
+
+  let jsonStr = conteudo;
+  if (jsonStr.startsWith('```')) {
+    jsonStr = jsonStr.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+  }
+
+  const dados = JSON.parse(jsonStr);
+  logger.info('Analise de print concluida:', JSON.stringify(dados).slice(0, 200));
+  return dados;
+}
+
+module.exports = { transcreverAudio, analisarTranscricao, processarCall, analisarPrintWhatsApp };

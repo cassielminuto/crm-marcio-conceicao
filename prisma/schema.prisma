@@ -74,6 +74,7 @@ enum TipoInteracao {
   whatsapp_recebido
   nota
   email
+  print_whatsapp
 }
 
 enum TipoFollowUp {
