@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Filter, DollarSign, Clock, User, Instagram, Megaphone, Trash2, Calendar } from 'lucide-react';
+import { Filter, Clock, User, Instagram, Megaphone, Trash2, Calendar } from 'lucide-react';
 
 const ETAPAS = [
   { id: 'novo', label: 'Novo', cor: 'border-accent-info', valorCor: 'text-accent-amber' },
@@ -31,11 +31,12 @@ function scoreCor(pontuacao) {
   return { bg: 'bg-[rgba(116,185,255,0.1)]', text: 'text-[#74b9ff]', label: 'Frio' };
 }
 
-function formatarValor(valor) {
-  return Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+function formatarMoeda(valor) {
+  if (!valor && valor !== 0) return 'R$ 0';
+  return `R$ ${Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
-function LeadCard({ lead, index, onClickLead, onDeleteLead, etapaId }) {
+function LeadCard({ lead, index, onClickLead, onDeleteLead, onSalvarValor }) {
   const score = scoreCor(lead.pontuacao);
   const CanalIcone = lead.canal === 'bio' ? Instagram : Megaphone;
 
@@ -85,29 +86,45 @@ function LeadCard({ lead, index, onClickLead, onDeleteLead, etapaId }) {
             </div>
           )}
 
-          {(lead.valorVenda || lead.previsaoFechamento) && (
-            <div className="flex items-center gap-3 mt-1.5">
-              {lead.valorVenda && (
-                <span className="inline-flex items-center gap-0.5 text-[10px] text-accent-amber font-medium">
-                  <DollarSign size={9} />
-                  R$ {formatarValor(lead.valorVenda)}
-                </span>
-              )}
-              {lead.previsaoFechamento && (
-                <span className="inline-flex items-center gap-0.5 text-[10px] text-text-muted">
-                  <Calendar size={9} />
-                  Prev: {new Date(lead.previsaoFechamento).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-                </span>
-              )}
+          <div className="flex items-center gap-3 mt-1.5">
+            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+              <span className="text-[10px] text-text-muted">R$</span>
+              <input
+                type="text"
+                defaultValue={lead.valorVenda ? Number(lead.valorVenda).toLocaleString('pt-BR') : ''}
+                placeholder="0"
+                onFocus={(e) => {
+                  e.target.value = lead.valorVenda ? String(Number(lead.valorVenda)) : '';
+                  e.target.select();
+                }}
+                onBlur={(e) => {
+                  const valor = parseFloat(e.target.value.replace(/[^\d.,]/g, '').replace(',', '.')) || null;
+                  const atual = lead.valorVenda ? Number(lead.valorVenda) : null;
+                  if (valor !== atual) {
+                    onSalvarValor(lead.id, valor);
+                  }
+                  e.target.value = valor ? Number(valor).toLocaleString('pt-BR') : '';
+                }}
+                onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
+                className="w-[70px] px-1.5 py-0.5 rounded-md bg-transparent border border-transparent hover:border-border-default focus:border-[rgba(108,92,231,0.4)] focus:bg-bg-input text-[11px] font-semibold text-accent-amber outline-none transition-all text-right"
+              />
             </div>
-          )}
+            {lead.previsaoFechamento && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] text-text-muted">
+                <Calendar size={9} />
+                Prev: {new Date(lead.previsaoFechamento).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+              </span>
+            )}
+          </div>
         </div>
       )}
     </Draggable>
   );
 }
 
-function KanbanColuna({ etapa, leads, count, valorTotal, onClickLead, onDeleteLead }) {
+function KanbanColuna({ etapa, leads, count, onClickLead, onDeleteLead, onSalvarValor }) {
+  const somaColuna = leads.reduce((sum, l) => sum + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
+
   return (
     <div className="flex flex-col w-72 shrink-0">
       <div className={`rounded-t-[10px] px-3 py-2.5 border-t-2 ${etapa.cor} bg-bg-card`}>
@@ -117,12 +134,9 @@ function KanbanColuna({ etapa, leads, count, valorTotal, onClickLead, onDeleteLe
             {count}
           </span>
         </div>
-        {valorTotal > 0 && (
-          <div className={`flex items-center gap-1 mt-1 text-[10px] ${etapa.valorCor} font-medium`}>
-            <DollarSign size={10} />
-            R$ {formatarValor(valorTotal)}
-          </div>
-        )}
+        <div className={`mt-1 text-[10px] font-medium ${somaColuna > 0 ? etapa.valorCor : 'text-text-muted'}`}>
+          {formatarMoeda(somaColuna)}
+        </div>
       </div>
 
       <Droppable droppableId={etapa.id}>
@@ -135,7 +149,7 @@ function KanbanColuna({ etapa, leads, count, valorTotal, onClickLead, onDeleteLe
             }`}
           >
             {leads.map((lead, idx) => (
-              <LeadCard key={lead.id} lead={lead} index={idx} onClickLead={onClickLead} onDeleteLead={onDeleteLead} etapaId={etapa.id} />
+              <LeadCard key={lead.id} lead={lead} index={idx} onClickLead={onClickLead} onDeleteLead={onDeleteLead} onSalvarValor={onSalvarValor} />
             ))}
             {provided.placeholder}
           </div>
@@ -205,6 +219,28 @@ export default function Funil() {
     }
   };
 
+  const salvarValorLead = async (leadId, valor) => {
+    try {
+      await api.patch(`/leads/${leadId}`, { valorVenda: valor });
+      // Atualizar localmente
+      setFunilData(prev => {
+        if (!prev) return prev;
+        const novo = { ...prev, etapas: { ...prev.etapas } };
+        for (const etapa of Object.keys(novo.etapas)) {
+          novo.etapas[etapa] = {
+            ...novo.etapas[etapa],
+            leads: novo.etapas[etapa].leads.map(l =>
+              l.id === leadId ? { ...l, valorVenda: valor } : l
+            ),
+          };
+        }
+        return novo;
+      });
+    } catch (err) {
+      console.error('Erro ao salvar valor:', err);
+    }
+  };
+
   const temFiltro = filtroVendedor || filtroClasse || filtroCanal || dataInicio || dataFim;
 
   if (carregando && !funilData) {
@@ -215,9 +251,19 @@ export default function Funil() {
     );
   }
 
-  const total = funilData?.total || 0;
-  const pipelineTotal = funilData?.pipelineTotal || 0;
-  const receitaTotal = funilData?.receitaTotal || 0;
+  // Calcular pipeline e receita client-side para refletir edits inline
+  let pipelineTotal = 0;
+  let receitaTotal = 0;
+  let total = 0;
+
+  if (funilData?.etapas) {
+    for (const [etapa, data] of Object.entries(funilData.etapas)) {
+      total += data.leads.length;
+      const soma = data.leads.reduce((s, l) => s + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
+      if (etapa === 'fechado_ganho') receitaTotal += soma;
+      else if (etapa !== 'fechado_perdido' && etapa !== 'nurturing') pipelineTotal += soma;
+    }
+  }
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -228,12 +274,12 @@ export default function Funil() {
             {total} leads no funil
             {pipelineTotal > 0 && (
               <span className="ml-2 text-accent-amber font-medium">
-                | Pipeline: R$ {formatarValor(pipelineTotal)}
+                | Pipeline: {formatarMoeda(pipelineTotal)}
               </span>
             )}
             {receitaTotal > 0 && (
               <span className="ml-2 text-accent-emerald font-medium">
-                | Receita: R$ {formatarValor(receitaTotal)}
+                | Receita: {formatarMoeda(receitaTotal)}
               </span>
             )}
           </p>
@@ -306,16 +352,16 @@ export default function Funil() {
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex gap-4 overflow-x-auto pb-4">
           {ETAPAS.map((etapa) => {
-            const data = funilData?.etapas?.[etapa.id] || { leads: [], count: 0, valorTotal: 0 };
+            const data = funilData?.etapas?.[etapa.id] || { leads: [], count: 0 };
             return (
               <KanbanColuna
                 key={etapa.id}
                 etapa={etapa}
                 leads={data.leads}
-                count={data.count}
-                valorTotal={data.valorTotal}
+                count={data.leads.length}
                 onClickLead={(leadId) => navigate(`/leads/${leadId}`)}
                 onDeleteLead={(lead) => setLeadParaExcluir(lead)}
+                onSalvarValor={salvarValorLead}
               />
             );
           })}
