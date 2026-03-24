@@ -34,14 +34,14 @@ function UserAvatar({ nome, fotoUrl, size = 34 }) {
       <img
         src={fotoUrl}
         alt={nome}
-        className="rounded-lg object-cover shrink-0"
+        className="rounded-full object-cover shrink-0"
         style={{ width: size, height: size }}
       />
     );
   }
   return (
     <div
-      className="rounded-lg bg-gradient-to-br from-[#6c5ce7] to-[#00cec9] flex items-center justify-center font-bold text-white shrink-0"
+      className="rounded-full bg-gradient-to-br from-[#6c5ce7] to-[#00cec9] flex items-center justify-center font-bold text-white shrink-0"
       style={{ width: size, height: size, fontSize: Math.round(size * 0.32) }}
     >
       {iniciais}

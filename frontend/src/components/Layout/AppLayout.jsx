@@ -12,10 +12,10 @@ let toastIdCounter = 0;
 function UserAvatar({ nome, fotoUrl }) {
   const iniciais = (nome || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   if (fotoUrl) {
-    return <img src={fotoUrl} alt={nome} className="w-[34px] h-[34px] rounded-lg object-cover" />;
+    return <img src={fotoUrl} alt={nome} className="w-[34px] h-[34px] rounded-full object-cover" />;
   }
   return (
-    <div className="w-[34px] h-[34px] rounded-lg bg-gradient-to-br from-[#6c5ce7] to-[#00cec9] flex items-center justify-center text-[11px] font-bold text-white">
+    <div className="w-[34px] h-[34px] rounded-full bg-gradient-to-br from-[#6c5ce7] to-[#00cec9] flex items-center justify-center text-[11px] font-bold text-white">
       {iniciais}
     </div>
   );

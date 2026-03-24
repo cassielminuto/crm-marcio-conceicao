@@ -75,9 +75,9 @@ export default function Ranking() {
               <div className="flex items-center gap-3 mb-4">
                 <div className="relative">
                   {v.usuario?.fotoUrl ? (
-                    <img src={v.usuario.fotoUrl} alt={v.nomeExibicao} className="w-12 h-12 rounded-lg object-cover" />
+                    <img src={v.usuario.fotoUrl} alt={v.nomeExibicao} className="w-12 h-12 rounded-full object-cover" />
                   ) : (
-                  <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${AVATAR_GRADIENTS[i]} flex items-center justify-center text-[16px] font-bold text-white`}>
+                  <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${AVATAR_GRADIENTS[i]} flex items-center justify-center text-[16px] font-bold text-white`}>
                     {v.nomeExibicao?.[0]}
                   </div>
                   )}
@@ -128,9 +128,9 @@ export default function Ranking() {
 
               <div className="flex items-center gap-3 w-40 shrink-0">
                 {v.usuario?.fotoUrl ? (
-                  <img src={v.usuario.fotoUrl} alt={v.nomeExibicao} className="w-8 h-8 rounded-lg object-cover shrink-0" />
+                  <img src={v.usuario.fotoUrl} alt={v.nomeExibicao} className="w-8 h-8 rounded-full object-cover shrink-0" />
                 ) : (
-                  <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${AVATAR_GRADIENTS[i % AVATAR_GRADIENTS.length]} flex items-center justify-center text-[10px] font-bold text-white shrink-0`}>
+                  <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${AVATAR_GRADIENTS[i % AVATAR_GRADIENTS.length]} flex items-center justify-center text-[10px] font-bold text-white shrink-0`}>
                     {v.nomeExibicao?.[0]}
                   </div>
                 )}

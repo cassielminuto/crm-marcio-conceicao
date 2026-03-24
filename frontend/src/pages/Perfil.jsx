@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import PhotoCropper from '../components/PhotoCropper';
 import { Camera, User, Mail, Phone, Lock, Shield, Save, Trash2, BarChart3, Users, Trophy, Target } from 'lucide-react';
 
 export default function Perfil() {
@@ -8,6 +9,7 @@ export default function Perfil() {
   const [perfil, setPerfil] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [uploadingFoto, setUploadingFoto] = useState(false);
+  const [cropImageUrl, setCropImageUrl] = useState(null);
   const fileInputRef = useRef(null);
 
   // Form dados pessoais
@@ -41,14 +43,19 @@ export default function Perfil() {
     carregar();
   }, []);
 
-  const handleUploadFoto = async (e) => {
+  const handleFileSelect = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    e.target.value = '';
+    const url = URL.createObjectURL(file);
+    setCropImageUrl(url);
+  };
 
+  const handleCropComplete = async (blob) => {
+    setCropImageUrl(null);
     setUploadingFoto(true);
     const formData = new FormData();
-    formData.append('foto', file);
-
+    formData.append('foto', blob, 'avatar.jpg');
     try {
       const { data } = await api.post('/perfil/foto', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -137,17 +144,17 @@ export default function Perfil() {
               <img
                 src={perfil.fotoUrl}
                 alt={perfil.nome}
-                className="w-24 h-24 rounded-2xl object-cover border-2 border-border-default group-hover:border-accent-violet transition-colors"
+                className="w-24 h-24 rounded-full object-cover border-2 border-border-default group-hover:border-accent-violet transition-colors"
               />
             ) : (
-              <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-[#6c5ce7] to-[#00cec9] flex items-center justify-center text-[28px] font-bold text-white">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#6c5ce7] to-[#00cec9] flex items-center justify-center text-[28px] font-bold text-white">
                 {iniciais}
               </div>
             )}
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingFoto}
-              className="absolute inset-0 rounded-2xl bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+              className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
             >
               {uploadingFoto ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
@@ -159,7 +166,7 @@ export default function Perfil() {
               ref={fileInputRef}
               type="file"
               accept="image/png,image/jpeg,image/webp"
-              onChange={handleUploadFoto}
+              onChange={handleFileSelect}
               className="hidden"
             />
           </div>
@@ -378,6 +385,17 @@ export default function Perfil() {
             </div>
           </div>
         </div>
+      )}
+
+      {cropImageUrl && (
+        <PhotoCropper
+          imageUrl={cropImageUrl}
+          onCropComplete={handleCropComplete}
+          onCancel={() => {
+            URL.revokeObjectURL(cropImageUrl);
+            setCropImageUrl(null);
+          }}
+        />
       )}
     </div>
   );

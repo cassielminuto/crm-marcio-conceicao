@@ -5,10 +5,11 @@ import ScriptChecklist from '../components/ScriptChecklist';
 import CallRecorder from '../components/CallRecorder';
 import PrintUploader from '../components/PrintUploader';
 import DuplicateAlert from '../components/DuplicateAlert';
+import { useAuth } from '../context/AuthContext';
 import {
   ArrowLeft, Phone, Mail, Instagram, Megaphone, Clock, User, Save,
   MessageSquare, PhoneCall, FileText, ChevronDown, ChevronUp, Bot, Camera,
-  Zap, CalendarPlus, RefreshCw, Loader,
+  Zap, CalendarPlus, RefreshCw, Loader, ChevronRight,
 } from 'lucide-react';
 
 const ETAPA_COR = {
@@ -92,6 +93,8 @@ function CampoIA({ label, children }) {
 export default function LeadCard() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { usuario } = useAuth();
+  const isAdmin = usuario?.perfil === 'admin' || usuario?.perfil === 'gestor';
   const [lead, setLead] = useState(null);
   const [interacoes, setInteracoes] = useState([]);
   const [carregando, setCarregando] = useState(true);
@@ -100,6 +103,9 @@ export default function LeadCard() {
   const [timelineAberta, setTimelineAberta] = useState(true);
   const [duplicatas, setDuplicatas] = useState([]);
   const [atualizandoResumo, setAtualizandoResumo] = useState(false);
+  const [vendedores, setVendedores] = useState([]);
+  const [editandoCloser, setEditandoCloser] = useState(false);
+  const [redistribuindo, setRedistribuindo] = useState(false);
 
   const [campos, setCampos] = useState({
     dorPrincipal: '',
@@ -108,16 +114,34 @@ export default function LeadCard() {
     resultadoCall: '',
   });
 
+  const redistribuirLead = async (novoVendedorId) => {
+    setRedistribuindo(true);
+    try {
+      const { data } = await api.patch(`/leads/${lead.id}/vendedor`, {
+        vendedor_id: novoVendedorId,
+        motivo: 'Redistribuicao manual pelo admin',
+      });
+      setLead(data);
+      setEditandoCloser(false);
+    } catch (err) {
+      console.error('Erro ao redistribuir:', err);
+    } finally {
+      setRedistribuindo(false);
+    }
+  };
+
   const carregar = useCallback(async () => {
     try {
-      const [leadRes, intRes, dupRes] = await Promise.all([
+      const [leadRes, intRes, dupRes, vendRes] = await Promise.all([
         api.get(`/leads/${id}`),
         api.get(`/leads/${id}/interacoes`),
         api.get(`/leads/${id}/duplicatas`).catch(() => ({ data: [] })),
+        api.get('/vendedores').catch(() => ({ data: [] })),
       ]);
       setLead(leadRes.data);
       setInteracoes(intRes.data);
       setDuplicatas(dupRes.data);
+      setVendedores(Array.isArray(vendRes.data) ? vendRes.data : []);
       setCampos({
         dorPrincipal: leadRes.data.dorPrincipal || '',
         tracoCarater: leadRes.data.tracoCarater || '',
@@ -346,7 +370,41 @@ export default function LeadCard() {
               </div>
               <div className="flex items-center gap-2 text-[12px]">
                 <User size={14} className="text-text-muted" />
-                <span className="text-text-primary">{lead.vendedor?.nomeExibicao || 'Nao atribuido'}</span>
+                {isAdmin && !editandoCloser ? (
+                  <button
+                    onClick={() => setEditandoCloser(true)}
+                    className="flex items-center gap-1 text-text-primary hover:text-accent-violet-light transition-colors group"
+                    title="Clique para alterar o closer"
+                  >
+                    <span>{lead.vendedor?.nomeExibicao || 'Nao atribuido'}</span>
+                    <ChevronRight size={12} className="text-text-muted group-hover:text-accent-violet-light transition-colors" />
+                  </button>
+                ) : isAdmin && editandoCloser ? (
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={lead.vendedorId || ''}
+                      onChange={(e) => redistribuirLead(parseInt(e.target.value, 10))}
+                      disabled={redistribuindo}
+                      className="bg-bg-input border border-border-default rounded-lg text-text-primary text-[12px] px-2 py-1 outline-none focus:border-[rgba(108,92,231,0.4)] disabled:opacity-50"
+                    >
+                      <option value="" disabled>Selecionar closer...</option>
+                      {vendedores.filter(v => v.ativo !== false).map(v => (
+                        <option key={v.id} value={v.id}>{v.nomeExibicao || v.usuario?.nome}</option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => setEditandoCloser(false)}
+                      className="text-text-muted hover:text-text-primary text-[10px]"
+                    >
+                      Cancelar
+                    </button>
+                    {redistribuindo && (
+                      <Loader size={12} className="animate-spin text-accent-violet-light" />
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-text-primary">{lead.vendedor?.nomeExibicao || 'Nao atribuido'}</span>
+                )}
               </div>
             </div>
           </div>
