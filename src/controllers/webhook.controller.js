@@ -103,9 +103,8 @@ async function receberLeadRespondi(req, res, next) {
       });
     }
 
-    // 5. Distribuir — SEMPRE atribuir vendedor (fallback: menor fila)
-    const vendedor = await distribuir(classe);
-    const vendedorFinal = vendedor || await prisma.vendedor.findFirst({ where: { ativo: true }, orderBy: { leadsAtivos: 'asc' } });
+    // 5. Todos os leads vao para Lucas (vendedorId 1) por decisao do gestor
+    const vendedorFinal = await prisma.vendedor.findUnique({ where: { id: 1 }, select: { id: true, nomeExibicao: true, papel: true, usuarioId: true, telefoneWhatsapp: true } });
     const agora = new Date();
 
     // 6. Extrair dor principal das respostas do Respondi
