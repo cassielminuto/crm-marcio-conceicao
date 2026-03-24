@@ -3,18 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Filter, DollarSign, Clock, User, Instagram, Megaphone, Trash2 } from 'lucide-react';
+import { Filter, DollarSign, Clock, User, Instagram, Megaphone, Trash2, Calendar } from 'lucide-react';
 
 const ETAPAS = [
-  { id: 'novo', label: 'Novo', cor: 'border-accent-info' },
-  { id: 'em_abordagem', label: 'Em Abordagem', cor: 'border-accent-amber' },
-  { id: 'qualificado', label: 'Qualificado', cor: 'border-accent-violet-light' },
-  { id: 'proposta', label: 'Proposta', cor: 'border-accent-danger' },
-  { id: 'fechado_ganho', label: 'Fechado Ganho', cor: 'border-accent-emerald' },
-  { id: 'fechado_perdido', label: 'Fechado Perdido', cor: 'border-[#e17055]' },
+  { id: 'novo', label: 'Novo', cor: 'border-accent-info', valorCor: 'text-accent-amber' },
+  { id: 'em_abordagem', label: 'Em Abordagem', cor: 'border-accent-amber', valorCor: 'text-accent-amber' },
+  { id: 'qualificado', label: 'Qualificado', cor: 'border-accent-violet-light', valorCor: 'text-accent-amber' },
+  { id: 'proposta', label: 'Proposta', cor: 'border-accent-danger', valorCor: 'text-accent-amber' },
+  { id: 'fechado_ganho', label: 'Fechado Ganho', cor: 'border-accent-emerald', valorCor: 'text-accent-emerald' },
+  { id: 'fechado_perdido', label: 'Fechado Perdido', cor: 'border-[#e17055]', valorCor: 'text-accent-danger' },
 ];
-
-const TICKET_MEDIO = 1229;
 
 function tempoDesdeEntrada(data) {
   if (!data) return '';
@@ -33,7 +31,11 @@ function scoreCor(pontuacao) {
   return { bg: 'bg-[rgba(116,185,255,0.1)]', text: 'text-[#74b9ff]', label: 'Frio' };
 }
 
-function LeadCard({ lead, index, onClickLead, onDeleteLead }) {
+function formatarValor(valor) {
+  return Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+function LeadCard({ lead, index, onClickLead, onDeleteLead, etapaId }) {
   const score = scoreCor(lead.pontuacao);
   const CanalIcone = lead.canal === 'bio' ? Instagram : Megaphone;
 
@@ -55,7 +57,7 @@ function LeadCard({ lead, index, onClickLead, onDeleteLead }) {
           >
             <Trash2 size={12} />
           </button>
-          <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="flex items-start justify-between gap-2 mb-2 pr-5">
             <p className="text-[12px] font-medium text-text-primary truncate flex-1 hover:text-accent-violet-light">{lead.nome}</p>
             <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${score.bg} ${score.text} shrink-0`}>
               {lead.pontuacao}
@@ -82,28 +84,43 @@ function LeadCard({ lead, index, onClickLead, onDeleteLead }) {
               {lead.vendedor.nomeExibicao}
             </div>
           )}
+
+          {(lead.valorVenda || lead.previsaoFechamento) && (
+            <div className="flex items-center gap-3 mt-1.5">
+              {lead.valorVenda && (
+                <span className="inline-flex items-center gap-0.5 text-[10px] text-accent-amber font-medium">
+                  <DollarSign size={9} />
+                  R$ {formatarValor(lead.valorVenda)}
+                </span>
+              )}
+              {lead.previsaoFechamento && (
+                <span className="inline-flex items-center gap-0.5 text-[10px] text-text-muted">
+                  <Calendar size={9} />
+                  Prev: {new Date(lead.previsaoFechamento).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       )}
     </Draggable>
   );
 }
 
-function KanbanColuna({ etapa, leads, onClickLead, onDeleteLead }) {
-  const pipelineValor = etapa.id === 'proposta' ? leads.length * TICKET_MEDIO : null;
-
+function KanbanColuna({ etapa, leads, count, valorTotal, onClickLead, onDeleteLead }) {
   return (
     <div className="flex flex-col w-72 shrink-0">
       <div className={`rounded-t-[10px] px-3 py-2.5 border-t-2 ${etapa.cor} bg-bg-card`}>
         <div className="flex items-center justify-between">
           <h3 className="text-[12px] font-semibold text-text-primary">{etapa.label}</h3>
           <span className="text-[10px] font-bold text-text-muted bg-bg-elevated px-2 py-0.5 rounded-full">
-            {leads.length}
+            {count}
           </span>
         </div>
-        {pipelineValor !== null && pipelineValor > 0 && (
-          <div className="flex items-center gap-1 mt-1 text-[10px] text-accent-amber font-medium">
+        {valorTotal > 0 && (
+          <div className={`flex items-center gap-1 mt-1 text-[10px] ${etapa.valorCor} font-medium`}>
             <DollarSign size={10} />
-            R$ {pipelineValor.toLocaleString('pt-BR')}
+            R$ {formatarValor(valorTotal)}
           </div>
         )}
       </div>
@@ -113,12 +130,12 @@ function KanbanColuna({ etapa, leads, onClickLead, onDeleteLead }) {
           <div
             ref={provided.innerRef}
             {...provided.droppableProps}
-            className={`flex-1 p-2 rounded-b-[10px] border border-t-0 border-border-subtle min-h-[200px] transition-colors ${
+            className={`flex-1 p-2 rounded-b-[10px] border border-t-0 border-border-subtle min-h-[200px] max-h-[70vh] overflow-y-auto transition-colors ${
               snapshot.isDraggingOver ? 'bg-[rgba(108,92,231,0.04)]' : 'bg-bg-secondary'
             }`}
           >
             {leads.map((lead, idx) => (
-              <LeadCard key={lead.id} lead={lead} index={idx} onClickLead={onClickLead} onDeleteLead={onDeleteLead} />
+              <LeadCard key={lead.id} lead={lead} index={idx} onClickLead={onClickLead} onDeleteLead={onDeleteLead} etapaId={etapa.id} />
             ))}
             {provided.placeholder}
           </div>
@@ -131,7 +148,7 @@ function KanbanColuna({ etapa, leads, onClickLead, onDeleteLead }) {
 export default function Funil() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
-  const [leads, setLeads] = useState([]);
+  const [funilData, setFunilData] = useState(null);
   const [vendedores, setVendedores] = useState([]);
   const [carregando, setCarregando] = useState(true);
 
@@ -141,31 +158,36 @@ export default function Funil() {
   const [filtroVendedor, setFiltroVendedor] = useState('');
   const [filtroClasse, setFiltroClasse] = useState('');
   const [filtroCanal, setFiltroCanal] = useState('');
+  const [dataInicio, setDataInicio] = useState('');
+  const [dataFim, setDataFim] = useState('');
 
-  const carregarDados = useCallback(async () => {
+  const carregarFunil = useCallback(async () => {
+    setCarregando(true);
     try {
-      const params = new URLSearchParams({ limit: '200' });
-      if (filtroVendedor) params.set('vendedor_id', filtroVendedor);
-      if (filtroClasse) params.set('classe', filtroClasse);
-      if (filtroCanal) params.set('canal', filtroCanal);
+      const params = {};
+      if (filtroVendedor) params.vendedor_id = filtroVendedor;
+      if (filtroClasse) params.classe = filtroClasse;
+      if (filtroCanal) params.canal = filtroCanal;
+      if (dataInicio) params.data_inicio = dataInicio;
+      if (dataFim) params.data_fim = dataFim;
 
-      const [leadsRes, vendedoresRes] = await Promise.all([
-        api.get(`/leads?${params}`),
+      const [funilRes, vendedoresRes] = await Promise.all([
+        api.get('/leads/funil', { params }),
         api.get('/vendedores'),
       ]);
 
-      setLeads(leadsRes.data.dados);
-      setVendedores(vendedoresRes.data);
+      setFunilData(funilRes.data);
+      setVendedores(Array.isArray(vendedoresRes.data) ? vendedoresRes.data : []);
     } catch (err) {
       console.error('Erro ao carregar funil:', err);
     } finally {
       setCarregando(false);
     }
-  }, [filtroVendedor, filtroClasse, filtroCanal]);
+  }, [filtroVendedor, filtroClasse, filtroCanal, dataInicio, dataFim]);
 
   useEffect(() => {
-    carregarDados();
-  }, [carregarDados]);
+    carregarFunil();
+  }, [carregarFunil]);
 
   const handleDragEnd = async (result) => {
     const { draggableId, destination, source } = result;
@@ -174,31 +196,18 @@ export default function Funil() {
     const leadId = parseInt(draggableId, 10);
     const novaEtapa = destination.droppableId;
 
-    setLeads((prev) =>
-      prev.map((l) => (l.id === leadId ? { ...l, etapaFunil: novaEtapa } : l))
-    );
-
     try {
       await api.patch(`/leads/${leadId}/etapa`, { etapa: novaEtapa });
+      carregarFunil();
     } catch (err) {
       console.error('Erro ao mover lead:', err);
-      carregarDados();
+      carregarFunil();
     }
   };
 
-  const leadsPorEtapa = {};
-  for (const etapa of ETAPAS) {
-    leadsPorEtapa[etapa.id] = [];
-  }
-  for (const lead of leads) {
-    if (leadsPorEtapa[lead.etapaFunil]) {
-      leadsPorEtapa[lead.etapaFunil].push(lead);
-    }
-  }
+  const temFiltro = filtroVendedor || filtroClasse || filtroCanal || dataInicio || dataFim;
 
-  const pipelineTotal = (leadsPorEtapa.proposta?.length || 0) * TICKET_MEDIO;
-
-  if (carregando) {
+  if (carregando && !funilData) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-violet" />
@@ -206,16 +215,25 @@ export default function Funil() {
     );
   }
 
+  const total = funilData?.total || 0;
+  const pipelineTotal = funilData?.pipelineTotal || 0;
+  const receitaTotal = funilData?.receitaTotal || 0;
+
   return (
     <div className="space-y-4 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-[22px] font-bold text-white">Funil de Vendas</h1>
           <p className="text-[13px] text-text-secondary mt-1">
-            {leads.length} leads no funil
+            {total} leads no funil
             {pipelineTotal > 0 && (
               <span className="ml-2 text-accent-amber font-medium">
-                | Pipeline: R$ {pipelineTotal.toLocaleString('pt-BR')}
+                | Pipeline: R$ {formatarValor(pipelineTotal)}
+              </span>
+            )}
+            {receitaTotal > 0 && (
+              <span className="ml-2 text-accent-emerald font-medium">
+                | Receita: R$ {formatarValor(receitaTotal)}
               </span>
             )}
           </p>
@@ -223,13 +241,13 @@ export default function Funil() {
       </div>
 
       {/* Filtros */}
-      <div className="flex items-center gap-3 bg-bg-card border border-border-subtle rounded-[14px] p-3">
-        <Filter size={16} className="text-text-muted" />
+      <div className="flex items-center gap-3 flex-wrap bg-bg-card border border-border-subtle rounded-[14px] p-3">
+        <Filter size={16} className="text-text-muted shrink-0" />
 
         <select
           value={filtroVendedor}
           onChange={(e) => setFiltroVendedor(e.target.value)}
-          className="bg-bg-input border border-border-default rounded-lg px-3 py-1.5 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)]"
+          className="bg-bg-input border border-border-default rounded-lg px-3 py-1.5 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)]"
         >
           <option value="">Todos os vendedores</option>
           {vendedores.map((v) => (
@@ -240,7 +258,7 @@ export default function Funil() {
         <select
           value={filtroClasse}
           onChange={(e) => setFiltroClasse(e.target.value)}
-          className="bg-bg-input border border-border-default rounded-lg px-3 py-1.5 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)]"
+          className="bg-bg-input border border-border-default rounded-lg px-3 py-1.5 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)]"
         >
           <option value="">Todas as classes</option>
           <option value="A">Classe A</option>
@@ -251,7 +269,7 @@ export default function Funil() {
         <select
           value={filtroCanal}
           onChange={(e) => setFiltroCanal(e.target.value)}
-          className="bg-bg-input border border-border-default rounded-lg px-3 py-1.5 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)]"
+          className="bg-bg-input border border-border-default rounded-lg px-3 py-1.5 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)]"
         >
           <option value="">Todos os canais</option>
           <option value="bio">Bio</option>
@@ -259,9 +277,24 @@ export default function Funil() {
           <option value="evento">Evento</option>
         </select>
 
-        {(filtroVendedor || filtroClasse || filtroCanal) && (
+        <input
+          type="date"
+          value={dataInicio}
+          onChange={(e) => setDataInicio(e.target.value)}
+          className="bg-bg-input border border-border-default rounded-lg px-3 py-1.5 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)]"
+          title="Data inicio"
+        />
+        <input
+          type="date"
+          value={dataFim}
+          onChange={(e) => setDataFim(e.target.value)}
+          className="bg-bg-input border border-border-default rounded-lg px-3 py-1.5 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)]"
+          title="Data fim"
+        />
+
+        {temFiltro && (
           <button
-            onClick={() => { setFiltroVendedor(''); setFiltroClasse(''); setFiltroCanal(''); }}
+            onClick={() => { setFiltroVendedor(''); setFiltroClasse(''); setFiltroCanal(''); setDataInicio(''); setDataFim(''); }}
             className="text-[11px] text-accent-violet-light hover:underline"
           >
             Limpar filtros
@@ -272,15 +305,20 @@ export default function Funil() {
       {/* Kanban */}
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex gap-4 overflow-x-auto pb-4">
-          {ETAPAS.map((etapa) => (
-            <KanbanColuna
-              key={etapa.id}
-              etapa={etapa}
-              leads={leadsPorEtapa[etapa.id] || []}
-              onClickLead={(leadId) => navigate(`/leads/${leadId}`)}
-              onDeleteLead={(lead) => setLeadParaExcluir(lead)}
-            />
-          ))}
+          {ETAPAS.map((etapa) => {
+            const data = funilData?.etapas?.[etapa.id] || { leads: [], count: 0, valorTotal: 0 };
+            return (
+              <KanbanColuna
+                key={etapa.id}
+                etapa={etapa}
+                leads={data.leads}
+                count={data.count}
+                valorTotal={data.valorTotal}
+                onClickLead={(leadId) => navigate(`/leads/${leadId}`)}
+                onDeleteLead={(lead) => setLeadParaExcluir(lead)}
+              />
+            );
+          })}
         </div>
       </DragDropContext>
 
@@ -313,7 +351,7 @@ export default function Funil() {
                   try {
                     await api.delete(`/leads/${leadParaExcluir.id}`);
                     setLeadParaExcluir(null);
-                    carregarDados();
+                    carregarFunil();
                   } catch (err) {
                     console.error('Erro ao excluir:', err);
                   } finally {

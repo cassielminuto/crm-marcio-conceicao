@@ -44,6 +44,8 @@ export default function MeusLeads() {
   const [filtroEtapa, setFiltroEtapa] = useState('');
   const [filtroClasse, setFiltroClasse] = useState('');
   const [pagina, setPagina] = useState(1);
+  const [dataInicio, setDataInicio] = useState('');
+  const [dataFim, setDataFim] = useState('');
   const [leadParaExcluir, setLeadParaExcluir] = useState(null);
   const [excluindo, setExcluindo] = useState(false);
 
@@ -62,6 +64,8 @@ export default function MeusLeads() {
       if (buscaDebounced) params.set('busca', buscaDebounced);
       if (filtroEtapa) params.set('etapa', filtroEtapa);
       if (filtroClasse) params.set('classe', filtroClasse);
+      if (dataInicio) params.set('data_inicio', dataInicio);
+      if (dataFim) params.set('data_fim', dataFim);
 
       const { data } = await api.get(`/leads?${params}`);
       setLeads(data.dados);
@@ -71,7 +75,7 @@ export default function MeusLeads() {
     } finally {
       setCarregando(false);
     }
-  }, [pagina, buscaDebounced, filtroEtapa, filtroClasse]);
+  }, [pagina, buscaDebounced, filtroEtapa, filtroClasse, dataInicio, dataFim]);
 
   useEffect(() => {
     carregarLeads();
@@ -133,9 +137,24 @@ export default function MeusLeads() {
           <option value="C">Classe C</option>
         </select>
 
-        {(busca || filtroEtapa || filtroClasse) && (
+        <input
+          type="date"
+          value={dataInicio}
+          onChange={(e) => { setDataInicio(e.target.value); setPagina(1); }}
+          className="bg-bg-input border border-border-default rounded-lg px-3 py-1.5 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)]"
+          title="Data inicio"
+        />
+        <input
+          type="date"
+          value={dataFim}
+          onChange={(e) => { setDataFim(e.target.value); setPagina(1); }}
+          className="bg-bg-input border border-border-default rounded-lg px-3 py-1.5 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)]"
+          title="Data fim"
+        />
+
+        {(busca || filtroEtapa || filtroClasse || dataInicio || dataFim) && (
           <button
-            onClick={() => { setBusca(''); setFiltroEtapa(''); setFiltroClasse(''); setPagina(1); }}
+            onClick={() => { setBusca(''); setFiltroEtapa(''); setFiltroClasse(''); setDataInicio(''); setDataFim(''); setPagina(1); }}
             className="text-[11px] text-accent-violet-light hover:underline"
           >
             Limpar
@@ -156,6 +175,8 @@ export default function MeusLeads() {
                 <th className="text-center text-[11px] font-semibold text-text-muted uppercase px-4 py-3">Canal</th>
                 <th className="text-center text-[11px] font-semibold text-text-muted uppercase px-4 py-3">Etapa</th>
                 <th className="text-left text-[11px] font-semibold text-text-muted uppercase px-4 py-3">Vendedor</th>
+                <th className="text-center text-[11px] font-semibold text-text-muted uppercase px-4 py-3">Valor</th>
+                <th className="text-center text-[11px] font-semibold text-text-muted uppercase px-4 py-3">Prev. Fech.</th>
                 <th className="text-left text-[11px] font-semibold text-text-muted uppercase px-4 py-3">Entrada</th>
                 <th className="w-[50px]"></th>
               </tr>
@@ -228,6 +249,24 @@ export default function MeusLeads() {
                       </td>
                       <td className="px-4 py-3 text-[12px] text-text-secondary">
                         {lead.vendedor?.nomeExibicao || '—'}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {lead.valorVenda ? (
+                          <span className="text-[12px] font-semibold text-accent-amber">
+                            R$ {Number(lead.valorVenda).toLocaleString('pt-BR')}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-text-muted">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {lead.previsaoFechamento ? (
+                          <span className="text-[11px] text-text-secondary">
+                            {new Date(lead.previsaoFechamento).toLocaleDateString('pt-BR')}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-text-muted">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-[11px] text-text-muted">
                         {new Date(lead.createdAt).toLocaleDateString('pt-BR')}

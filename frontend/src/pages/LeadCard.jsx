@@ -114,6 +114,8 @@ export default function LeadCard() {
     tracoCarater: '',
     objecaoPrincipal: '',
     resultadoCall: '',
+    valorVenda: '',
+    previsaoFechamento: '',
   });
 
   const redistribuirLead = async (novoVendedorId) => {
@@ -161,6 +163,8 @@ export default function LeadCard() {
         tracoCarater: leadRes.data.tracoCarater || '',
         objecaoPrincipal: leadRes.data.objecaoPrincipal || '',
         resultadoCall: leadRes.data.resultadoCall || '',
+        valorVenda: leadRes.data.valorVenda || '',
+        previsaoFechamento: leadRes.data.previsaoFechamento ? new Date(leadRes.data.previsaoFechamento).toISOString().slice(0, 10) : '',
       });
     } catch (err) {
       console.error('Erro ao carregar lead:', err);
@@ -180,6 +184,9 @@ export default function LeadCard() {
       if (campos.tracoCarater !== (lead.tracoCarater || '')) payload.tracoCarater = campos.tracoCarater || null;
       if (campos.objecaoPrincipal !== (lead.objecaoPrincipal || '')) payload.objecaoPrincipal = campos.objecaoPrincipal || null;
       if (campos.resultadoCall !== (lead.resultadoCall || '')) payload.resultadoCall = campos.resultadoCall || null;
+      if (campos.valorVenda !== '' && campos.valorVenda !== (lead.valorVenda || '')) payload.valorVenda = parseFloat(campos.valorVenda);
+      else if (campos.valorVenda === '' && lead.valorVenda) payload.valorVenda = null;
+      if (campos.previsaoFechamento !== (lead.previsaoFechamento ? new Date(lead.previsaoFechamento).toISOString().slice(0, 10) : '')) payload.previsaoFechamento = campos.previsaoFechamento || null;
 
       if (Object.keys(payload).length === 0) {
         setSalvoMsg('Sem alteracoes');
@@ -477,6 +484,32 @@ export default function LeadCard() {
                   ))}
                 </select>
               </CampoIA>
+
+              <div>
+                <label className="text-[10px] font-semibold text-text-muted uppercase tracking-[0.5px] mb-1 flex items-center gap-1">
+                  Valor da Venda (R$)
+                </label>
+                <input
+                  type="number"
+                  value={campos.valorVenda}
+                  onChange={(e) => setCampos({ ...campos, valorVenda: e.target.value })}
+                  placeholder="1229"
+                  step="0.01"
+                  className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)] transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-semibold text-text-muted uppercase tracking-[0.5px] mb-1 flex items-center gap-1">
+                  Previsao de Fechamento
+                </label>
+                <input
+                  type="date"
+                  value={campos.previsaoFechamento}
+                  onChange={(e) => setCampos({ ...campos, previsaoFechamento: e.target.value })}
+                  className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)] transition-all"
+                />
+              </div>
             </div>
           </div>
 

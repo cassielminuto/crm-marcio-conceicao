@@ -241,6 +241,7 @@ async function atualizar(req, res, next) {
       'objecaoPrincipal', 'resultadoCall', 'vendaRealizada', 'valorVenda',
       'dataAbordagem', 'dataConversao', 'motivoPerda', 'status',
       'resumoConversa', 'proximaAcao', 'proximaAcaoData',
+      'previsaoFechamento',
     ];
 
     const dados = {};
@@ -257,6 +258,8 @@ async function atualizar(req, res, next) {
     // Converter datas se vierem como string
     if (dados.dataAbordagem) dados.dataAbordagem = new Date(dados.dataAbordagem);
     if (dados.dataConversao) dados.dataConversao = new Date(dados.dataConversao);
+    if (dados.previsaoFechamento) dados.previsaoFechamento = new Date(dados.previsaoFechamento);
+    if (dados.valorVenda !== undefined) dados.valorVenda = dados.valorVenda !== null ? parseFloat(dados.valorVenda) : null;
 
     // Se marcou venda realizada, atualizar conversões do vendedor
     if (dados.vendaRealizada === true && !existente.vendaRealizada && existente.vendedorId) {
@@ -710,6 +713,67 @@ async function excluir(req, res, next) {
   }
 }
 
+async function listarFunil(req, res, next) {
+  try {
+    const { vendedor_id, classe, canal, data_inicio, data_fim } = req.query;
+
+    const where = {};
+
+    if (vendedor_id && vendedor_id !== '' && vendedor_id !== 'todos') {
+      where.vendedorId = parseInt(vendedor_id, 10);
+    }
+    if (classe && classe !== '' && classe !== 'todas') where.classe = classe;
+    if (canal && canal !== '' && canal !== 'todos') where.canal = canal;
+
+    if (data_inicio || data_fim) {
+      where.createdAt = {};
+      if (data_inicio) where.createdAt.gte = new Date(data_inicio);
+      if (data_fim) where.createdAt.lte = new Date(data_fim + 'T23:59:59.999Z');
+    }
+
+    if (req.usuario.perfil === 'vendedor' && req.usuario.vendedorId) {
+      where.vendedorId = req.usuario.vendedorId;
+    }
+
+    const leads = await prisma.lead.findMany({
+      where,
+      orderBy: [{ pontuacao: 'desc' }, { createdAt: 'desc' }],
+      take: 5000,
+      include: {
+        vendedor: { select: { id: true, nomeExibicao: true } },
+      },
+    });
+
+    const TICKET_MEDIO = 1229;
+    const etapasList = ['novo', 'em_abordagem', 'qualificado', 'proposta', 'fechado_ganho', 'fechado_perdido', 'nurturing'];
+    const etapas = {};
+
+    for (const e of etapasList) {
+      etapas[e] = { leads: [], count: 0, valorTotal: 0 };
+    }
+
+    for (const lead of leads) {
+      const e = lead.etapaFunil;
+      if (!etapas[e]) etapas[e] = { leads: [], count: 0, valorTotal: 0 };
+      etapas[e].leads.push(lead);
+      etapas[e].count++;
+      const valor = Number(lead.valorVenda) || (lead.pontuacao >= 45 ? TICKET_MEDIO : 0);
+      etapas[e].valorTotal += valor;
+    }
+
+    let pipelineTotal = 0;
+    for (const e of ['novo', 'em_abordagem', 'qualificado', 'proposta']) {
+      pipelineTotal += etapas[e].valorTotal;
+    }
+
+    const receitaTotal = etapas['fechado_ganho'].valorTotal;
+
+    res.json({ etapas, total: leads.length, pipelineTotal, receitaTotal });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   listar,
   detalhe,
@@ -726,4 +790,5 @@ module.exports = {
   gerarIcs,
   atualizarResumo,
   excluir,
+  listarFunil,
 };

@@ -49,6 +49,10 @@ const atualizarLeadSchema = z.object({
   proxima_acao: z.string().optional().nullable(),
   proximaAcaoData: z.string().optional().nullable(),
   proxima_acao_data: z.string().optional().nullable(),
+  previsaoFechamento: z.string().optional().nullable(),
+  previsao_fechamento: z.string().optional().nullable(),
+  valorVenda: z.number().optional().nullable(),
+  valor_venda: z.number().optional().nullable(),
 }).strict(false);
 
 const moverEtapaSchema = z.object({
@@ -69,6 +73,7 @@ const criarInteracaoSchema = z.object({
 
 // Rotas
 router.get('/por-dia', autenticar, leadsController.leadsPorDia);
+router.get('/funil', autenticar, leadsController.listarFunil);
 router.get('/', autenticar, leadsController.listar);
 router.get('/:id', autenticar, leadsController.detalhe);
 router.post('/', autenticar, validar(criarLeadSchema), leadsController.criar);

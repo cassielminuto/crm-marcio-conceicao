@@ -194,6 +194,7 @@ model Lead {
   dataAtribuicao      DateTime?     @map("data_atribuicao")
   dataAbordagem       DateTime?     @map("data_abordagem")
   dataConversao       DateTime?     @map("data_conversao")
+  previsaoFechamento  DateTime?     @map("previsao_fechamento")
   motivoPerda         String?       @map("motivo_perda")
   createdAt           DateTime      @default(now()) @map("created_at")
   updatedAt           DateTime      @updatedAt @map("updated_at")
