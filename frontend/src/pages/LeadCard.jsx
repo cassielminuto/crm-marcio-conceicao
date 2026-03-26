@@ -100,6 +100,7 @@ export default function LeadCard() {
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
   const [etapasConfig, setEtapasConfig] = useState([]);
+  const [editandoEtapa, setEditandoEtapa] = useState(false);
 
   const [campos, setCampos] = useState({
     dorPrincipal: '',
@@ -238,9 +239,37 @@ export default function LeadCard() {
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold text-white ${score.bg}`}>
               {lead.pontuacao} — {score.label}
             </span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium" style={{ background: hexToRgba((etapasConfig.find(e => e.slug === lead.etapaFunil)?.cor || '#6c5ce7'), 0.12), color: etapasConfig.find(e => e.slug === lead.etapaFunil)?.cor || '#6c5ce7' }}>
-              {etapasConfig.find(e => e.slug === lead.etapaFunil)?.label || lead.etapaFunil}
-            </span>
+            {editandoEtapa ? (
+              <select
+                value={lead.etapaFunil}
+                onChange={async (e) => {
+                  const novaEtapa = e.target.value;
+                  try {
+                    await api.patch(`/leads/${lead.id}`, { etapaFunil: novaEtapa });
+                    setLead(prev => ({ ...prev, etapaFunil: novaEtapa }));
+                    setEditandoEtapa(false);
+                  } catch (err) {
+                    console.error('Erro ao mudar etapa:', err);
+                  }
+                }}
+                onBlur={() => setEditandoEtapa(false)}
+                autoFocus
+                className="bg-bg-input border border-border-default rounded-lg text-text-primary text-[11px] px-2 py-1 outline-none focus:border-[rgba(108,92,231,0.4)]"
+              >
+                {etapasConfig.map(et => (
+                  <option key={et.slug} value={et.slug}>{et.label}</option>
+                ))}
+              </select>
+            ) : (
+              <span
+                onClick={() => setEditandoEtapa(true)}
+                className="px-2.5 py-1 rounded-lg text-[11px] font-semibold cursor-pointer hover:ring-2 hover:ring-white/10 transition-all"
+                style={{ backgroundColor: hexToRgba((etapasConfig.find(e => e.slug === lead.etapaFunil)?.cor || '#6c5ce7'), 0.12), color: etapasConfig.find(e => e.slug === lead.etapaFunil)?.cor || '#6c5ce7' }}
+                title="Clique para mudar a etapa"
+              >
+                {etapasConfig.find(e => e.slug === lead.etapaFunil)?.label || lead.etapaFunil}
+              </span>
+            )}
           </div>
         </div>
         <button

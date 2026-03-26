@@ -246,7 +246,7 @@ async function atualizar(req, res, next) {
       'objecaoPrincipal', 'resultadoCall', 'vendaRealizada', 'valorVenda',
       'dataAbordagem', 'dataConversao', 'motivoPerda', 'status',
       'resumoConversa', 'proximaAcao', 'proximaAcaoData',
-      'previsaoFechamento',
+      'previsaoFechamento', 'etapaFunil',
     ];
 
     const dados = {};
@@ -281,6 +281,19 @@ async function atualizar(req, res, next) {
         vendedor: { select: { id: true, nomeExibicao: true, papel: true } },
       },
     });
+
+    // Registrar mudança de etapa no histórico
+    if (dados.etapaFunil && dados.etapaFunil !== existente.etapaFunil) {
+      await prisma.funilHistorico.create({
+        data: {
+          leadId,
+          etapaAnterior: existente.etapaFunil,
+          etapaNova: dados.etapaFunil,
+          vendedorId: req.usuario.vendedorId || null,
+          motivo: 'Mudanca manual pelo card do lead',
+        },
+      });
+    }
 
     res.json(lead);
   } catch (err) {

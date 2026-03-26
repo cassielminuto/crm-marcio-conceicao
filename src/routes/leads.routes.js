@@ -56,7 +56,7 @@ const atualizarLeadSchema = z.object({
 }).strict(false);
 
 const moverEtapaSchema = z.object({
-  etapa: z.enum(['novo', 'em_abordagem', 'qualificado', 'proposta', 'fechado_ganho', 'fechado_perdido', 'nurturing']),
+  etapa: z.string().min(1, 'Etapa é obrigatória'),
   motivo: z.string().optional().nullable(),
 });
 
