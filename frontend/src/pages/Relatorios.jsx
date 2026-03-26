@@ -53,7 +53,8 @@ export default function Relatorios() {
   const carregar = useCallback(async () => {
     setCarregando(true);
     try {
-      const dp = `data_inicio=${dataInicio.toISOString()}&data_fim=${dataFim.toISOString()}`;
+      const fmtDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const dp = `data_inicio=${fmtDate(dataInicio)}&data_fim=${fmtDate(dataFim)}`;
       const [geralRes, canalRes, classeRes, closerRes, diasRes] = await Promise.all([
         api.get(`/relatorios/geral?${dp}`),
         api.get(`/relatorios/por-canal?${dp}`),

@@ -34,7 +34,11 @@ async function listar(req, res, next) {
     if (data_inicio || data_fim) {
       where.createdAt = {};
       if (data_inicio) where.createdAt.gte = new Date(data_inicio);
-      if (data_fim) where.createdAt.lte = new Date(data_fim);
+      if (data_fim) {
+        // Se data_fim é YYYY-MM-DD (10 chars), incluir o dia inteiro
+        const fim = String(data_fim);
+        where.createdAt.lte = new Date(fim.length === 10 ? fim + 'T23:59:59.999Z' : fim);
+      }
     }
 
     if (busca) {

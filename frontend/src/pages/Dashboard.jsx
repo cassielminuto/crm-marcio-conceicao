@@ -83,7 +83,9 @@ export default function Dashboard() {
   const carregarDados = useCallback(async () => {
     setCarregando(true);
     try {
-      const dp = `data_inicio=${dataInicio.toISOString()}&data_fim=${dataFim.toISOString()}`;
+      // Enviar datas como YYYY-MM-DD para consistencia com Funil
+      const fmtDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const dp = `data_inicio=${fmtDate(dataInicio)}&data_fim=${fmtDate(dataFim)}`;
 
       const promises = [
         api.get('/vendedores'),
