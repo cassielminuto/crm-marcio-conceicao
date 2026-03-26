@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard,
   Kanban,
+  DollarSign,
   Users,
   CalendarCheck,
   Trophy,
@@ -16,6 +17,7 @@ import {
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/funil', label: 'Funil', icon: Kanban },
+  { to: '/vendas', label: 'Vendas', icon: DollarSign },
   { to: '/meus-leads', label: 'Meus Leads', icon: Users },
   { to: '/follow-ups', label: 'Follow-ups', icon: CalendarCheck },
   { to: '/ranking', label: 'Ranking', icon: Trophy },

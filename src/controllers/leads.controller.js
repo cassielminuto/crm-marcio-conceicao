@@ -30,6 +30,7 @@ async function listar(req, res, next) {
     if (vendedor_id) where.vendedorId = parseInt(vendedor_id, 10);
     if (canal) where.canal = canal;
     if (status) where.status = status;
+    if (req.query.venda_realizada === 'true') where.vendaRealizada = true;
 
     if (data_inicio || data_fim) {
       where.createdAt = {};
