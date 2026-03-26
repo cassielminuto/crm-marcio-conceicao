@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Filter, Clock, User, Instagram, Megaphone, Trash2, Calendar } from 'lucide-react';
+import { Filter, Clock, User, Instagram, Megaphone, Trash2, Calendar, X, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 
+const CORES = ['#3b82f6','#eab308','#a855f7','#f97316','#22c55e','#ef4444','#06b6d4','#ec4899','#6366f1','#84cc16'];
 
 function tempoDesdeEntrada(data) {
   if (!data) return '';
@@ -114,19 +115,89 @@ function LeadCard({ lead, index, onClickLead, onDeleteLead, onSalvarValor }) {
   );
 }
 
-function KanbanColuna({ etapa, leads, count, onClickLead, onDeleteLead, onSalvarValor }) {
+function KanbanColuna({ etapa, leads, count, onClickLead, onDeleteLead, onSalvarValor, isAdmin, editandoLabel, setEditandoLabel, editLabel, setEditLabel, salvarLabel, editandoCor, setEditandoCor, atualizarCor, confirmarExclusaoEtapa, moverEtapa, etapaIndex, etapasTotal }) {
   const somaColuna = leads.reduce((sum, l) => sum + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
   const valorCor = etapa.tipo === 'ganho' ? 'text-accent-emerald' : etapa.tipo === 'perdido' ? 'text-accent-danger' : 'text-accent-amber';
 
   return (
     <div className="flex flex-col w-72 shrink-0">
       <div className="rounded-t-[10px] px-3 py-2.5 border-t-2 bg-bg-card" style={{ borderTopColor: etapa.cor }}>
-        <div className="flex items-center justify-between">
-          <h3 className="text-[12px] font-semibold text-text-primary">{etapa.label}</h3>
-          <span className="text-[10px] font-bold text-text-muted bg-bg-elevated px-2 py-0.5 rounded-full">
-            {count}
-          </span>
-        </div>
+        {isAdmin ? (
+          <div className="flex items-center gap-2 group/header">
+            {/* Reorder arrows */}
+            <button
+              onClick={() => moverEtapa(etapa.id, 'left')}
+              disabled={etapaIndex === 0}
+              className="p-0.5 rounded text-text-muted hover:text-text-primary disabled:opacity-20 opacity-0 group-hover/header:opacity-100 transition-all"
+            >
+              <ChevronLeft size={12} />
+            </button>
+
+            {/* Color indicator - clickable */}
+            <div className="relative">
+              <button
+                onClick={() => setEditandoCor(editandoCor === etapa.id ? null : etapa.id)}
+                className="w-3 h-3 rounded-full cursor-pointer hover:ring-2 hover:ring-white/20 shrink-0"
+                style={{ backgroundColor: etapa.cor }}
+              />
+              {editandoCor === etapa.id && (
+                <div className="absolute top-5 left-0 z-50 bg-bg-card border border-border-default rounded-xl p-2 flex gap-1.5 flex-wrap w-[140px] shadow-lg">
+                  {CORES.map(c => (
+                    <button key={c} onClick={() => { atualizarCor(etapa.id, c); setEditandoCor(null); }} className="w-5 h-5 rounded-full hover:ring-2 hover:ring-white/30 transition-all" style={{ backgroundColor: c }} />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Label - editable */}
+            {editandoLabel === etapa.id ? (
+              <input
+                value={editLabel}
+                onChange={e => setEditLabel(e.target.value)}
+                onBlur={() => salvarLabel(etapa.id)}
+                onKeyDown={e => { if (e.key === 'Enter') salvarLabel(etapa.id); if (e.key === 'Escape') setEditandoLabel(null); }}
+                className="bg-bg-input border border-border-default rounded px-2 py-0.5 text-[12px] font-semibold text-white outline-none w-[100px]"
+                autoFocus
+              />
+            ) : (
+              <span
+                onClick={() => { setEditandoLabel(etapa.id); setEditLabel(etapa.label); }}
+                className="text-[12px] font-semibold text-text-primary cursor-pointer hover:text-accent-violet-light transition-colors truncate"
+              >
+                {etapa.label}
+              </span>
+            )}
+
+            {/* Count */}
+            <span className="text-[10px] font-bold text-text-muted bg-bg-elevated px-2 py-0.5 rounded-full shrink-0">
+              {count}
+            </span>
+
+            {/* Reorder right */}
+            <button
+              onClick={() => moverEtapa(etapa.id, 'right')}
+              disabled={etapaIndex >= etapasTotal - 1}
+              className="p-0.5 rounded text-text-muted hover:text-text-primary disabled:opacity-20 opacity-0 group-hover/header:opacity-100 transition-all"
+            >
+              <ChevronRight size={12} />
+            </button>
+
+            {/* Delete */}
+            <button
+              onClick={() => confirmarExclusaoEtapa(etapa)}
+              className="p-0.5 rounded text-text-muted hover:text-accent-danger opacity-0 group-hover/header:opacity-100 transition-all ml-auto"
+            >
+              <X size={12} />
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between">
+            <h3 className="text-[12px] font-semibold text-text-primary">{etapa.label}</h3>
+            <span className="text-[10px] font-bold text-text-muted bg-bg-elevated px-2 py-0.5 rounded-full">
+              {count}
+            </span>
+          </div>
+        )}
         <div className={`mt-1 text-[10px] font-medium ${somaColuna > 0 ? valorCor : 'text-text-muted'}`}>
           {formatarMoeda(somaColuna)}
         </div>
@@ -155,6 +226,7 @@ function KanbanColuna({ etapa, leads, count, onClickLead, onDeleteLead, onSalvar
 export default function Funil() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
+  const isAdmin = usuario?.perfil === 'admin' || usuario?.perfil === 'gestor';
   const [etapas, setEtapas] = useState([]);
   const [funilData, setFunilData] = useState(null);
   const [vendedores, setVendedores] = useState([]);
@@ -162,6 +234,18 @@ export default function Funil() {
 
   const [leadParaExcluir, setLeadParaExcluir] = useState(null);
   const [excluindo, setExcluindo] = useState(false);
+
+  // Admin: inline editing state
+  const [editandoLabel, setEditandoLabel] = useState(null);
+  const [editLabel, setEditLabel] = useState('');
+  const [editandoCor, setEditandoCor] = useState(null);
+  const [etapaParaExcluir, setEtapaParaExcluir] = useState(null);
+  const [moverParaId, setMoverParaId] = useState('');
+  const [processandoExclusaoEtapa, setProcessandoExclusaoEtapa] = useState(false);
+  const [novaEtapaAberta, setNovaEtapaAberta] = useState(false);
+  const [novaLabel, setNovaLabel] = useState('');
+  const [novoTipo, setNovoTipo] = useState('normal');
+  const [criandoEtapa, setCriandoEtapa] = useState(false);
 
   const [filtroVendedor, setFiltroVendedor] = useState('');
   const [filtroClasse, setFiltroClasse] = useState('');
@@ -221,7 +305,6 @@ export default function Funil() {
   const salvarValorLead = async (leadId, valor) => {
     try {
       await api.patch(`/leads/${leadId}`, { valorVenda: valor });
-      // Atualizar localmente
       setFunilData(prev => {
         if (!prev) return prev;
         const novo = { ...prev, etapas: { ...prev.etapas } };
@@ -240,6 +323,82 @@ export default function Funil() {
     }
   };
 
+  // ---- Admin: etapa management ----
+  const salvarLabel = async (id) => {
+    if (!editLabel.trim()) { setEditandoLabel(null); return; }
+    try {
+      await api.patch(`/etapas/${id}`, { label: editLabel.trim() });
+      setEtapas(prev => prev.map(e => e.id === id ? { ...e, label: editLabel.trim() } : e));
+    } catch (err) {
+      console.error('Erro ao renomear etapa:', err);
+    }
+    setEditandoLabel(null);
+  };
+
+  const atualizarCor = async (id, cor) => {
+    try {
+      await api.patch(`/etapas/${id}`, { cor });
+      setEtapas(prev => prev.map(e => e.id === id ? { ...e, cor } : e));
+    } catch (err) {
+      console.error('Erro ao atualizar cor:', err);
+    }
+  };
+
+  const moverEtapa = async (id, direcao) => {
+    const idx = etapas.findIndex(e => e.id === id);
+    if (idx < 0) return;
+    const novaOrdem = [...etapas];
+    const swap = direcao === 'left' ? idx - 1 : idx + 1;
+    if (swap < 0 || swap >= novaOrdem.length) return;
+    [novaOrdem[idx], novaOrdem[swap]] = [novaOrdem[swap], novaOrdem[idx]];
+    setEtapas(novaOrdem);
+    try {
+      await api.post('/etapas/reordenar', { ordem: novaOrdem.map(e => e.id) });
+    } catch (err) {
+      console.error('Erro ao reordenar:', err);
+      carregarFunil();
+    }
+  };
+
+  const confirmarExclusaoEtapa = (etapa) => {
+    setEtapaParaExcluir(etapa);
+    setMoverParaId('');
+  };
+
+  const executarExclusaoEtapa = async () => {
+    if (!etapaParaExcluir) return;
+    setProcessandoExclusaoEtapa(true);
+    try {
+      const body = {};
+      if (etapaParaExcluir._count > 0 && moverParaId) body.moverParaId = parseInt(moverParaId, 10);
+      await api.delete(`/etapas/${etapaParaExcluir.id}`, { data: body });
+      setEtapaParaExcluir(null);
+      carregarFunil();
+    } catch (err) {
+      console.error('Erro ao excluir etapa:', err);
+      alert(err.response?.data?.error || 'Erro ao excluir');
+    } finally {
+      setProcessandoExclusaoEtapa(false);
+    }
+  };
+
+  const criarNovaEtapa = async () => {
+    if (!novaLabel.trim()) return;
+    setCriandoEtapa(true);
+    try {
+      await api.post('/etapas', { label: novaLabel.trim(), tipo: novoTipo });
+      setNovaLabel('');
+      setNovoTipo('normal');
+      setNovaEtapaAberta(false);
+      carregarFunil();
+    } catch (err) {
+      console.error('Erro ao criar etapa:', err);
+      alert(err.response?.data?.error || 'Erro ao criar');
+    } finally {
+      setCriandoEtapa(false);
+    }
+  };
+
   const temFiltro = filtroVendedor || filtroClasse || filtroCanal;
 
   if (carregando && !funilData) {
@@ -250,17 +409,21 @@ export default function Funil() {
     );
   }
 
-  // Calcular pipeline e receita client-side para refletir edits inline
+  // Calcular pipeline e receita client-side
   let pipelineTotal = 0;
   let receitaTotal = 0;
   let total = 0;
 
+  // Build a set of ganho/perdido slugs from etapas config
+  const ganhoSlugs = new Set(etapas.filter(e => e.tipo === 'ganho').map(e => e.slug));
+  const perdidoSlugs = new Set(etapas.filter(e => e.tipo === 'perdido').map(e => e.slug));
+
   if (funilData?.etapas) {
-    for (const [etapa, data] of Object.entries(funilData.etapas)) {
+    for (const [slug, data] of Object.entries(funilData.etapas)) {
       total += data.leads.length;
       const soma = data.leads.reduce((s, l) => s + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
-      if (etapa === 'fechado_ganho') receitaTotal += soma;
-      else if (etapa !== 'fechado_perdido' && etapa !== 'nurturing') pipelineTotal += soma;
+      if (ganhoSlugs.has(slug)) receitaTotal += soma;
+      else if (!perdidoSlugs.has(slug)) pipelineTotal += soma;
     }
   }
 
@@ -350,7 +513,7 @@ export default function Funil() {
       {/* Kanban */}
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex gap-4 overflow-x-auto pb-4">
-          {etapas.map((etapa) => {
+          {etapas.map((etapa, idx) => {
             const data = funilData?.etapas?.[etapa.slug] || { leads: [], count: 0 };
             return (
               <KanbanColuna
@@ -361,12 +524,75 @@ export default function Funil() {
                 onClickLead={(leadId) => navigate(`/leads/${leadId}`)}
                 onDeleteLead={(lead) => setLeadParaExcluir(lead)}
                 onSalvarValor={salvarValorLead}
+                isAdmin={isAdmin}
+                editandoLabel={editandoLabel}
+                setEditandoLabel={setEditandoLabel}
+                editLabel={editLabel}
+                setEditLabel={setEditLabel}
+                salvarLabel={salvarLabel}
+                editandoCor={editandoCor}
+                setEditandoCor={setEditandoCor}
+                atualizarCor={atualizarCor}
+                confirmarExclusaoEtapa={confirmarExclusaoEtapa}
+                moverEtapa={moverEtapa}
+                etapaIndex={idx}
+                etapasTotal={etapas.length}
               />
             );
           })}
+
+          {/* Nova Etapa - admin only */}
+          {isAdmin && (
+            novaEtapaAberta ? (
+              <div className="min-w-[280px] shrink-0 bg-bg-card border border-border-default rounded-[14px] p-4 space-y-3 animate-fade-in">
+                <input
+                  type="text"
+                  value={novaLabel}
+                  onChange={e => setNovaLabel(e.target.value)}
+                  placeholder="Nome da etapa"
+                  className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[13px] text-white outline-none focus:border-[rgba(108,92,231,0.4)]"
+                  onKeyDown={e => e.key === 'Enter' && criarNovaEtapa()}
+                  autoFocus
+                />
+                <select
+                  value={novoTipo}
+                  onChange={e => setNovoTipo(e.target.value)}
+                  className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary focus:outline-none"
+                >
+                  <option value="normal">Normal</option>
+                  <option value="ganho">Ganho</option>
+                  <option value="perdido">Perdido</option>
+                </select>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setNovaEtapaAberta(false); setNovaLabel(''); }}
+                    className="flex-1 px-3 py-1.5 rounded-lg text-[12px] font-semibold text-text-secondary bg-bg-elevated border border-border-default hover:border-border-hover transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={criarNovaEtapa}
+                    disabled={criandoEtapa || !novaLabel.trim()}
+                    className="flex-1 px-3 py-1.5 rounded-lg text-[12px] font-semibold text-white bg-accent-violet hover:bg-[#5b4bd5] disabled:opacity-50 transition-all"
+                  >
+                    {criandoEtapa ? 'Criando...' : 'Criar'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div
+                onClick={() => setNovaEtapaAberta(true)}
+                className="min-w-[280px] shrink-0 bg-bg-card/30 border border-dashed border-border-default rounded-[14px] p-4 flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-accent-violet-light/30 transition-all"
+              >
+                <Plus size={24} className="text-text-muted" />
+                <span className="text-[12px] text-text-muted">Nova Etapa</span>
+              </div>
+            )
+          )}
         </div>
       </DragDropContext>
 
+      {/* Modal excluir lead */}
       {leadParaExcluir && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
           <div className="bg-bg-card border border-border-default rounded-2xl p-6 max-w-[400px] w-full mx-4 animate-fade-in">
@@ -408,6 +634,59 @@ export default function Funil() {
               >
                 <Trash2 size={13} />
                 {excluindo ? 'Excluindo...' : 'Excluir permanentemente'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal excluir etapa */}
+      {etapaParaExcluir && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-bg-card border border-border-default rounded-2xl p-6 max-w-[420px] w-full mx-4 animate-fade-in">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-[rgba(225,112,85,0.1)] flex items-center justify-center">
+                <Trash2 size={20} className="text-accent-danger" />
+              </div>
+              <div>
+                <h3 className="text-[14px] font-bold text-white">Excluir etapa "{etapaParaExcluir.label}"?</h3>
+                <p className="text-[11px] text-text-muted">A etapa sera desativada</p>
+              </div>
+            </div>
+
+            {etapaParaExcluir._count > 0 && (
+              <div className="mb-4">
+                <p className="text-[12px] text-text-secondary mb-2">
+                  Existem <strong className="text-white">{etapaParaExcluir._count} leads</strong> nesta etapa. Para onde mover?
+                </p>
+                <select
+                  value={moverParaId}
+                  onChange={e => setMoverParaId(e.target.value)}
+                  className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)]"
+                >
+                  <option value="">Selecionar etapa destino...</option>
+                  {etapas.filter(e => e.id !== etapaParaExcluir.id).map(e => (
+                    <option key={e.id} value={e.id}>{e.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => setEtapaParaExcluir(null)}
+                disabled={processandoExclusaoEtapa}
+                className="px-4 py-2 rounded-lg text-[12px] font-semibold text-text-secondary bg-bg-elevated border border-border-default hover:border-border-hover transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={executarExclusaoEtapa}
+                disabled={processandoExclusaoEtapa || (etapaParaExcluir._count > 0 && !moverParaId)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12px] font-semibold text-white bg-accent-danger hover:bg-[#c0392b] transition-all disabled:opacity-50"
+              >
+                <Trash2 size={13} />
+                {processandoExclusaoEtapa ? 'Excluindo...' : etapaParaExcluir._count > 0 ? 'Mover e Excluir' : 'Excluir'}
               </button>
             </div>
           </div>
