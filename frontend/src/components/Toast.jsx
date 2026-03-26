@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { X, Bell } from 'lucide-react';
 
-export default function Toast({ mensagem, tipo = 'info', onClose, duracao = 6000 }) {
+export default function Toast({ mensagem, tipo = 'info', onClose, duracao = 10000 }) {
   useEffect(() => {
     if (duracao > 0) {
       const timer = setTimeout(onClose, duracao);
@@ -30,9 +30,19 @@ export default function Toast({ mensagem, tipo = 'info', onClose, duracao = 6000
 export function ToastContainer({ toasts, removerToast }) {
   if (toasts.length === 0) return null;
 
+  const toastsVisiveis = toasts.slice(-5);
+
   return (
     <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
-      {toasts.map((t) => (
+      {toasts.length > 1 && (
+        <button
+          onClick={() => toasts.forEach(t => removerToast(t.id))}
+          className="mb-2 px-3 py-1.5 rounded-lg bg-bg-card border border-border-default text-[11px] font-semibold text-text-muted hover:text-white hover:border-border-hover transition-all"
+        >
+          ✕ Fechar todas ({toasts.length})
+        </button>
+      )}
+      {toastsVisiveis.map((t) => (
         <Toast
           key={t.id}
           mensagem={t.mensagem}
