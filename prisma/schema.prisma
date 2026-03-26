@@ -35,15 +35,6 @@ enum ClasseLead {
   C
 }
 
-enum EtapaFunil {
-  novo
-  em_abordagem
-  qualificado
-  proposta
-  fechado_ganho
-  fechado_perdido
-  nurturing
-}
 
 enum StatusLead {
   aguardando
@@ -177,7 +168,7 @@ model Lead {
   formularioTitulo    String?       @map("formulario_titulo") @db.VarChar(255)
   pontuacao           Int           @default(0)
   classe              ClasseLead
-  etapaFunil          EtapaFunil    @default(novo) @map("etapa_funil")
+  etapaFunil          String        @default("novo") @map("etapa_funil") @db.VarChar(100)
   vendedorId          Int?          @map("vendedor_id")
   status              StatusLead    @default(aguardando)
   dadosRespondi       Json?         @map("dados_respondi")
@@ -255,7 +246,7 @@ model TemplateMensagem {
   id          Int            @id @default(autoincrement())
   nome        String         @db.VarChar(100)
   conteudo    String
-  etapaFunil  EtapaFunil?    @map("etapa_funil")
+  etapaFunil  String?        @map("etapa_funil") @db.VarChar(100)
   classeLead  ClasseTemplate @default(todos) @map("classe_lead")
   tipo        TipoTemplate   @default(whatsapp)
   ativo       Boolean        @default(true)
@@ -288,8 +279,8 @@ model Meta {
 model FunilHistorico {
   id             Int       @id @default(autoincrement())
   leadId         Int       @map("lead_id")
-  etapaAnterior  String?   @map("etapa_anterior") @db.VarChar(50)
-  etapaNova      String    @map("etapa_nova") @db.VarChar(50)
+  etapaAnterior  String?   @map("etapa_anterior") @db.VarChar(100)
+  etapaNova      String?   @map("etapa_nova") @db.VarChar(100)
   vendedorId     Int?      @map("vendedor_id")
   motivo         String?
   createdAt      DateTime  @default(now()) @map("created_at")
@@ -298,6 +289,21 @@ model FunilHistorico {
   vendedor       Vendedor? @relation(fields: [vendedorId], references: [id])
 
   @@map("funil_historico")
+}
+
+/// Tabela: etapas_funil (configuração dinâmica)
+model EtapaFunil {
+  id        Int      @id @default(autoincrement())
+  slug      String   @unique @db.VarChar(100)
+  label     String   @db.VarChar(100)
+  cor       String   @default("#6c5ce7") @db.VarChar(20)
+  ordem     Int      @default(0)
+  ativo     Boolean  @default(true)
+  tipo      String   @default("normal") @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("etapas_funil")
 }
 
 /// Tabela 9: sla_config

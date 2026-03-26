@@ -12,21 +12,12 @@ import {
   Zap, CalendarPlus, RefreshCw, Loader, ChevronRight, Trash2, MessageCircle, ClipboardList,
 } from 'lucide-react';
 
-const ETAPA_COR = {
-  novo: 'bg-[rgba(116,185,255,0.12)] text-accent-info',
-  em_abordagem: 'bg-[rgba(253,203,110,0.12)] text-accent-amber',
-  qualificado: 'bg-[rgba(108,92,231,0.12)] text-accent-violet-light',
-  proposta: 'bg-[rgba(225,112,85,0.12)] text-accent-danger',
-  fechado_ganho: 'bg-[rgba(0,184,148,0.12)] text-accent-emerald',
-  fechado_perdido: 'bg-[rgba(225,112,85,0.12)] text-accent-danger',
-  nurturing: 'bg-[rgba(255,255,255,0.06)] text-text-muted',
-};
-
-const ETAPA_LABEL = {
-  novo: 'Novo', em_abordagem: 'Em Abordagem', qualificado: 'Qualificado',
-  proposta: 'Proposta', fechado_ganho: 'Fechado Ganho', fechado_perdido: 'Fechado Perdido',
-  nurturing: 'Nurturing',
-};
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
 
 const CLASSE_COR = {
   A: 'bg-[rgba(225,112,85,0.12)] text-[#e17055]',
@@ -108,6 +99,7 @@ export default function LeadCard() {
   const [redistribuindo, setRedistribuindo] = useState(false);
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
+  const [etapasConfig, setEtapasConfig] = useState([]);
 
   const [campos, setCampos] = useState({
     dorPrincipal: '',
@@ -174,6 +166,10 @@ export default function LeadCard() {
   }, [id]);
 
   useEffect(() => { carregar(); }, [carregar]);
+
+  useEffect(() => {
+    api.get('/etapas').then(r => setEtapasConfig(r.data)).catch(() => {});
+  }, []);
 
   const salvar = async () => {
     setSalvando(true);
@@ -242,8 +238,8 @@ export default function LeadCard() {
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold text-white ${score.bg}`}>
               {lead.pontuacao} — {score.label}
             </span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${ETAPA_COR[lead.etapaFunil]}`}>
-              {ETAPA_LABEL[lead.etapaFunil]}
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium" style={{ background: hexToRgba((etapasConfig.find(e => e.slug === lead.etapaFunil)?.cor || '#6c5ce7'), 0.12), color: etapasConfig.find(e => e.slug === lead.etapaFunil)?.cor || '#6c5ce7' }}>
+              {etapasConfig.find(e => e.slug === lead.etapaFunil)?.label || lead.etapaFunil}
             </span>
           </div>
         </div>

@@ -5,14 +5,6 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Filter, Clock, User, Instagram, Megaphone, Trash2, Calendar } from 'lucide-react';
 
-const ETAPAS = [
-  { id: 'novo', label: 'Novo', cor: 'border-accent-info', valorCor: 'text-accent-amber' },
-  { id: 'em_abordagem', label: 'Em Abordagem', cor: 'border-accent-amber', valorCor: 'text-accent-amber' },
-  { id: 'qualificado', label: 'Qualificado', cor: 'border-accent-violet-light', valorCor: 'text-accent-amber' },
-  { id: 'proposta', label: 'Proposta', cor: 'border-accent-danger', valorCor: 'text-accent-amber' },
-  { id: 'fechado_ganho', label: 'Fechado Ganho', cor: 'border-accent-emerald', valorCor: 'text-accent-emerald' },
-  { id: 'fechado_perdido', label: 'Fechado Perdido', cor: 'border-[#e17055]', valorCor: 'text-accent-danger' },
-];
 
 function tempoDesdeEntrada(data) {
   if (!data) return '';
@@ -124,22 +116,23 @@ function LeadCard({ lead, index, onClickLead, onDeleteLead, onSalvarValor }) {
 
 function KanbanColuna({ etapa, leads, count, onClickLead, onDeleteLead, onSalvarValor }) {
   const somaColuna = leads.reduce((sum, l) => sum + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
+  const valorCor = etapa.tipo === 'ganho' ? 'text-accent-emerald' : etapa.tipo === 'perdido' ? 'text-accent-danger' : 'text-accent-amber';
 
   return (
     <div className="flex flex-col w-72 shrink-0">
-      <div className={`rounded-t-[10px] px-3 py-2.5 border-t-2 ${etapa.cor} bg-bg-card`}>
+      <div className="rounded-t-[10px] px-3 py-2.5 border-t-2 bg-bg-card" style={{ borderTopColor: etapa.cor }}>
         <div className="flex items-center justify-between">
           <h3 className="text-[12px] font-semibold text-text-primary">{etapa.label}</h3>
           <span className="text-[10px] font-bold text-text-muted bg-bg-elevated px-2 py-0.5 rounded-full">
             {count}
           </span>
         </div>
-        <div className={`mt-1 text-[10px] font-medium ${somaColuna > 0 ? etapa.valorCor : 'text-text-muted'}`}>
+        <div className={`mt-1 text-[10px] font-medium ${somaColuna > 0 ? valorCor : 'text-text-muted'}`}>
           {formatarMoeda(somaColuna)}
         </div>
       </div>
 
-      <Droppable droppableId={etapa.id}>
+      <Droppable droppableId={etapa.slug}>
         {(provided, snapshot) => (
           <div
             ref={provided.innerRef}
@@ -162,6 +155,7 @@ function KanbanColuna({ etapa, leads, count, onClickLead, onDeleteLead, onSalvar
 export default function Funil() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
+  const [etapas, setEtapas] = useState([]);
   const [funilData, setFunilData] = useState(null);
   const [vendedores, setVendedores] = useState([]);
   const [carregando, setCarregando] = useState(true);
@@ -188,13 +182,15 @@ export default function Funil() {
       if (dataInicio) params.data_inicio = dataInicio;
       if (dataFim) params.data_fim = dataFim;
 
-      const [funilRes, vendedoresRes] = await Promise.all([
+      const [funilRes, vendedoresRes, etapasRes] = await Promise.all([
         api.get('/leads/funil', { params }),
         api.get('/vendedores'),
+        api.get('/etapas'),
       ]);
 
       setFunilData(funilRes.data);
       setVendedores(Array.isArray(vendedoresRes.data) ? vendedoresRes.data : []);
+      setEtapas(Array.isArray(etapasRes.data) ? etapasRes.data : []);
     } catch (err) {
       console.error('Erro ao carregar funil:', err);
     } finally {
@@ -354,11 +350,11 @@ export default function Funil() {
       {/* Kanban */}
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex gap-4 overflow-x-auto pb-4">
-          {ETAPAS.map((etapa) => {
-            const data = funilData?.etapas?.[etapa.id] || { leads: [], count: 0 };
+          {etapas.map((etapa) => {
+            const data = funilData?.etapas?.[etapa.slug] || { leads: [], count: 0 };
             return (
               <KanbanColuna
-                key={etapa.id}
+                key={etapa.slug}
                 etapa={etapa}
                 leads={data.leads}
                 count={data.leads.length}

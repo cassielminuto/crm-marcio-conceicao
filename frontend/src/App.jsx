@@ -15,6 +15,7 @@ import Admin from './pages/Admin';
 import SLAConfig from './pages/SLAConfig';
 import WhatsAppAdmin from './pages/WhatsAppAdmin';
 import VendedoresAdmin from './pages/VendedoresAdmin';
+import EtapasFunilAdmin from './pages/EtapasFunilAdmin';
 import LeadCard from './pages/LeadCard';
 import Perfil from './pages/Perfil';
 
@@ -47,6 +48,7 @@ export default function App() {
               <Route path="vendedores" element={<VendedoresAdmin />} />
               <Route path="whatsapp" element={<WhatsAppAdmin />} />
               <Route path="templates" element={<Templates />} />
+              <Route path="etapas" element={<EtapasFunilAdmin />} />
             </Route>
           </Route>
 

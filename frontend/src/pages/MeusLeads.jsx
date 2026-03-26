@@ -4,21 +4,12 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Search, ChevronLeft, ChevronRight, Phone, Mail, Instagram, Megaphone, Zap, Trash2, MessageCircle } from 'lucide-react';
 
-const ETAPAS_LABEL = {
-  novo: 'Novo', em_abordagem: 'Em Abordagem', qualificado: 'Qualificado',
-  proposta: 'Proposta', fechado_ganho: 'Fechado Ganho', fechado_perdido: 'Fechado Perdido',
-  nurturing: 'Nurturing',
-};
-
-const ETAPA_COR = {
-  novo: 'bg-[rgba(116,185,255,0.12)] text-accent-info',
-  em_abordagem: 'bg-[rgba(253,203,110,0.12)] text-accent-amber',
-  qualificado: 'bg-[rgba(108,92,231,0.12)] text-accent-violet-light',
-  proposta: 'bg-[rgba(225,112,85,0.12)] text-accent-danger',
-  fechado_ganho: 'bg-[rgba(0,184,148,0.12)] text-accent-emerald',
-  fechado_perdido: 'bg-[rgba(225,112,85,0.12)] text-accent-danger',
-  nurturing: 'bg-[rgba(255,255,255,0.06)] text-text-muted',
-};
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
 
 const CLASSE_COR = {
   A: 'bg-[rgba(225,112,85,0.12)] text-[#e17055]',
@@ -36,6 +27,7 @@ export default function MeusLeads() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
   const [leads, setLeads] = useState([]);
+  const [etapasConfig, setEtapasConfig] = useState([]);
   const [paginacao, setPaginacao] = useState({ pagina: 1, total: 0, totalPaginas: 1 });
   const [carregando, setCarregando] = useState(true);
 
@@ -56,6 +48,10 @@ export default function MeusLeads() {
     }, 400);
     return () => clearTimeout(timer);
   }, [busca]);
+
+  useEffect(() => {
+    api.get('/etapas').then(r => setEtapasConfig(r.data)).catch(() => {});
+  }, []);
 
   const carregarLeads = useCallback(async () => {
     setCarregando(true);
@@ -121,8 +117,8 @@ export default function MeusLeads() {
           className="bg-bg-input border border-border-default rounded-lg px-3 py-1.5 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)]"
         >
           <option value="">Todas as etapas</option>
-          {Object.entries(ETAPAS_LABEL).map(([key, label]) => (
-            <option key={key} value={key}>{label}</option>
+          {etapasConfig.map((et) => (
+            <option key={et.slug} value={et.slug}>{et.label}</option>
           ))}
         </select>
 
@@ -253,9 +249,15 @@ export default function MeusLeads() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${ETAPA_COR[lead.etapaFunil] || 'bg-[rgba(255,255,255,0.06)] text-text-muted'}`}>
-                          {ETAPAS_LABEL[lead.etapaFunil] || lead.etapaFunil}
-                        </span>
+                        {(() => {
+                          const et = etapasConfig.find(e => e.slug === lead.etapaFunil);
+                          const cor = et?.cor || '#6c5ce7';
+                          return (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium" style={{ background: hexToRgba(cor, 0.12), color: cor }}>
+                              {et?.label || lead.etapaFunil}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="px-4 py-3 text-[12px] text-text-secondary">
                         {lead.vendedor?.nomeExibicao || '—'}
