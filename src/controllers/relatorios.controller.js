@@ -1,7 +1,5 @@
 const prisma = require('../config/database');
 
-const TICKET_MEDIO = 1229;
-
 function buildDateFilter(req) {
   const { data_inicio, data_fim } = req.query;
   if (!data_inicio && !data_fim) return {};
@@ -9,6 +7,14 @@ function buildDateFilter(req) {
   if (data_inicio) filter.gte = new Date(data_inicio);
   if (data_fim) filter.lte = new Date(data_fim + (data_fim.length === 10 ? 'T23:59:59.999Z' : ''));
   return { createdAt: filter };
+}
+
+async function somarFaturamento(where) {
+  const result = await prisma.lead.aggregate({
+    where: { ...where, vendaRealizada: true },
+    _sum: { valorVenda: true },
+  });
+  return Number(result._sum.valorVenda || 0);
 }
 
 async function geral(req, res, next) {
@@ -24,7 +30,8 @@ async function geral(req, res, next) {
     ]);
 
     const taxaConversao = totalLeads > 0 ? Math.round((convertidos / totalLeads) * 10000) / 100 : 0;
-    const faturamento = convertidos * TICKET_MEDIO;
+    const faturamento = await somarFaturamento(dateWhere);
+    const ticketMedio = convertidos > 0 ? Math.round(faturamento / convertidos) : 0;
 
     res.json({
       totalLeads,
@@ -32,7 +39,7 @@ async function geral(req, res, next) {
       perdidos,
       taxaConversao,
       faturamento,
-      ticketMedio: TICKET_MEDIO,
+      ticketMedio,
       porCanal: porCanal.map((g) => ({ canal: g.canal, total: g._count })),
       porClasse: porClasse.map((g) => ({ classe: g.classe, total: g._count })),
       porEtapa: porEtapa.map((g) => ({ etapa: g.etapaFunil, total: g._count })),
@@ -56,12 +63,13 @@ async function porCanal(req, res, next) {
       if (total === 0) continue;
 
       const taxa = Math.round((convertidos / total) * 10000) / 100;
+      const faturamento = await somarFaturamento({ ...dateWhere, canal });
       resultado.push({
         canal,
         totalLeads: total,
         convertidos,
         taxaConversao: taxa,
-        faturamento: convertidos * TICKET_MEDIO,
+        faturamento,
       });
     }
 
@@ -85,12 +93,13 @@ async function porClasse(req, res, next) {
       if (total === 0) continue;
 
       const taxa = Math.round((convertidos / total) * 10000) / 100;
+      const faturamento = await somarFaturamento({ ...dateWhere, classe });
       resultado.push({
         classe,
         totalLeads: total,
         convertidos,
         taxaConversao: taxa,
-        faturamento: convertidos * TICKET_MEDIO,
+        faturamento,
       });
     }
 
@@ -130,6 +139,9 @@ async function porCloser(req, res, next) {
 
       const taxa = total > 0 ? Math.round((convertidos / total) * 10000) / 100 : 0;
 
+      const faturamento = await somarFaturamento({ ...dateWhere, vendedorId: v.id });
+      const ticketMedio = convertidos > 0 ? Math.round(faturamento / convertidos) : 0;
+
       resultado.push({
         vendedorId: v.id,
         nome: v.nomeExibicao,
@@ -137,8 +149,8 @@ async function porCloser(req, res, next) {
         totalLeads: total,
         convertidos,
         taxaConversao: taxa,
-        faturamento: convertidos * TICKET_MEDIO,
-        ticketMedio: TICKET_MEDIO,
+        faturamento,
+        ticketMedio,
         tempoMedioAbordagemMin: tempoMedioMin,
       });
     }

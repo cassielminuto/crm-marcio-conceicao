@@ -108,8 +108,9 @@ export default function Dashboard() {
       const leadsPerdidos = leads.filter(l => l.etapaFunil === 'fechado_perdido').length;
       const leadsAtivos = leads.filter(l => !['fechado_ganho', 'fechado_perdido', 'nurturing'].includes(l.etapaFunil)).length;
       const taxaConversao = totalLeads > 0 ? Math.round((leadsConvertidos / totalLeads) * 10000) / 100 : 0;
-      const faturamento = leads.reduce((sum, l) => sum + (l.valorVenda ? Number(l.valorVenda) : 0), 0)
-        || leadsConvertidos * 1229;
+      const faturamento = leads
+        .filter(l => l.vendaRealizada || l.etapaFunil === 'fechado_ganho')
+        .reduce((sum, l) => sum + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
 
       // Filtrar leads do vendedor logado se aplicavel
       let myLeads = leads;
@@ -120,8 +121,9 @@ export default function Dashboard() {
       const myConvertidos = myLeads.filter(l => l.etapaFunil === 'fechado_ganho' || l.vendaRealizada).length;
       const myAtivos = myLeads.filter(l => !['fechado_ganho', 'fechado_perdido', 'nurturing'].includes(l.etapaFunil)).length;
       const myTaxa = myTotal > 0 ? Math.round((myConvertidos / myTotal) * 10000) / 100 : 0;
-      const myFaturamento = myLeads.reduce((sum, l) => sum + (l.valorVenda ? Number(l.valorVenda) : 0), 0)
-        || myConvertidos * 1229;
+      const myFaturamento = myLeads
+        .filter(l => l.vendaRealizada || l.etapaFunil === 'fechado_ganho')
+        .reduce((sum, l) => sum + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
 
       setMetricas(vendedorId ? {
         totalLeads: myTotal,
