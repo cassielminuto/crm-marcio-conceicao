@@ -801,13 +801,18 @@ async function buscar(req, res, next) {
     }
 
     const termo = q.trim();
-    const where = {
-      OR: [
-        { nome: { contains: termo, mode: 'insensitive' } },
-        { telefone: { contains: termo.replace(/\D/g, '') } },
-        { email: { contains: termo, mode: 'insensitive' } },
-      ],
-    };
+    const termoTelefone = termo.replace(/\D/g, '');
+
+    const orConditions = [
+      { nome: { contains: termo, mode: 'insensitive' } },
+      { email: { contains: termo, mode: 'insensitive' } },
+    ];
+    // Só busca por telefone se o termo tem 3+ dígitos
+    if (termoTelefone.length >= 3) {
+      orConditions.push({ telefone: { contains: termoTelefone } });
+    }
+
+    const where = { OR: orConditions };
 
     if (req.usuario.perfil === 'vendedor' && req.usuario.vendedorId) {
       where.vendedorId = req.usuario.vendedorId;
@@ -823,13 +828,21 @@ async function buscar(req, res, next) {
         classe: true,
         pontuacao: true,
         etapaFunil: true,
-        vendedor: { select: { nomeExibicao: true } },
+        vendedor: { select: { id: true, nomeExibicao: true } },
       },
-      take: 10,
-      orderBy: { createdAt: 'desc' },
+      take: 15,
+      orderBy: { nome: 'asc' },
     });
 
-    res.json(leads);
+    // Priorizar: nome começa com termo > nome contém > email/telefone
+    const termoLower = termo.toLowerCase();
+    leads.sort((a, b) => {
+      const aName = a.nome?.toLowerCase().startsWith(termoLower) ? 0 : a.nome?.toLowerCase().includes(termoLower) ? 1 : 2;
+      const bName = b.nome?.toLowerCase().startsWith(termoLower) ? 0 : b.nome?.toLowerCase().includes(termoLower) ? 1 : 2;
+      return aName - bName;
+    });
+
+    res.json(leads.slice(0, 10));
   } catch (err) {
     next(err);
   }
