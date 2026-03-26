@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Filter, Clock, User, Instagram, Megaphone, Trash2, Calendar, X, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Filter, Clock, User, Instagram, Megaphone, Trash2, Calendar, X, Plus, ChevronLeft, ChevronRight, Settings } from 'lucide-react';
 
 const CORES = ['#3b82f6','#eab308','#a855f7','#f97316','#22c55e','#ef4444','#06b6d4','#ec4899','#6366f1','#84cc16'];
 
@@ -236,6 +236,7 @@ export default function Funil() {
   const [excluindo, setExcluindo] = useState(false);
 
   // Admin: inline editing state
+  const [modoEdicao, setModoEdicao] = useState(false);
   const [editandoLabel, setEditandoLabel] = useState(null);
   const [editLabel, setEditLabel] = useState('');
   const [editandoCor, setEditandoCor] = useState(null);
@@ -446,6 +447,28 @@ export default function Funil() {
             )}
           </p>
         </div>
+        {isAdmin && (
+          <button
+            onClick={() => {
+              if (modoEdicao) {
+                setModoEdicao(false);
+                setEditandoLabel(null);
+                setEditandoCor(null);
+                setNovaEtapaAberta(false);
+              } else {
+                setModoEdicao(true);
+              }
+            }}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-semibold transition-all ${
+              modoEdicao
+                ? 'bg-accent-violet-light/10 text-accent-violet-light border border-accent-violet-light/30'
+                : 'bg-bg-card border border-border-default text-text-secondary hover:text-text-primary hover:border-border-hover'
+            }`}
+          >
+            <Settings size={14} />
+            {modoEdicao ? 'Concluir edicao' : 'Editar Funil'}
+          </button>
+        )}
       </div>
 
       {/* Filtros */}
@@ -524,7 +547,7 @@ export default function Funil() {
                 onClickLead={(leadId) => navigate(`/leads/${leadId}`)}
                 onDeleteLead={(lead) => setLeadParaExcluir(lead)}
                 onSalvarValor={salvarValorLead}
-                isAdmin={isAdmin}
+                isAdmin={isAdmin && modoEdicao}
                 editandoLabel={editandoLabel}
                 setEditandoLabel={setEditandoLabel}
                 editLabel={editLabel}
@@ -541,8 +564,8 @@ export default function Funil() {
             );
           })}
 
-          {/* Nova Etapa - admin only */}
-          {isAdmin && (
+          {/* Nova Etapa - admin only, edit mode */}
+          {isAdmin && modoEdicao && (
             novaEtapaAberta ? (
               <div className="min-w-[280px] shrink-0 bg-bg-card border border-border-default rounded-[14px] p-4 space-y-3 animate-fade-in">
                 <input
