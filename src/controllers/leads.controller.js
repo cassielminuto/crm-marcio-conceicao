@@ -866,22 +866,15 @@ async function listarVendas(req, res, next) {
     if (data_inicio || data_fim) {
       const inicio = data_inicio ? new Date(data_inicio) : undefined;
       const fim = data_fim ? new Date(data_fim) : undefined;
+      const dateRange = {
+        ...(inicio ? { gte: inicio } : {}),
+        ...(fim ? { lte: fim } : {}),
+      };
 
-      // Vendas com dataConversao no periodo OU sem dataConversao mas createdAt no periodo
+      // Vendas com dataConversao no periodo OU createdAt no periodo
       where.OR = [
-        {
-          dataConversao: {
-            ...(inicio ? { gte: inicio } : {}),
-            ...(fim ? { lte: fim } : {}),
-          },
-        },
-        {
-          dataConversao: null,
-          createdAt: {
-            ...(inicio ? { gte: inicio } : {}),
-            ...(fim ? { lte: fim } : {}),
-          },
-        },
+        { dataConversao: dateRange },
+        { createdAt: dateRange },
       ];
     }
 
