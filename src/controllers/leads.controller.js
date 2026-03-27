@@ -857,16 +857,32 @@ async function buscar(req, res, next) {
   }
 }
 
-// Listar vendas por dataConversao (não createdAt)
+// Listar vendas por dataConversao (fallback createdAt para importadas)
 async function listarVendas(req, res, next) {
   try {
     const { data_inicio, data_fim } = req.query;
     const where = { vendaRealizada: true };
 
     if (data_inicio || data_fim) {
-      where.dataConversao = {};
-      if (data_inicio) where.dataConversao.gte = new Date(data_inicio);
-      if (data_fim) where.dataConversao.lte = new Date(data_fim);
+      const inicio = data_inicio ? new Date(data_inicio) : undefined;
+      const fim = data_fim ? new Date(data_fim) : undefined;
+
+      // Vendas com dataConversao no periodo OU sem dataConversao mas createdAt no periodo
+      where.OR = [
+        {
+          dataConversao: {
+            ...(inicio ? { gte: inicio } : {}),
+            ...(fim ? { lte: fim } : {}),
+          },
+        },
+        {
+          dataConversao: null,
+          createdAt: {
+            ...(inicio ? { gte: inicio } : {}),
+            ...(fim ? { lte: fim } : {}),
+          },
+        },
+      ];
     }
 
     if (req.usuario.perfil === 'vendedor' && req.usuario.vendedorId) {
@@ -883,12 +899,13 @@ async function listarVendas(req, res, next) {
         valorVenda: true,
         vendaRealizada: true,
         dataConversao: true,
+        createdAt: true,
         vendedorId: true,
         formularioTitulo: true,
         dadosRespondi: true,
         vendedor: { select: { id: true, nomeExibicao: true } },
       },
-      orderBy: { dataConversao: 'desc' },
+      orderBy: { createdAt: 'desc' },
     });
 
     // Calcular totais
