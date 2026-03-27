@@ -857,8 +857,53 @@ async function buscar(req, res, next) {
   }
 }
 
+// Listar vendas por dataConversao (não createdAt)
+async function listarVendas(req, res, next) {
+  try {
+    const { data_inicio, data_fim } = req.query;
+    const where = { vendaRealizada: true };
+
+    if (data_inicio || data_fim) {
+      where.dataConversao = {};
+      if (data_inicio) where.dataConversao.gte = new Date(data_inicio);
+      if (data_fim) where.dataConversao.lte = new Date(data_fim);
+    }
+
+    if (req.usuario.perfil === 'vendedor' && req.usuario.vendedorId) {
+      where.vendedorId = req.usuario.vendedorId;
+    }
+
+    const vendas = await prisma.lead.findMany({
+      where,
+      select: {
+        id: true,
+        nome: true,
+        telefone: true,
+        email: true,
+        valorVenda: true,
+        vendaRealizada: true,
+        dataConversao: true,
+        vendedorId: true,
+        formularioTitulo: true,
+        dadosRespondi: true,
+        vendedor: { select: { id: true, nomeExibicao: true } },
+      },
+      orderBy: { dataConversao: 'desc' },
+    });
+
+    // Calcular totais
+    const totalVendas = vendas.length;
+    const faturamento = vendas.reduce((s, l) => s + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
+
+    res.json({ vendas, totalVendas, faturamento });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   listar,
+  listarVendas,
   detalhe,
   criar,
   atualizar,

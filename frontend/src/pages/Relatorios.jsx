@@ -60,16 +60,16 @@ export default function Relatorios() {
       const fimISO = fimDate.toISOString().slice(0, 10) + 'T02:59:59.999Z';
       const dp = `data_inicio=${inicioISO}&data_fim=${fimISO}`;
 
-      // Usar /leads/funil (mesma fonte do Funil kanban) + relatórios de breakdown
-      const [funilRes, canalRes, classeRes, closerRes, diasRes] = await Promise.all([
+      const [funilRes, vendasRes, canalRes, classeRes, closerRes, diasRes] = await Promise.all([
         api.get(`/leads/funil?${dp}`),
+        api.get(`/leads/vendas?${dp}`),
         api.get(`/relatorios/por-canal?${dp}`),
         api.get(`/relatorios/por-classe?${dp}`),
         api.get(`/relatorios/por-closer?${dp}`),
         api.get(`/leads/por-dia?${dp}`),
       ]);
 
-      // Calcular metricas gerais a partir do funil (mesmo calculo do Dashboard)
+      // Total de leads do funil (por createdAt)
       const funilData = funilRes.data;
       const allLeads = [];
       if (funilData?.etapas) {
@@ -77,11 +77,11 @@ export default function Relatorios() {
           if (etapaData.leads) allLeads.push(...etapaData.leads);
         }
       }
+      // Vendas/faturamento por dataConversao (fonte correta)
+      const vendasData = vendasRes.data;
       const totalLeads = allLeads.length;
-      const convertidos = allLeads.filter(l => l.vendaRealizada).length;
-      const faturamento = allLeads
-        .filter(l => l.vendaRealizada)
-        .reduce((sum, l) => sum + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
+      const convertidos = vendasData?.totalVendas || 0;
+      const faturamento = vendasData?.faturamento || 0;
       const taxaConversao = totalLeads > 0 ? Math.round((convertidos / totalLeads) * 10000) / 100 : 0;
       setGeral({ totalLeads, convertidos, faturamento, taxaConversao });
 

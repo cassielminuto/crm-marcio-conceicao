@@ -68,8 +68,24 @@ async function processarEventoHubla(dados, tipo, req) {
 
   logger.info('Hubla processando: ' + nome + ' | Tel: ' + telefone + ' | R$ ' + valor + ' | Tipo: ' + tipo);
 
-  // Buscar lead existente por telefone
-  const leadExistente = await prisma.lead.findFirst({ where: { telefone } });
+  // Buscar lead existente por telefone (tentar match exato, depois últimos 8-11 dígitos)
+  let leadExistente = await prisma.lead.findFirst({ where: { telefone } });
+  if (!leadExistente && telefone.length >= 11) {
+    // Tentar sem DDI (últimos 10-11 dígitos)
+    const telSemDDI = telefone.startsWith('55') ? telefone.slice(2) : telefone;
+    leadExistente = await prisma.lead.findFirst({ where: { telefone: telSemDDI } });
+    if (!leadExistente) {
+      // Busca parcial pelos últimos 8 dígitos
+      const ultimos8 = telefone.slice(-8);
+      leadExistente = await prisma.lead.findFirst({
+        where: { telefone: { endsWith: ultimos8 } },
+      });
+    }
+    // Também tentar com DDI caso banco tenha sem
+    if (!leadExistente && !telefone.startsWith('55')) {
+      leadExistente = await prisma.lead.findFirst({ where: { telefone: '55' + telefone } });
+    }
+  }
 
   if (leadExistente) {
     const dadosUpdate = {};

@@ -59,11 +59,10 @@ export default function Vendas() {
       const fimISO = fimDate.toISOString().slice(0, 10) + 'T02:59:59.999Z';
       const dp = `data_inicio=${inicioISO}&data_fim=${fimISO}`;
       const [vendasRes, vendedoresRes] = await Promise.all([
-        api.get(`/leads?${dp}&venda_realizada=true&limit=5000`),
+        api.get(`/leads/vendas?${dp}`),
         api.get('/vendedores'),
       ]);
-      const leads = Array.isArray(vendasRes.data) ? vendasRes.data : vendasRes.data?.dados || [];
-      setVendas(leads);
+      setVendas(vendasRes.data?.vendas || []);
       setVendedores(Array.isArray(vendedoresRes.data) ? vendedoresRes.data : []);
     } catch (err) {
       console.error('Erro ao carregar vendas:', err);

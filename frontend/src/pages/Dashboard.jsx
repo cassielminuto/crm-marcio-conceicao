@@ -89,12 +89,12 @@ export default function Dashboard() {
       fimDate.setDate(fimDate.getDate() + 1);
       const fimISO = fimDate.toISOString().slice(0, 10) + 'T02:59:59.999Z';
 
-      // Usar /leads/funil (mesma fonte do Funil kanban)
-      const funilParams = `data_inicio=${inicioISO}&data_fim=${fimISO}`;
+      const dp = `data_inicio=${inicioISO}&data_fim=${fimISO}`;
       const promises = [
         api.get('/vendedores'),
-        api.get(`/leads/por-dia?data_inicio=${inicioISO}&data_fim=${fimISO}`),
-        api.get(`/leads/funil?${funilParams}`),
+        api.get(`/leads/por-dia?${dp}`),
+        api.get(`/leads/funil?${dp}`),
+        api.get(`/leads/vendas?${dp}`),
       ];
 
       if (vendedorId) {
@@ -105,7 +105,7 @@ export default function Dashboard() {
       setRanking(resultados[0].data);
       setGraficoDados(resultados[1].data);
 
-      // Extrair todos os leads do funil (mesma fonte do kanban)
+      // Leads do funil (contagem por etapa)
       const funilData = resultados[2].data;
       const leads = [];
       if (funilData?.etapas) {
@@ -114,26 +114,28 @@ export default function Dashboard() {
         }
       }
 
+      // Vendas por dataConversao (faturamento real do período)
+      const vendasData = resultados[3].data;
+      const vendasList = vendasData?.vendas || [];
+
       const totalLeads = leads.length;
-      const leadsConvertidos = leads.filter(l => l.vendaRealizada).length;
+      const leadsConvertidos = vendasData?.totalVendas || 0;
       const leadsAtivos = leads.filter(l => !['fechado_ganho', 'fechado_perdido', 'nurturing'].includes(l.etapaFunil)).length;
       const taxaConversao = totalLeads > 0 ? Math.round((leadsConvertidos / totalLeads) * 10000) / 100 : 0;
-      const faturamento = leads
-        .filter(l => l.vendaRealizada)
-        .reduce((sum, l) => sum + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
+      const faturamento = vendasData?.faturamento || 0;
 
-      // Filtrar leads do vendedor logado se aplicavel
+      // Filtrar vendas do vendedor logado se aplicavel
       let myLeads = leads;
+      let myVendas = vendasList;
       if (vendedorId) {
         myLeads = leads.filter(l => l.vendedorId === vendedorId);
+        myVendas = vendasList.filter(v => v.vendedorId === vendedorId);
       }
       const myTotal = myLeads.length;
-      const myConvertidos = myLeads.filter(l => l.vendaRealizada).length;
+      const myConvertidos = myVendas.length;
       const myAtivos = myLeads.filter(l => !['fechado_ganho', 'fechado_perdido', 'nurturing'].includes(l.etapaFunil)).length;
       const myTaxa = myTotal > 0 ? Math.round((myConvertidos / myTotal) * 10000) / 100 : 0;
-      const myFaturamento = myLeads
-        .filter(l => l.vendaRealizada)
-        .reduce((sum, l) => sum + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
+      const myFaturamento = myVendas.reduce((sum, v) => sum + (v.valorVenda ? Number(v.valorVenda) : 0), 0);
 
       setMetricas(vendedorId ? {
         totalLeads: myTotal,
