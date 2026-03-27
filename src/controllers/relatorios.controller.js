@@ -1,28 +1,11 @@
 const prisma = require('../config/database');
 
-// BRT = UTC-3: dia comeca 03:00Z, termina no dia seguinte 02:59:59Z
-function parseDateInicioBRT(str) {
-  if (!str) return undefined;
-  if (str.length === 10) return new Date(str + 'T03:00:00.000Z');
-  return new Date(str);
-}
-
-function parseDateFimBRT(str) {
-  if (!str) return undefined;
-  if (str.length === 10) {
-    const d = new Date(str + 'T00:00:00.000Z');
-    d.setUTCDate(d.getUTCDate() + 1);
-    return new Date(d.toISOString().slice(0, 10) + 'T02:59:59.999Z');
-  }
-  return new Date(str);
-}
-
 function buildDateFilter(req) {
   const { data_inicio, data_fim } = req.query;
   if (!data_inicio && !data_fim) return {};
   const filter = {};
-  if (data_inicio) filter.gte = parseDateInicioBRT(data_inicio);
-  if (data_fim) filter.lte = parseDateFimBRT(data_fim);
+  if (data_inicio) filter.gte = new Date(data_inicio);
+  if (data_fim) filter.lte = new Date(data_fim);
   return { createdAt: filter };
 }
 

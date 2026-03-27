@@ -83,9 +83,12 @@ export default function Dashboard() {
   const carregarDados = useCallback(async () => {
     setCarregando(true);
     try {
-      // Enviar datas como YYYY-MM-DD para consistencia com Funil
+      // BRT (UTC-3): dia comeca 03:00Z, termina dia seguinte 02:59:59Z
       const fmtDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      const dp = `data_inicio=${fmtDate(dataInicio)}&data_fim=${fmtDate(dataFim)}`;
+      const inicioISO = fmtDate(dataInicio) + 'T03:00:00.000Z';
+      const fimNext = new Date(dataFim); fimNext.setDate(fimNext.getDate() + 1);
+      const fimISO = fmtDate(fimNext) + 'T02:59:59.999Z';
+      const dp = `data_inicio=${inicioISO}&data_fim=${fimISO}`;
 
       const promises = [
         api.get('/vendedores'),

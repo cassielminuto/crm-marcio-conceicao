@@ -34,21 +34,8 @@ async function listar(req, res, next) {
 
     if (data_inicio || data_fim) {
       where.createdAt = {};
-      // BRT = UTC-3: dia comeca 03:00Z, termina no dia seguinte 02:59:59Z
-      if (data_inicio) {
-        where.createdAt.gte = data_inicio.length === 10
-          ? new Date(data_inicio + 'T03:00:00.000Z')
-          : new Date(data_inicio);
-      }
-      if (data_fim) {
-        if (String(data_fim).length === 10) {
-          const d = new Date(data_fim + 'T00:00:00.000Z');
-          d.setUTCDate(d.getUTCDate() + 1);
-          where.createdAt.lte = new Date(d.toISOString().slice(0, 10) + 'T02:59:59.999Z');
-        } else {
-          where.createdAt.lte = new Date(data_fim);
-        }
-      }
+      if (data_inicio) where.createdAt.gte = new Date(data_inicio);
+      if (data_fim) where.createdAt.lte = new Date(data_fim);
     }
 
     if (busca) {
@@ -518,17 +505,8 @@ async function leadsPorDia(req, res, next) {
 
     let dateStart, dateEnd;
     if (data_inicio && data_fim) {
-      // BRT = UTC-3
-      dateStart = data_inicio.length === 10
-        ? new Date(data_inicio + 'T03:00:00.000Z')
-        : new Date(data_inicio);
-      if (String(data_fim).length === 10) {
-        const d = new Date(data_fim + 'T00:00:00.000Z');
-        d.setUTCDate(d.getUTCDate() + 1);
-        dateEnd = new Date(d.toISOString().slice(0, 10) + 'T02:59:59.999Z');
-      } else {
-        dateEnd = new Date(data_fim);
-      }
+      dateStart = new Date(data_inicio);
+      dateEnd = new Date(data_fim);
     } else {
       const numDias = parseInt(dias, 10);
       dateStart = new Date();
@@ -777,21 +755,8 @@ async function listarFunil(req, res, next) {
 
     if (data_inicio || data_fim) {
       where.createdAt = {};
-      // BRT = UTC-3
-      if (data_inicio) {
-        where.createdAt.gte = data_inicio.length === 10
-          ? new Date(data_inicio + 'T03:00:00.000Z')
-          : new Date(data_inicio);
-      }
-      if (data_fim) {
-        if (String(data_fim).length === 10) {
-          const d = new Date(data_fim + 'T00:00:00.000Z');
-          d.setUTCDate(d.getUTCDate() + 1);
-          where.createdAt.lte = new Date(d.toISOString().slice(0, 10) + 'T02:59:59.999Z');
-        } else {
-          where.createdAt.lte = new Date(data_fim);
-        }
-      }
+      if (data_inicio) where.createdAt.gte = new Date(data_inicio);
+      if (data_fim) where.createdAt.lte = new Date(data_fim);
     }
 
     if (req.usuario.perfil === 'vendedor' && req.usuario.vendedorId) {

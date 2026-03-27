@@ -52,7 +52,11 @@ export default function Vendas() {
   const carregarVendas = useCallback(async () => {
     setCarregando(true);
     try {
-      const dp = `data_inicio=${fmtDate(dataInicio)}&data_fim=${fmtDate(dataFim)}`;
+      // BRT (UTC-3): dia comeca 03:00Z, termina dia seguinte 02:59:59Z
+      const inicioISO = fmtDate(dataInicio) + 'T03:00:00.000Z';
+      const fimNext = new Date(dataFim); fimNext.setDate(fimNext.getDate() + 1);
+      const fimISO = fmtDate(fimNext) + 'T02:59:59.999Z';
+      const dp = `data_inicio=${inicioISO}&data_fim=${fimISO}`;
       const [vendasRes, vendedoresRes] = await Promise.all([
         api.get(`/leads?${dp}&venda_realizada=true&limit=5000`),
         api.get('/vendedores'),
