@@ -27,92 +27,52 @@ async function receberWebhookHubla(req, res, next) {
 }
 
 async function processarEventoHubla(dados, tipo, req) {
-  // Extrair dados do cliente dependendo do formato
-  // Formato v2: { type: "invoice.paid", event: { invoice: {...}, customer: {...} } }
-  // Formato v1 ou variações: os dados podem estar em níveis diferentes
+  const event = dados.event || {};
+  const invoice = event.invoice || {};
+  const payer = invoice.payer || event.user || {};
+  const product = event.product || {};
 
-  let cliente = null;
-  let valor = 0;
-  let produto = '';
-  let faturaId = '';
-  let dataPagamento = null;
+  // Extrair nome
+  const nome = [payer.firstName, payer.lastName].filter(Boolean).join(' ').trim() || 'Cliente Hubla';
 
-  if (dados.event?.customer) {
-    // Formato v2
-    cliente = dados.event.customer;
-    valor = parseFloat(dados.event.invoice?.amount || dados.event.invoice?.totalAmount || 0);
-    produto = dados.event.invoice?.product?.name || dados.event.invoice?.items?.[0]?.product?.name || '';
-    faturaId = dados.event.invoice?.id || '';
-    dataPagamento = dados.event.invoice?.paidAt || dados.event.invoice?.createdAt || null;
-  } else if (dados.customer) {
-    // Formato direto
-    cliente = dados.customer;
-    valor = parseFloat(dados.invoice?.amount || dados.amount || 0);
-    produto = dados.invoice?.product?.name || dados.product?.name || '';
-    faturaId = dados.invoice?.id || dados.id || '';
-    dataPagamento = dados.invoice?.paidAt || dados.paidAt || null;
-  } else if (dados.event?.invoice) {
-    // Outro formato possível
-    const inv = dados.event.invoice;
-    cliente = {
-      name: inv.customerName || inv.customer?.name || '',
-      email: inv.customerEmail || inv.customer?.email || '',
-      phone: inv.customerPhone || inv.customer?.phone || '',
-    };
-    valor = parseFloat(inv.amount || inv.totalAmount || 0);
-    produto = inv.productName || inv.product?.name || '';
-    faturaId = inv.id || '';
-    dataPagamento = inv.paidAt || null;
-  }
+  // Extrair email
+  const email = payer.email || event.user?.email || null;
 
-  if (!cliente) {
-    logger.warn('Hubla webhook: cliente nao encontrado no payload');
-    // Salvar payload raw para debug
-    await prisma.lead.create({
-      data: {
-        nome: 'Hubla Debug - ' + tipo,
-        telefone: '0000000000',
-        canal: 'bio',
-        pontuacao: 0,
-        classe: 'C',
-        etapaFunil: 'novo',
-        status: 'aguardando',
-        formularioTitulo: 'Hubla Debug',
-        dadosRespondi: dados,
-      },
-    }).catch(() => {});
-    return;
-  }
-
-  const nome = cliente.name || cliente.fullName || cliente.nome || 'Cliente Hubla';
-  const email = cliente.email || null;
-  let telefone = cliente.phone || cliente.telefone || cliente.phoneNumber || '';
-
-  // Limpar telefone
+  // Extrair telefone
+  let telefone = payer.phone || event.user?.phone || '';
   telefone = telefone.replace(/[^\d]/g, '');
   if (telefone && !telefone.startsWith('55') && telefone.length >= 10) {
     telefone = '55' + telefone;
   }
 
   if (!telefone || telefone.length < 10) {
-    logger.warn(`Hubla webhook: telefone invalido para ${nome}`);
+    logger.warn('Hubla webhook: telefone invalido - ' + nome);
     return;
   }
 
-  // Verificar se é evento de pagamento
-  const isPagamento = tipo.includes('paid') || tipo.includes('payment') || tipo.includes('approved') || tipo.includes('confirmed');
+  // Extrair valor (vem em centavos!)
+  const subtotalCents = invoice.amount?.subtotalCents || 0;
+  const valor = subtotalCents / 100;
+
+  // Extrair produto
+  const produto = product.name || '';
+
+  // Extrair ID da fatura
+  const faturaId = invoice.id || '';
+
+  // Data de pagamento
+  const dataPagamento = invoice.saleDate || invoice.createdAt || null;
+
+  // Verificar se é pagamento
+  const isPagamento = tipo.includes('payment_succeeded') || tipo.includes('paid') || invoice.status === 'paid';
+
+  logger.info('Hubla processando: ' + nome + ' | Tel: ' + telefone + ' | R$ ' + valor + ' | Tipo: ' + tipo);
 
   // Buscar lead existente por telefone
   const leadExistente = await prisma.lead.findFirst({ where: { telefone } });
 
   if (leadExistente) {
-    // Atualizar lead existente
-    const dadosUpdate = {
-      dadosRespondi: {
-        ...(leadExistente.dadosRespondi || {}),
-        hubla: { tipo, faturaId, valor, produto, dataPagamento, raw: dados },
-      },
-    };
+    const dadosUpdate = {};
 
     if (isPagamento && valor > 0) {
       dadosUpdate.vendaRealizada = true;
@@ -120,7 +80,6 @@ async function processarEventoHubla(dados, tipo, req) {
       dadosUpdate.status = 'convertido';
       dadosUpdate.dataConversao = dataPagamento ? new Date(dataPagamento) : new Date();
 
-      // Atualizar valor se maior que o existente
       const valorExistente = leadExistente.valorVenda ? Number(leadExistente.valorVenda) : 0;
       if (valor > valorExistente) {
         dadosUpdate.valorVenda = valor;
@@ -131,48 +90,44 @@ async function processarEventoHubla(dados, tipo, req) {
       dadosUpdate.email = email;
     }
 
-    await prisma.lead.update({ where: { id: leadExistente.id }, data: dadosUpdate });
-    logger.info(`Hubla: Lead #${leadExistente.id} (${nome}) atualizado — ${tipo} — R$ ${valor}`);
+    if (Object.keys(dadosUpdate).length > 0) {
+      await prisma.lead.update({ where: { id: leadExistente.id }, data: dadosUpdate });
+      logger.info('Hubla: Lead #' + leadExistente.id + ' (' + nome + ') atualizado - R$ ' + valor);
+    }
 
-    // Notificar vendedor se é pagamento
+    // Notificar vendedor
     if (isPagamento && valor > 0 && leadExistente.vendedorId) {
       try {
         const vendedor = await prisma.vendedor.findUnique({
           where: { id: leadExistente.vendedorId },
           select: { telefoneWhatsapp: true, nomeExibicao: true, usuarioId: true },
         });
-
         if (vendedor) {
-          // Criar notificação no banco
           try {
             const { criarNotificacao } = require('../services/notificacaoService');
             await criarNotificacao({
               usuarioId: vendedor.usuarioId,
               tipo: 'venda_confirmada',
-              titulo: `Venda confirmada: ${nome}`,
-              mensagem: `R$ ${valor.toLocaleString('pt-BR')} — ${produto || 'Produto Hubla'}`,
+              titulo: 'Venda confirmada: ' + nome,
+              mensagem: 'R$ ' + valor.toLocaleString('pt-BR') + ' - ' + (produto || 'Hubla'),
               dados: { leadId: leadExistente.id, valor, produto },
             });
           } catch (e) {}
-
-          // Enviar WhatsApp
           if (vendedor.telefoneWhatsapp) {
             try {
               const { enviarMensagem } = require('../services/whatsappService');
               await enviarMensagem(vendedor.telefoneWhatsapp,
-                `*VENDA CONFIRMADA!*\n\n*${nome}*\nValor: R$ ${valor.toLocaleString('pt-BR')}\nProduto: ${produto || 'Hubla'}\n\nParabens!`
+                '*VENDA CONFIRMADA!*\n\n*' + nome + '*\nValor: R$ ' + valor.toLocaleString('pt-BR') + '\nProduto: ' + (produto || 'Hubla') + '\n\nParabens!'
               );
             } catch (e) {}
           }
         }
-      } catch (e) {
-        logger.error(`Erro ao notificar vendedor: ${e.message}`);
-      }
+      } catch (e) {}
     }
 
   } else {
     // Criar novo lead
-    const novoLead = await prisma.lead.create({
+    await prisma.lead.create({
       data: {
         nome,
         telefone,
@@ -188,11 +143,10 @@ async function processarEventoHubla(dados, tipo, req) {
         dataPreenchimento: new Date(),
         dataAtribuicao: new Date(),
         dataConversao: isPagamento ? new Date() : null,
-        dadosRespondi: { hubla: { tipo, faturaId, valor, produto, dataPagamento, raw: dados } },
+        dadosRespondi: { hubla: { tipo, faturaId, valor, produto } },
       },
     });
-
-    logger.info(`Hubla: Novo lead #${novoLead.id} (${nome}) criado — ${tipo} — R$ ${valor}`);
+    logger.info('Hubla: Novo lead criado - ' + nome + ' - R$ ' + valor);
   }
 }
 
