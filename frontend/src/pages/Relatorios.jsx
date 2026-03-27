@@ -53,20 +53,41 @@ export default function Relatorios() {
   const carregar = useCallback(async () => {
     setCarregando(true);
     try {
-      // BRT (UTC-3): dia comeca 03:00Z, termina dia seguinte 02:59:59Z
+      // Usar mesma logica de datas do Funil (YYYY-MM-DD + offset BRT)
       const fmtDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      const inicioISO = fmtDate(dataInicio) + 'T03:00:00.000Z';
-      const fimNext = new Date(dataFim); fimNext.setDate(fimNext.getDate() + 1);
+      const inicioStr = fmtDate(dataInicio);
+      const fimStr = fmtDate(dataFim);
+      const inicioISO = inicioStr + 'T03:00:00.000Z';
+      const fimNext = new Date(fimStr + 'T00:00:00');
+      fimNext.setDate(fimNext.getDate() + 1);
       const fimISO = fmtDate(fimNext) + 'T02:59:59.999Z';
       const dp = `data_inicio=${inicioISO}&data_fim=${fimISO}`;
-      const [geralRes, canalRes, classeRes, closerRes, diasRes] = await Promise.all([
-        api.get(`/relatorios/geral?${dp}`),
+
+      // Usar /leads/funil (mesma fonte do Funil kanban) + relatórios de breakdown
+      const [funilRes, canalRes, classeRes, closerRes, diasRes] = await Promise.all([
+        api.get(`/leads/funil?${dp}`),
         api.get(`/relatorios/por-canal?${dp}`),
         api.get(`/relatorios/por-classe?${dp}`),
         api.get(`/relatorios/por-closer?${dp}`),
         api.get(`/leads/por-dia?${dp}`),
       ]);
-      setGeral(geralRes.data);
+
+      // Calcular metricas gerais a partir do funil (mesmo calculo do Dashboard)
+      const funilData = funilRes.data;
+      const allLeads = [];
+      if (funilData?.etapas) {
+        for (const etapaData of Object.values(funilData.etapas)) {
+          if (etapaData.leads) allLeads.push(...etapaData.leads);
+        }
+      }
+      const totalLeads = allLeads.length;
+      const convertidos = allLeads.filter(l => l.vendaRealizada).length;
+      const faturamento = allLeads
+        .filter(l => l.vendaRealizada)
+        .reduce((sum, l) => sum + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
+      const taxaConversao = totalLeads > 0 ? Math.round((convertidos / totalLeads) * 10000) / 100 : 0;
+      setGeral({ totalLeads, convertidos, faturamento, taxaConversao });
+
       setPorCanal(canalRes.data);
       setPorClasse(classeRes.data);
       setPorCloser(closerRes.data);

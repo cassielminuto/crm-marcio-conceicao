@@ -83,17 +83,21 @@ export default function Dashboard() {
   const carregarDados = useCallback(async () => {
     setCarregando(true);
     try {
-      // BRT (UTC-3): dia comeca 03:00Z, termina dia seguinte 02:59:59Z
+      // Usar mesma logica de datas do Funil (YYYY-MM-DD + offset BRT)
       const fmtDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      const inicioISO = fmtDate(dataInicio) + 'T03:00:00.000Z';
-      const fimNext = new Date(dataFim); fimNext.setDate(fimNext.getDate() + 1);
+      const inicioStr = fmtDate(dataInicio);
+      const fimStr = fmtDate(dataFim);
+      const inicioISO = inicioStr + 'T03:00:00.000Z';
+      const fimNext = new Date(fimStr + 'T00:00:00');
+      fimNext.setDate(fimNext.getDate() + 1);
       const fimISO = fmtDate(fimNext) + 'T02:59:59.999Z';
-      const dp = `data_inicio=${inicioISO}&data_fim=${fimISO}`;
 
+      // Usar /leads/funil (mesma fonte do Funil kanban)
+      const funilParams = `data_inicio=${inicioISO}&data_fim=${fimISO}`;
       const promises = [
         api.get('/vendedores'),
-        api.get(`/leads/por-dia?${dp}`),
-        api.get(`/leads?${dp}&limit=5000`),
+        api.get(`/leads/por-dia?data_inicio=${inicioISO}&data_fim=${fimISO}`),
+        api.get(`/leads/funil?${funilParams}`),
       ];
 
       if (vendedorId) {
@@ -104,17 +108,21 @@ export default function Dashboard() {
       setRanking(resultados[0].data);
       setGraficoDados(resultados[1].data);
 
-      // Calcular metricas client-side a partir dos leads filtrados
-      const leadsData = resultados[2].data?.dados || resultados[2].data || [];
-      const leads = Array.isArray(leadsData) ? leadsData : [];
+      // Extrair todos os leads do funil (mesma fonte do kanban)
+      const funilData = resultados[2].data;
+      const leads = [];
+      if (funilData?.etapas) {
+        for (const etapaData of Object.values(funilData.etapas)) {
+          if (etapaData.leads) leads.push(...etapaData.leads);
+        }
+      }
 
       const totalLeads = leads.length;
-      const leadsConvertidos = leads.filter(l => l.etapaFunil === 'fechado_ganho' || l.vendaRealizada).length;
-      const leadsPerdidos = leads.filter(l => l.etapaFunil === 'fechado_perdido').length;
+      const leadsConvertidos = leads.filter(l => l.vendaRealizada).length;
       const leadsAtivos = leads.filter(l => !['fechado_ganho', 'fechado_perdido', 'nurturing'].includes(l.etapaFunil)).length;
       const taxaConversao = totalLeads > 0 ? Math.round((leadsConvertidos / totalLeads) * 10000) / 100 : 0;
       const faturamento = leads
-        .filter(l => l.vendaRealizada || l.etapaFunil === 'fechado_ganho')
+        .filter(l => l.vendaRealizada)
         .reduce((sum, l) => sum + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
 
       // Filtrar leads do vendedor logado se aplicavel
@@ -123,11 +131,11 @@ export default function Dashboard() {
         myLeads = leads.filter(l => l.vendedorId === vendedorId);
       }
       const myTotal = myLeads.length;
-      const myConvertidos = myLeads.filter(l => l.etapaFunil === 'fechado_ganho' || l.vendaRealizada).length;
+      const myConvertidos = myLeads.filter(l => l.vendaRealizada).length;
       const myAtivos = myLeads.filter(l => !['fechado_ganho', 'fechado_perdido', 'nurturing'].includes(l.etapaFunil)).length;
       const myTaxa = myTotal > 0 ? Math.round((myConvertidos / myTotal) * 10000) / 100 : 0;
       const myFaturamento = myLeads
-        .filter(l => l.vendaRealizada || l.etapaFunil === 'fechado_ganho')
+        .filter(l => l.vendaRealizada)
         .reduce((sum, l) => sum + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
 
       setMetricas(vendedorId ? {
