@@ -264,13 +264,12 @@ export default function Funil() {
       if (filtroVendedor) params.vendedor_id = filtroVendedor;
       if (filtroClasse) params.classe = filtroClasse;
       if (filtroCanal) params.canal = filtroCanal;
-      // BRT (UTC-3): dia comeca 03:00Z, termina dia seguinte 02:59:59Z
+      // BRT (UTC-3): inicio = 03:00Z mesmo dia, fim = 02:59:59Z dia seguinte
       if (dataInicio) params.data_inicio = dataInicio + 'T03:00:00.000Z';
       if (dataFim) {
-        const fimNext = new Date(dataFim + 'T00:00:00');
-        fimNext.setDate(fimNext.getDate() + 1);
-        const y = fimNext.getFullYear(), m = String(fimNext.getMonth() + 1).padStart(2, '0'), d = String(fimNext.getDate()).padStart(2, '0');
-        params.data_fim = `${y}-${m}-${d}T02:59:59.999Z`;
+        const fimDate = new Date(dataFim + 'T12:00:00.000Z');
+        fimDate.setUTCDate(fimDate.getUTCDate() + 1);
+        params.data_fim = fimDate.toISOString().slice(0, 10) + 'T02:59:59.999Z';
       }
 
       const [funilRes, vendedoresRes, etapasRes] = await Promise.all([

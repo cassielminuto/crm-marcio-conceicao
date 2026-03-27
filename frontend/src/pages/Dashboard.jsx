@@ -83,14 +83,11 @@ export default function Dashboard() {
   const carregarDados = useCallback(async () => {
     setCarregando(true);
     try {
-      // Usar mesma logica de datas do Funil (YYYY-MM-DD + offset BRT)
-      const fmtDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      const inicioStr = fmtDate(dataInicio);
-      const fimStr = fmtDate(dataFim);
-      const inicioISO = inicioStr + 'T03:00:00.000Z';
-      const fimNext = new Date(fimStr + 'T00:00:00');
-      fimNext.setDate(fimNext.getDate() + 1);
-      const fimISO = fmtDate(fimNext) + 'T02:59:59.999Z';
+      // BRT (UTC-3): inicio = 03:00Z mesmo dia, fim = 02:59:59Z dia seguinte
+      const inicioISO = dataInicio.toISOString().slice(0, 10) + 'T03:00:00.000Z';
+      const fimDate = new Date(dataFim);
+      fimDate.setDate(fimDate.getDate() + 1);
+      const fimISO = fimDate.toISOString().slice(0, 10) + 'T02:59:59.999Z';
 
       // Usar /leads/funil (mesma fonte do Funil kanban)
       const funilParams = `data_inicio=${inicioISO}&data_fim=${fimISO}`;
