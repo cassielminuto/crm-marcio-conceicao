@@ -8,6 +8,7 @@ import useSocket from '../../hooks/useSocket';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import { Search, Bell, Plus, Loader } from 'lucide-react';
+import HeaderBranding from '../HeaderBranding';
 
 let toastIdCounter = 0;
 
@@ -185,6 +186,7 @@ export default function AppLayout() {
 
         {/* Content */}
         <main className="flex-1 px-10 py-8 overflow-auto">
+          <HeaderBranding />
           <Outlet />
         </main>
       </div>
