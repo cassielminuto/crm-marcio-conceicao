@@ -137,7 +137,7 @@ export default function OrigemLeads({ leads, vendas }) {
               <XAxis type="number" tick={{ fontSize: 10, fill: '#3a3a5a' }} stroke="#3a3a5a" unit="%" />
               <YAxis type="category" dataKey="canal" tick={{ fontSize: 11, fill: '#a0a0be' }} stroke="#3a3a5a" width={65} />
               <Tooltip content={<CanalTooltip />} />
-              <Bar dataKey="taxa" radius={[0, 4, 4, 0]} label={{ position: 'right', fontSize: 10, fill: '#e2e2ef', formatter: (v, _, p) => `${p.payload.convertidos}/${p.payload.total}` }}>
+              <Bar dataKey="taxa" radius={[0, 4, 4, 0]} label={{ position: 'right', fontSize: 10, fill: '#e2e2ef', formatter: (v, _, p) => p?.payload ? `${p.payload.convertidos}/${p.payload.total}` : '' }}>
                 {dados.map(d => <Cell key={d.canal} fill={d.cor} fillOpacity={0.7} />)}
               </Bar>
             </BarChart>
@@ -178,7 +178,7 @@ export default function OrigemLeads({ leads, vendas }) {
                 <YAxis type="category" dataKey="label" tick={{ fontSize: 9, fill: '#a0a0be' }} stroke="#3a3a5a" width={120} />
                 <Tooltip content={<FormTooltip />} />
                 <Bar dataKey="total" fill="#6c5ce7" fillOpacity={0.6} radius={[0, 4, 4, 0]}
-                  label={{ position: 'right', fontSize: 9, fill: '#a0a0be', formatter: (v, _, p) => p.payload.convertidos > 0 ? `${p.payload.taxa}%` : '' }} />
+                  label={{ position: 'right', fontSize: 9, fill: '#a0a0be', formatter: (v, _, p) => p?.payload?.convertidos > 0 ? `${p.payload.taxa}%` : '' }} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
