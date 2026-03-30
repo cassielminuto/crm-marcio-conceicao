@@ -86,20 +86,6 @@ export default function AppLayout() {
     }
   }, [usuario, adicionarToast]);
 
-  const handleSlaAlerta = useCallback((data) => {
-    if (data.tipo === 'redistribuicao') {
-      adicionarToast(
-        `SLA estourado: ${data.leadNome} (Classe ${data.classe}) redistribuido de ${data.vendedorAnterior} para ${data.vendedorNovo}`,
-        'urgente'
-      );
-    } else {
-      adicionarToast(
-        `SLA estourado: ${data.leadNome} (Classe ${data.classe}) sem abordagem ha ${data.tempoMinutos}min`,
-        'aviso'
-      );
-    }
-  }, [adicionarToast]);
-
   const handleDuplicata = useCallback((data) => {
     const nomes = data.duplicatas?.map((d) => d.nome).join(', ') || '';
     adicionarToast(
@@ -108,7 +94,7 @@ export default function AppLayout() {
     );
   }, [adicionarToast]);
 
-  useSocket(handleNovoLead, handleSlaAlerta, handleDuplicata);
+  useSocket(handleNovoLead, null, handleDuplicata);
 
   return (
     <div className="flex min-h-screen bg-bg-primary">

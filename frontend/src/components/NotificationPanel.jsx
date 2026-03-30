@@ -106,28 +106,7 @@ export default function NotificationPanel({ onClose, onCountUpdate }) {
       }
     };
 
-    const handleSla = (data) => {
-      const nova = {
-        id: Date.now(),
-        tipo: 'sla_alerta',
-        titulo: `SLA estourado: ${data.leadNome}`,
-        mensagem: data.tipo === 'redistribuicao'
-          ? `Redistribuido de ${data.vendedorAnterior} para ${data.vendedorNovo}`
-          : `Classe ${data.classe} sem abordagem ha ${data.tempoMinutos}min`,
-        dados: data,
-        lida: false,
-        createdAt: new Date().toISOString(),
-      };
-      setNotificacoes(prev => [nova, ...prev]);
-      setTotalNaoLidas(prev => {
-        const novo = prev + 1;
-        if (onCountUpdate) onCountUpdate(novo);
-        return novo;
-      });
-    };
-
     socket.on('novo_lead', handleNovoLead);
-    socket.on('sla_alerta', handleSla);
 
     return () => {
       socket.disconnect();
