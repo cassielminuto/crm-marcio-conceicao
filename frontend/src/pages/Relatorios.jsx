@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../services/api';
 import FiltroUnificado from '../components/FiltroUnificado';
-import { extrairProdutosUnicos, isProdutoExcluido } from '../utils/produtos';
+import { extrairProduto, extrairProdutosUnicos, isProdutoExcluido } from '../utils/produtos';
 import AIResumoPeriodo from '../components/AIResumoPeriodo';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { FileDown, TrendingUp, DollarSign, Users } from 'lucide-react';
@@ -37,6 +37,34 @@ const CustomTooltip = ({ active, payload, label }) => {
   );
 };
 
+function downloadCSV(data, filename) {
+  const BOM = '\uFEFF';
+  const csv = BOM + data;
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function csvEscape(val) {
+  if (val == null) return '';
+  const s = String(val);
+  if (s.includes(',') || s.includes('"') || s.includes('\n')) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+function fmtDateBR(d) {
+  if (!d) return '';
+  const dt = new Date(d);
+  if (isNaN(dt)) return '';
+  return `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}/${dt.getFullYear()}`;
+}
+
+function today() { return new Date().toISOString().slice(0, 10); }
+
 export default function Relatorios() {
   const [geral, setGeral] = useState(null);
   const [porCanal, setPorCanal] = useState([]);
@@ -46,6 +74,7 @@ export default function Relatorios() {
   const [carregando, setCarregando] = useState(true);
   const [vendedores, setVendedores] = useState([]);
   const [rawVendas, setRawVendas] = useState([]);
+  const [rawLeads, setRawLeads] = useState([]);
   const [filtroVendedor, setFiltroVendedor] = useState('');
   const [filtroCanal, setFiltroCanal] = useState('');
   const [produtosExcluidos, setProdutosExcluidos] = useState(new Set());
@@ -59,7 +88,6 @@ export default function Relatorios() {
   const carregar = useCallback(async () => {
     setCarregando(true);
     try {
-      // BRT (UTC-3): inicio = 03:00Z mesmo dia, fim = 02:59:59Z dia seguinte
       const inicioStr = dataInicio instanceof Date ? dataInicio.toISOString().slice(0, 10) : dataInicio;
       const fimStr = dataFim instanceof Date ? dataFim.toISOString().slice(0, 10) : dataFim;
       const inicioISO = inicioStr + 'T03:00:00.000Z';
@@ -80,7 +108,6 @@ export default function Relatorios() {
 
       setVendedores(Array.isArray(vendedoresRes.data) ? vendedoresRes.data : []);
 
-      // Total de leads do funil (por createdAt)
       const funilData = funilRes.data;
       const allLeads = [];
       if (funilData?.etapas) {
@@ -88,7 +115,8 @@ export default function Relatorios() {
           if (etapaData.leads) allLeads.push(...etapaData.leads);
         }
       }
-      // Vendas/faturamento por dataConversao (fonte correta)
+      setRawLeads(allLeads);
+
       const vendasData = vendasRes.data;
       const vendasList = vendasData?.vendas || [];
       setRawVendas(vendasList);
@@ -109,42 +137,100 @@ export default function Relatorios() {
     }
   }, [dataInicio, dataFim]);
 
-  useEffect(() => {
-    carregar();
-  }, [carregar]);
+  useEffect(() => { carregar(); }, [carregar]);
 
   const produtosDisponiveis = useMemo(() => extrairProdutosUnicos(rawVendas), [rawVendas]);
 
-  // Recalculate faturamento with frontend filters applied
+  const filtrar = (lead) => {
+    if (filtroVendedor && lead.vendedorId !== parseInt(filtroVendedor)) return false;
+    if (filtroCanal && lead.canal !== filtroCanal) return false;
+    if (isProdutoExcluido(lead, produtosExcluidos)) return false;
+    return true;
+  };
+
+  const vendasFiltradas = useMemo(() => rawVendas.filter(filtrar), [rawVendas, filtroVendedor, filtroCanal, produtosExcluidos]);
+  const leadsFiltrados = useMemo(() => rawLeads.filter(filtrar), [rawLeads, filtroVendedor, filtroCanal, produtosExcluidos]);
+
   const geralFiltrado = useMemo(() => {
     if (!geral) return null;
     if (!filtroVendedor && !filtroCanal && produtosExcluidos.size === 0) return geral;
-    const vendasFiltradas = rawVendas.filter(v => {
-      if (filtroVendedor && v.vendedorId !== parseInt(filtroVendedor)) return false;
-      if (filtroCanal && v.canal !== filtroCanal) return false;
-      if (isProdutoExcluido(v, produtosExcluidos)) return false;
-      return true;
-    });
     const faturamento = vendasFiltradas.reduce((s, v) => s + (v.valorVenda ? Number(v.valorVenda) : 0), 0);
     const convertidos = vendasFiltradas.length;
-    const taxaConversao = geral.totalLeads > 0 ? Math.round((convertidos / geral.totalLeads) * 10000) / 100 : 0;
-    return { ...geral, faturamento, convertidos, taxaConversao };
-  }, [geral, rawVendas, filtroVendedor, filtroCanal, produtosExcluidos]);
+    const totalLeads = leadsFiltrados.length;
+    const taxaConversao = totalLeads > 0 ? Math.round((convertidos / totalLeads) * 10000) / 100 : 0;
+    return { totalLeads, faturamento, convertidos, taxaConversao };
+  }, [geral, vendasFiltradas, leadsFiltrados, filtroVendedor, filtroCanal, produtosExcluidos]);
 
-  const exportarCSV = (dados, nome) => {
-    if (!dados || dados.length === 0) return;
-    const headers = Object.keys(dados[0]);
-    const csv = [
-      headers.join(','),
-      ...dados.map((row) => headers.map((h) => JSON.stringify(row[h] ?? '')).join(',')),
-    ].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${nome}-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  // --- Exportacao CSV ---
+  const exportarVendas = () => {
+    if (vendasFiltradas.length === 0) return;
+    const header = ['Nome', 'Telefone', 'Email', 'Vendedor', 'Canal', 'Produto', 'Valor (R$)', 'Data da Venda', 'Etapa'];
+    const rows = vendasFiltradas.map(l => [
+      csvEscape(l.nome),
+      csvEscape(l.telefone),
+      csvEscape(l.email),
+      csvEscape(l.vendedor?.nomeExibicao),
+      csvEscape(l.canal),
+      csvEscape(extrairProduto(l) || ''),
+      l.valorVenda ? Number(l.valorVenda).toFixed(2) : '0.00',
+      csvEscape(fmtDateBR(l.dataConversao)),
+      csvEscape(l.etapaFunil),
+    ]);
+    const csv = [header.join(','), ...rows.map(r => r.join(','))].join('\n');
+    downloadCSV(csv, `vendas_${today()}.csv`);
+  };
+
+  const exportarLeads = () => {
+    if (leadsFiltrados.length === 0) return;
+    const header = ['Nome', 'Telefone', 'Email', 'Vendedor', 'Canal', 'Etapa', 'Score', 'Classificacao', 'Data de Entrada', 'Venda Realizada', 'Valor (R$)'];
+    const rows = leadsFiltrados.map(l => [
+      csvEscape(l.nome),
+      csvEscape(l.telefone),
+      csvEscape(l.email),
+      csvEscape(l.vendedor?.nomeExibicao),
+      csvEscape(l.canal),
+      csvEscape(l.etapaFunil),
+      l.pontuacao ?? '',
+      csvEscape(l.classe),
+      csvEscape(fmtDateBR(l.createdAt)),
+      l.vendaRealizada ? 'Sim' : 'Nao',
+      l.valorVenda ? Number(l.valorVenda).toFixed(2) : '',
+    ]);
+    const csv = [header.join(','), ...rows.map(r => r.join(','))].join('\n');
+    downloadCSV(csv, `leads_${today()}.csv`);
+  };
+
+  const exportarCompleto = () => {
+    if (!geralFiltrado) return;
+    const faturamento = vendasFiltradas.reduce((s, v) => s + (v.valorVenda ? Number(v.valorVenda) : 0), 0);
+    const ticketMedio = vendasFiltradas.length > 0 ? (faturamento / vendasFiltradas.length).toFixed(2) : '0.00';
+
+    const metricas = [
+      'Metrica,Valor',
+      `Total de Leads,${geralFiltrado.totalLeads}`,
+      `Total de Vendas,${vendasFiltradas.length}`,
+      `Faturamento Total,${faturamento.toFixed(2)}`,
+      `Ticket Medio,${ticketMedio}`,
+      `Taxa de Conversao,${geralFiltrado.taxaConversao}%`,
+    ];
+
+    const headerLeads = ['Nome', 'Telefone', 'Email', 'Vendedor', 'Canal', 'Etapa', 'Score', 'Classificacao', 'Data de Entrada', 'Venda Realizada', 'Valor (R$)'];
+    const rowsLeads = leadsFiltrados.map(l => [
+      csvEscape(l.nome),
+      csvEscape(l.telefone),
+      csvEscape(l.email),
+      csvEscape(l.vendedor?.nomeExibicao),
+      csvEscape(l.canal),
+      csvEscape(l.etapaFunil),
+      l.pontuacao ?? '',
+      csvEscape(l.classe),
+      csvEscape(fmtDateBR(l.createdAt)),
+      l.vendaRealizada ? 'Sim' : 'Nao',
+      l.valorVenda ? Number(l.valorVenda).toFixed(2) : '',
+    ]);
+
+    const csv = [...metricas, '', headerLeads.join(','), ...rowsLeads.map(r => r.join(','))].join('\n');
+    downloadCSV(csv, `relatorio_completo_${today()}.csv`);
   };
 
   if (carregando) {
@@ -155,6 +241,8 @@ export default function Relatorios() {
     );
   }
 
+  const btnCls = 'flex items-center gap-1.5 px-3 py-2 rounded-[10px] text-[11px] font-semibold transition-colors disabled:opacity-30 disabled:cursor-not-allowed';
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -162,30 +250,32 @@ export default function Relatorios() {
           <h1 className="text-[22px] font-bold text-white">Relatorios</h1>
           <p className="text-[13px] text-text-secondary mt-1">Visao gerencial do CRM</p>
         </div>
-        <div className="flex items-center gap-3">
-          <FiltroUnificado
-            dataInicio={dataInicio} setDataInicio={setDataInicio}
-            dataFim={dataFim} setDataFim={setDataFim}
-            vendedorId={filtroVendedor} setVendedorId={setFiltroVendedor}
-            canal={filtroCanal} setCanal={setFiltroCanal}
-            produtosExcluidos={produtosExcluidos} setProdutosExcluidos={setProdutosExcluidos}
-            vendedores={vendedores}
-            produtosDisponiveis={produtosDisponiveis}
-            onLimpar={() => { setFiltroVendedor(''); setFiltroCanal(''); setProdutosExcluidos(new Set()); }}
-          />
-          <button
-            onClick={() => exportarCSV(porCloser, 'relatorio-closers')}
-            className="flex items-center gap-1 bg-[rgba(0,184,148,0.12)] text-accent-emerald px-3 py-2 rounded-[10px] text-[11px] font-semibold hover:bg-[rgba(0,184,148,0.18)] transition-colors"
-          >
-            <FileDown size={14} /> CSV Closers
-          </button>
-          <button
-            onClick={() => exportarCSV(porCanal, 'relatorio-canais')}
-            className="flex items-center gap-1 bg-[rgba(108,92,231,0.12)] text-accent-violet-light px-3 py-2 rounded-[10px] text-[11px] font-semibold hover:bg-[rgba(108,92,231,0.18)] transition-colors"
-          >
-            <FileDown size={14} /> CSV Canais
-          </button>
-        </div>
+        <FiltroUnificado
+          dataInicio={dataInicio} setDataInicio={setDataInicio}
+          dataFim={dataFim} setDataFim={setDataFim}
+          vendedorId={filtroVendedor} setVendedorId={setFiltroVendedor}
+          canal={filtroCanal} setCanal={setFiltroCanal}
+          produtosExcluidos={produtosExcluidos} setProdutosExcluidos={setProdutosExcluidos}
+          vendedores={vendedores}
+          produtosDisponiveis={produtosDisponiveis}
+          onLimpar={() => { setFiltroVendedor(''); setFiltroCanal(''); setProdutosExcluidos(new Set()); }}
+        />
+      </div>
+
+      {/* Botoes de exportacao */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <button onClick={exportarVendas} disabled={vendasFiltradas.length === 0}
+          className={`${btnCls} bg-[rgba(0,184,148,0.12)] text-accent-emerald hover:bg-[rgba(0,184,148,0.18)]`}>
+          <FileDown size={14} /> Exportar Vendas ({vendasFiltradas.length})
+        </button>
+        <button onClick={exportarLeads} disabled={leadsFiltrados.length === 0}
+          className={`${btnCls} bg-[rgba(108,92,231,0.12)] text-accent-violet-light hover:bg-[rgba(108,92,231,0.18)]`}>
+          <FileDown size={14} /> Exportar Leads ({leadsFiltrados.length})
+        </button>
+        <button onClick={exportarCompleto} disabled={!geralFiltrado || leadsFiltrados.length === 0}
+          className={`${btnCls} bg-[rgba(253,203,110,0.12)] text-accent-amber hover:bg-[rgba(253,203,110,0.18)]`}>
+          <FileDown size={14} /> Relatorio Completo
+        </button>
       </div>
 
       {geralFiltrado && (
@@ -311,7 +401,7 @@ export default function Relatorios() {
                 <td className="px-4 py-3 text-center text-[12px] font-bold text-accent-emerald">{c.convertidos}</td>
                 <td className="px-4 py-3 text-center text-[12px] text-text-secondary">{c.taxaConversao}%</td>
                 <td className="px-4 py-3 text-center text-[12px] text-text-secondary">
-                  {c.tempoMedioAbordagemMin !== null ? `${c.tempoMedioAbordagemMin}min` : '—'}
+                  {c.tempoMedioAbordagemMin !== null ? `${c.tempoMedioAbordagemMin}min` : '\u2014'}
                 </td>
                 <td className="px-4 py-3 text-right text-[12px] font-medium text-text-primary">
                   R$ {c.faturamento.toLocaleString('pt-BR')}
