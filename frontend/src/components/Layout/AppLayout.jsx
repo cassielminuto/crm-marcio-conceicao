@@ -17,7 +17,7 @@ function UserAvatar({ nome, fotoUrl }) {
     return <img src={fotoUrl} alt={nome} className="w-[34px] h-[34px] rounded-full object-cover" />;
   }
   return (
-    <div className="w-[34px] h-[34px] rounded-full bg-gradient-to-br from-[#6c5ce7] to-[#00cec9] flex items-center justify-center text-[11px] font-bold text-white">
+    <div className="w-[34px] h-[34px] rounded-full bg-gradient-to-br from-[#7C3AED] to-[#3B82F6] flex items-center justify-center text-[11px] font-bold text-white">
       {iniciais}
     </div>
   );
@@ -97,11 +97,11 @@ export default function AppLayout() {
   useSocket(handleNovoLead, null, handleDuplicata);
 
   return (
-    <div className="flex min-h-screen bg-bg-primary">
+    <div className="flex min-h-screen bg-[#08080C]">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         {/* Topbar */}
-        <header className="h-[56px] shrink-0 flex items-center justify-between px-8 border-b border-border-subtle bg-bg-secondary/50 backdrop-blur-sm">
+        <header className="h-[56px] shrink-0 flex items-center justify-between px-8 border-b border-[rgba(255,255,255,0.06)] bg-[#0C0C12]/60 backdrop-blur-sm">
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted z-10" />
@@ -113,12 +113,12 @@ export default function AppLayout() {
                 onFocus={() => { if (resultadosBusca.length > 0) setBuscaAberta(true); }}
                 onKeyDown={(e) => { if (e.key === 'Escape') { setBuscaAberta(false); e.target.blur(); } }}
                 placeholder="Buscar leads por nome, telefone..."
-                className="w-[360px] bg-bg-card border border-border-default rounded-[10px] pl-9 pr-3 py-2 text-[12px] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)] transition-all"
+                className="w-[360px] bg-[#0F0F16] border border-[rgba(255,255,255,0.06)] rounded-[10px] pl-9 pr-3 py-2 text-[13px] text-[#F0F0F5] placeholder:text-[#3D3D4D] focus:outline-none focus:border-[#7C3AED] focus:ring-[3px] focus:ring-[rgba(124,58,237,0.15)] transition-all"
               />
               {buscaAberta && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setBuscaAberta(false)} />
-                  <div className="absolute top-full mt-1 left-0 w-[400px] z-50 bg-bg-card border border-border-default rounded-xl shadow-2xl max-h-[400px] overflow-y-auto animate-fade-in">
+                  <div className="absolute top-full mt-1 left-0 w-[400px] z-50 bg-[#1A1A24] border border-[rgba(255,255,255,0.10)] rounded-[14px] shadow-[0_8px_32px_rgba(0,0,0,0.4)] max-h-[400px] overflow-y-auto animate-fade-in">
                     {resultadosBusca.length === 0 ? (
                       <p className="text-[12px] text-text-muted text-center py-6">Nenhum lead encontrado</p>
                     ) : (
@@ -135,10 +135,10 @@ export default function AppLayout() {
                             </p>
                           </div>
                           <div className="flex items-center gap-2 shrink-0 ml-3">
-                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                              lead.classe === 'A' ? 'bg-[rgba(225,112,85,0.12)] text-[#e17055]' :
-                              lead.classe === 'B' ? 'bg-[rgba(253,203,110,0.12)] text-[#fdcb6e]' :
-                              'bg-[rgba(116,185,255,0.1)] text-[#74b9ff]'
+                            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                              lead.classe === 'A' ? 'bg-[rgba(239,68,68,0.12)] text-[#EF4444]' :
+                              lead.classe === 'B' ? 'bg-[rgba(245,158,11,0.12)] text-[#F59E0B]' :
+                              'bg-[rgba(59,130,246,0.12)] text-[#3B82F6]'
                             }`}>{lead.classe}</span>
                             <span className="text-[10px] text-text-muted">{lead.vendedor?.nomeExibicao || ''}</span>
                           </div>
@@ -151,7 +151,7 @@ export default function AppLayout() {
             </div>
             <button
               onClick={() => setModalLeadAberto(true)}
-              className="w-[38px] h-[38px] rounded-[10px] bg-gradient-to-r from-[#6c5ce7] to-[#00cec9] flex items-center justify-center hover:shadow-[0_4px_12px_rgba(108,92,231,0.25)] transition-all shrink-0"
+              className="w-[38px] h-[38px] rounded-[10px] bg-[#7C3AED] flex items-center justify-center hover:bg-[#6D28D9] hover:shadow-[0_0_20px_rgba(124,58,237,0.25)] transition-all shrink-0"
               title="Adicionar lead"
             >
               <Plus size={16} className="text-white" />
@@ -184,7 +184,7 @@ export default function AppLayout() {
         </header>
 
         {/* Content */}
-        <main className="flex-1 px-8 py-7 overflow-auto">
+        <main className="flex-1 px-10 py-8 overflow-auto">
           <Outlet />
         </main>
       </div>

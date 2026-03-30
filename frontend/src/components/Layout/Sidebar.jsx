@@ -11,7 +11,6 @@ import {
   BarChart3,
   Settings,
   LogOut,
-  Layers,
 } from 'lucide-react';
 
 const navItems = [
@@ -29,116 +28,76 @@ const adminItems = [
   { to: '/admin', label: 'Admin', icon: Settings },
 ];
 
-function UserAvatar({ nome, fotoUrl, size = 34 }) {
-  const iniciais = (nome || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-  if (fotoUrl) {
-    return (
-      <img
-        src={fotoUrl}
-        alt={nome}
-        className="rounded-full object-cover shrink-0"
-        style={{ width: size, height: size }}
-      />
-    );
-  }
+function SidebarIcon({ to, label, icon: Icon }) {
   return (
-    <div
-      className="rounded-full bg-gradient-to-br from-[#6c5ce7] to-[#00cec9] flex items-center justify-center font-bold text-white shrink-0"
-      style={{ width: size, height: size, fontSize: Math.round(size * 0.32) }}
+    <NavLink
+      to={to}
+      end={to === '/'}
+      title={label}
+      className={({ isActive }) =>
+        `group relative w-10 h-10 flex items-center justify-center rounded-[10px] transition-all duration-200 ${
+          isActive
+            ? 'bg-[rgba(124,58,237,0.15)] text-[#A78BFA]'
+            : 'text-[#5C5C6F] hover:bg-[#16161F] hover:text-[#8B8B9E]'
+        }`
+      }
     >
-      {iniciais}
-    </div>
+      <Icon size={20} />
+      <span className="absolute left-full ml-3 px-2.5 py-1 rounded-md bg-[#1A1A24] border border-[rgba(255,255,255,0.1)] text-[11px] font-medium text-[#F0F0F5] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 shadow-lg">
+        {label}
+      </span>
+    </NavLink>
   );
 }
 
 export default function Sidebar() {
   const { usuario, logout } = useAuth();
-
   const isAdmin = usuario?.perfil === 'admin' || usuario?.perfil === 'gestor';
+  const iniciais = (usuario?.nome || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   return (
-    <aside className="w-[240px] shrink-0 bg-bg-secondary flex flex-col min-h-screen border-r border-border-subtle">
-      <div className="px-5 py-5">
-        <div className="flex items-center gap-3">
-          <div className="w-[36px] h-[36px] rounded-[10px] bg-gradient-to-br from-[#6c5ce7] to-[#00cec9] flex items-center justify-center shrink-0">
-            <Layers size={18} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-[15px] font-bold text-white leading-tight">Compativeis</h1>
-            <span className="text-[10px] text-text-muted">CRM &bull; v2.0</span>
-          </div>
-        </div>
-      </div>
+    <aside className="w-16 shrink-0 bg-[#0C0C12] flex flex-col items-center min-h-screen border-r border-[rgba(255,255,255,0.06)] py-4">
+      {/* Logo */}
+      <NavLink to="/" className="w-9 h-9 rounded-[10px] bg-gradient-to-br from-[#7C3AED] to-[#3B82F6] flex items-center justify-center mb-6 shrink-0 hover:shadow-[0_0_20px_rgba(124,58,237,0.3)] transition-shadow" title="HLPIPE">
+        <span className="text-[11px] font-bold text-white tracking-tight">HL</span>
+      </NavLink>
 
-      <nav className="flex-1 px-3 py-2">
-        <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-[1.5px] text-text-faint">
-          Menu
-        </p>
-        <ul className="space-y-0.5">
-          {navItems.filter((item) => !item.adminOnly || isAdmin).map(({ to, label, icon: Icon }) => (
-            <li key={to}>
-              <NavLink
-                to={to}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-[10px] rounded-[10px] text-[13px] font-medium transition-all duration-200 ${
-                    isActive
-                      ? 'bg-[rgba(108,92,231,0.15)] text-accent-violet-light'
-                      : 'text-text-secondary hover:bg-white/[0.03] hover:text-[#b0b0d0]'
-                  }`
-                }
-              >
-                <Icon size={18} className={undefined} />
-                {label}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
+      {/* Nav icons */}
+      <nav className="flex-1 flex flex-col items-center gap-1">
+        {navItems.filter(item => !item.adminOnly || isAdmin).map(item => (
+          <SidebarIcon key={item.to} {...item} />
+        ))}
 
         {isAdmin && (
           <>
-            <p className="px-3 mt-6 mb-2 text-[10px] font-semibold uppercase tracking-[1.5px] text-text-faint">
-              Administracao
-            </p>
-            <ul className="space-y-0.5">
-              {adminItems.map(({ to, label, icon: Icon }) => (
-                <li key={to}>
-                  <NavLink
-                    to={to}
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 px-3 py-[10px] rounded-[10px] text-[13px] font-medium transition-all duration-200 ${
-                        isActive
-                          ? 'bg-[rgba(108,92,231,0.15)] text-accent-violet-light'
-                          : 'text-text-secondary hover:bg-white/[0.03] hover:text-[#b0b0d0]'
-                      }`
-                    }
-                  >
-                    <Icon size={18} />
-                    {label}
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
+            <div className="w-6 h-px bg-[rgba(255,255,255,0.06)] my-2" />
+            {adminItems.map(item => (
+              <SidebarIcon key={item.to} {...item} />
+            ))}
           </>
         )}
       </nav>
 
-      <div className="px-4 py-4 border-t border-border-subtle">
-        <div className="flex items-center gap-3">
-          <NavLink to="/perfil" className="shrink-0">
-            <UserAvatar nome={usuario?.nome} fotoUrl={usuario?.fotoUrl} />
-          </NavLink>
-          <NavLink to="/perfil" className="flex-1 min-w-0 hover:opacity-80 transition-opacity">
-            <p className="text-[12px] font-semibold text-white truncate">{usuario?.nome}</p>
-            <p className="text-[10px] text-text-muted truncate">{usuario?.perfil}</p>
-          </NavLink>
-          <button
-            onClick={logout}
-            className="p-2 text-text-muted hover:text-text-secondary hover:bg-white/[0.03] rounded-[10px] transition-colors"
-            title="Sair"
-          >
-            <LogOut size={18} />
-          </button>
-        </div>
+      {/* Bottom: user + logout */}
+      <div className="flex flex-col items-center gap-2 mt-auto">
+        <NavLink
+          to="/perfil"
+          title={usuario?.nome}
+          className="w-9 h-9 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#3B82F6] flex items-center justify-center text-[11px] font-bold text-white hover:shadow-[0_0_12px_rgba(124,58,237,0.3)] transition-shadow"
+        >
+          {usuario?.fotoUrl ? (
+            <img src={usuario.fotoUrl} alt="" className="w-9 h-9 rounded-full object-cover" />
+          ) : (
+            iniciais
+          )}
+        </NavLink>
+        <button
+          onClick={logout}
+          title="Sair"
+          className="w-10 h-10 flex items-center justify-center rounded-[10px] text-[#5C5C6F] hover:bg-[#16161F] hover:text-[#EF4444] transition-all"
+        >
+          <LogOut size={18} />
+        </button>
       </div>
     </aside>
   );

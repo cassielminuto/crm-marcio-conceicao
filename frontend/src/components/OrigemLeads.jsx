@@ -33,8 +33,8 @@ const CanalTooltip = ({ active, payload }) => {
   const d = payload[0]?.payload;
   if (!d) return null;
   return (
-    <div className="bg-[#1a1a28] border border-[rgba(255,255,255,0.06)] rounded-[10px] px-3 py-2">
-      <p className="text-[11px] text-[#e2e2ef] font-semibold">{d.canal}</p>
+    <div className="bg-[#1A1A24] border border-[rgba(255,255,255,0.10)] rounded-[10px] shadow-[0_8px_32px_rgba(0,0,0,0.4)] px-3 py-2">
+      <p className="text-[11px] text-[#F0F0F5] font-semibold">{d.canal}</p>
       {d.total != null && <p className="text-[11px] text-text-secondary">Leads: {d.total}</p>}
       {d.convertidos != null && <p className="text-[11px] text-text-secondary">Convertidos: {d.convertidos}</p>}
       {d.taxa != null && <p className="text-[11px] text-text-secondary">Taxa: {d.taxa}%</p>}
@@ -49,8 +49,8 @@ const FormTooltip = ({ active, payload }) => {
   const d = payload[0]?.payload;
   if (!d) return null;
   return (
-    <div className="bg-[#1a1a28] border border-[rgba(255,255,255,0.06)] rounded-[10px] px-3 py-2 max-w-[250px]">
-      <p className="text-[11px] text-[#e2e2ef] font-semibold truncate">{d.formulario}</p>
+    <div className="bg-[#1A1A24] border border-[rgba(255,255,255,0.10)] rounded-[10px] shadow-[0_8px_32px_rgba(0,0,0,0.4)] px-3 py-2 max-w-[250px]">
+      <p className="text-[11px] text-[#F0F0F5] font-semibold truncate">{d.formulario}</p>
       <p className="text-[11px] text-text-secondary">Leads: {d.total}</p>
       <p className="text-[11px] text-text-secondary">Convertidos: {d.convertidos} ({d.taxa}%)</p>
     </div>
@@ -106,7 +106,7 @@ export default function OrigemLeads({ leads, vendas }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 1. Distribuicao por Canal - Donut */}
-        <div className="bg-bg-card border border-border-subtle rounded-[14px] p-[22px]">
+        <div className="bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-6">
           <h3 className="text-[13px] font-semibold text-white mb-4">Distribuicao por Canal</h3>
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
@@ -129,7 +129,7 @@ export default function OrigemLeads({ leads, vendas }) {
         </div>
 
         {/* 2. Conversao por Canal */}
-        <div className="bg-bg-card border border-border-subtle rounded-[14px] p-[22px]">
+        <div className="bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-6">
           <h3 className="text-[13px] font-semibold text-white mb-4">Conversao por Canal</h3>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={dados} layout="vertical" margin={{ left: 10 }}>
@@ -137,7 +137,7 @@ export default function OrigemLeads({ leads, vendas }) {
               <XAxis type="number" tick={{ fontSize: 10, fill: '#3a3a5a' }} stroke="#3a3a5a" unit="%" />
               <YAxis type="category" dataKey="canal" tick={{ fontSize: 11, fill: '#a0a0be' }} stroke="#3a3a5a" width={65} />
               <Tooltip content={<CanalTooltip />} />
-              <Bar dataKey="taxa" radius={[0, 4, 4, 0]} label={{ position: 'right', fontSize: 10, fill: '#e2e2ef', formatter: (v, _, p) => p?.payload ? `${p.payload.convertidos}/${p.payload.total}` : '' }}>
+              <Bar dataKey="taxa" radius={[0, 4, 4, 0]} label={{ position: 'right', fontSize: 10, fill: '#F0F0F5', formatter: (v, _, p) => p?.payload ? `${p.payload.convertidos}/${p.payload.total}` : '' }}>
                 {dados.map(d => <Cell key={d.canal} fill={d.cor} fillOpacity={0.7} />)}
               </Bar>
             </BarChart>
@@ -145,7 +145,7 @@ export default function OrigemLeads({ leads, vendas }) {
         </div>
 
         {/* 3. Faturamento por Canal */}
-        <div className="bg-bg-card border border-border-subtle rounded-[14px] p-[22px]">
+        <div className="bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-6">
           <h3 className="text-[13px] font-semibold text-white mb-4">Faturamento por Canal</h3>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={dados}>
@@ -168,7 +168,7 @@ export default function OrigemLeads({ leads, vendas }) {
         </div>
 
         {/* 4. Leads por Formulario */}
-        <div className="bg-bg-card border border-border-subtle rounded-[14px] p-[22px]">
+        <div className="bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-6">
           <h3 className="text-[13px] font-semibold text-white mb-4">Top 10 Formularios</h3>
           {porFormulario.length > 0 ? (
             <ResponsiveContainer width="100%" height={Math.max(220, porFormulario.length * 28)}>
@@ -177,7 +177,7 @@ export default function OrigemLeads({ leads, vendas }) {
                 <XAxis type="number" tick={{ fontSize: 10, fill: '#3a3a5a' }} stroke="#3a3a5a" />
                 <YAxis type="category" dataKey="label" tick={{ fontSize: 9, fill: '#a0a0be' }} stroke="#3a3a5a" width={120} />
                 <Tooltip content={<FormTooltip />} />
-                <Bar dataKey="total" fill="#6c5ce7" fillOpacity={0.6} radius={[0, 4, 4, 0]}
+                <Bar dataKey="total" fill="#7C3AED" fillOpacity={0.6} radius={[0, 4, 4, 0]}
                   label={{ position: 'right', fontSize: 9, fill: '#a0a0be', formatter: (v, _, p) => p?.payload?.convertidos > 0 ? `${p.payload.taxa}%` : '' }} />
               </BarChart>
             </ResponsiveContainer>

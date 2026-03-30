@@ -8,17 +8,17 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { FileDown, TrendingUp, DollarSign, Users } from 'lucide-react';
 
 const CORES_CLASSE = { A: '#e17055', B: '#fdcb6e', C: '#74b9ff' };
-const CORES_PIE = ['#6c5ce7', '#00cec9', '#e17055', '#fdcb6e'];
+const CORES_PIE = ['#7C3AED', '#10B981', '#e17055', '#fdcb6e'];
 
 function CardMetrica({ titulo, valor, icone: Icon, cor }) {
   return (
-    <div className="bg-bg-card border border-border-subtle rounded-[14px] p-[22px] hover:border-border-hover transition-all duration-300">
+    <div className="bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-5 hover:border-[rgba(255,255,255,0.10)] transition-all duration-300">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-[11px] text-text-muted font-medium">{titulo}</p>
-          <p className="text-[22px] font-extrabold text-white mt-1">{valor}</p>
+          <p className="text-[11px] uppercase tracking-[1.5px] text-[#5C5C6F] font-medium">{titulo}</p>
+          <p className="font-display text-[24px] font-bold text-[#F0F0F5] mt-1">{valor}</p>
         </div>
-        <div className={`w-[42px] h-[42px] rounded-[10px] flex items-center justify-center ${cor}`}>
+        <div className={`w-10 h-10 rounded-[10px] flex items-center justify-center ${cor}`}>
           <Icon size={18} />
         </div>
       </div>
@@ -248,8 +248,8 @@ export default function Relatorios() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-[22px] font-bold text-white">Relatorios</h1>
-          <p className="text-[13px] text-text-secondary mt-1">Visao gerencial do CRM</p>
+          <h1 className="font-display text-[24px] font-semibold text-[#F0F0F5]">Relatorios</h1>
+          <p className="text-[13px] text-[#8B8B9E] mt-1">Visao gerencial do CRM</p>
         </div>
         <FiltroUnificado
           dataInicio={dataInicio} setDataInicio={setDataInicio}
@@ -281,10 +281,10 @@ export default function Relatorios() {
 
       {geralFiltrado && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-[14px]">
-          <CardMetrica titulo="Total de Leads" valor={geralFiltrado.totalLeads} icone={Users} cor="bg-[rgba(116,185,255,0.1)] text-accent-info" />
-          <CardMetrica titulo="Taxa de Conversao" valor={`${geralFiltrado.taxaConversao}%`} icone={TrendingUp} cor="bg-[rgba(0,184,148,0.1)] text-accent-emerald" />
-          <CardMetrica titulo="Faturamento" valor={`R$ ${geralFiltrado.faturamento.toLocaleString('pt-BR')}`} icone={DollarSign} cor="bg-[rgba(253,203,110,0.1)] text-accent-amber" />
-          <CardMetrica titulo="Convertidos" valor={geralFiltrado.convertidos} icone={TrendingUp} cor="bg-[rgba(108,92,231,0.1)] text-accent-violet-light" />
+          <CardMetrica titulo="Total de Leads" valor={geralFiltrado.totalLeads} icone={Users} cor="bg-[rgba(59,130,246,0.12)] text-[#3B82F6]" />
+          <CardMetrica titulo="Taxa de Conversao" valor={`${geralFiltrado.taxaConversao}%`} icone={TrendingUp} cor="bg-[rgba(16,185,129,0.12)] text-[#10B981]" />
+          <CardMetrica titulo="Faturamento" valor={`R$ ${geralFiltrado.faturamento.toLocaleString('pt-BR')}`} icone={DollarSign} cor="bg-[rgba(245,158,11,0.12)] text-[#F59E0B]" />
+          <CardMetrica titulo="Convertidos" valor={geralFiltrado.convertidos} icone={TrendingUp} cor="bg-[rgba(124,58,237,0.12)] text-[#A78BFA]" />
         </div>
       )}
 
@@ -293,19 +293,19 @@ export default function Relatorios() {
       <OrigemLeads leads={leadsFiltrados} vendas={vendasFiltradas} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-bg-card border border-border-subtle rounded-[14px] p-[22px]">
+        <div className="bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-6">
           <h2 className="text-[13px] font-semibold text-white mb-4">Conversao por Canal</h2>
           {porCanal.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={porCanal}>
                 <defs>
                   <linearGradient id="gradBar1" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#6c5ce7" stopOpacity={0.8} />
-                    <stop offset="100%" stopColor="#6c5ce7" stopOpacity={0.3} />
+                    <stop offset="0%" stopColor="#7C3AED" stopOpacity={0.8} />
+                    <stop offset="100%" stopColor="#7C3AED" stopOpacity={0.3} />
                   </linearGradient>
                   <linearGradient id="gradBar2" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#00cec9" stopOpacity={0.8} />
-                    <stop offset="100%" stopColor="#00cec9" stopOpacity={0.3} />
+                    <stop offset="0%" stopColor="#10B981" stopOpacity={0.8} />
+                    <stop offset="100%" stopColor="#10B981" stopOpacity={0.3} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid stroke="rgba(255,255,255,0.04)" strokeDasharray="3 3" />
@@ -329,7 +329,7 @@ export default function Relatorios() {
           </div>
         </div>
 
-        <div className="bg-bg-card border border-border-subtle rounded-[14px] p-[22px]">
+        <div className="bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-6">
           <h2 className="text-[13px] font-semibold text-white mb-4">Conversao por Classe</h2>
           {porClasse.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
@@ -359,14 +359,14 @@ export default function Relatorios() {
         </div>
       </div>
 
-      <div className="bg-bg-card border border-border-subtle rounded-[14px] p-[22px]">
+      <div className="bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-6">
         <h2 className="text-[13px] font-semibold text-white mb-4">Volume de Leads (30 dias)</h2>
         <ResponsiveContainer width="100%" height={250}>
           <BarChart data={leadsPorDia}>
             <defs>
               <linearGradient id="gradVolume" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#6c5ce7" stopOpacity={0.8} />
-                <stop offset="100%" stopColor="#6c5ce7" stopOpacity={0.3} />
+                <stop offset="0%" stopColor="#7C3AED" stopOpacity={0.8} />
+                <stop offset="100%" stopColor="#7C3AED" stopOpacity={0.3} />
               </linearGradient>
             </defs>
             <CartesianGrid stroke="rgba(255,255,255,0.04)" strokeDasharray="3 3" />
@@ -378,7 +378,7 @@ export default function Relatorios() {
         </ResponsiveContainer>
       </div>
 
-      <div className="bg-bg-card border border-border-subtle rounded-[14px] overflow-hidden">
+      <div className="bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] overflow-hidden">
         <div className="px-[22px] py-3 border-b border-border-subtle">
           <h2 className="text-[13px] font-semibold text-white">Performance por Closer</h2>
         </div>

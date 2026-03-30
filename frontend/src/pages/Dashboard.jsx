@@ -9,22 +9,22 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 
 function MetricCard({ titulo, valor, icone: Icon, cor, subtitulo }) {
   const corMap = {
-    blue: { bg: 'rgba(116,185,255,0.1)', text: 'text-accent-info' },
-    green: { bg: 'rgba(0,184,148,0.1)', text: 'text-accent-emerald' },
-    yellow: { bg: 'rgba(253,203,110,0.1)', text: 'text-accent-amber' },
-    purple: { bg: 'rgba(108,92,231,0.1)', text: 'text-accent-violet-light' },
+    blue: { bg: 'rgba(59,130,246,0.12)', text: 'text-[#3B82F6]' },
+    green: { bg: 'rgba(16,185,129,0.12)', text: 'text-[#10B981]' },
+    yellow: { bg: 'rgba(245,158,11,0.12)', text: 'text-[#F59E0B]' },
+    purple: { bg: 'rgba(124,58,237,0.12)', text: 'text-[#A78BFA]' },
   };
   const c = corMap[cor] || corMap.blue;
 
   return (
-    <div className="bg-bg-card border border-border-subtle rounded-[14px] p-[22px] hover:border-border-hover transition-all duration-300">
+    <div className="bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-5 hover:border-[rgba(255,255,255,0.10)] transition-all duration-300">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-[11px] text-text-muted font-medium">{titulo}</p>
-          <p className="text-[26px] font-extrabold text-white tracking-tight mt-1">{valor}</p>
-          {subtitulo && <p className="text-[11px] text-text-muted mt-1">{subtitulo}</p>}
+          <p className="text-[11px] uppercase tracking-[1.5px] text-[#5C5C6F] font-medium">{titulo}</p>
+          <p className="font-display text-[32px] font-bold text-[#F0F0F5] tracking-tight mt-1">{valor}</p>
+          {subtitulo && <p className="text-[12px] text-[#5C5C6F] mt-1">{subtitulo}</p>}
         </div>
-        <div className="w-[42px] h-[42px] rounded-[10px] flex items-center justify-center" style={{ background: c.bg }}>
+        <div className="w-10 h-10 rounded-[10px] flex items-center justify-center" style={{ background: c.bg }}>
           <Icon size={20} className={c.text} />
         </div>
       </div>
@@ -197,8 +197,8 @@ export default function Dashboard() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[22px] font-bold text-white">Dashboard</h1>
-          <p className="text-text-secondary text-[13px] mt-1">
+          <h1 className="font-display text-[24px] font-semibold text-[#F0F0F5]">Dashboard</h1>
+          <p className="text-[#8B8B9E] text-[13px] mt-1">
             {isAdmin ? 'Visao geral do time' : `Bem-vindo, ${usuario?.nome}`}
           </p>
         </div>
@@ -250,15 +250,15 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Grafico */}
-        <div className="lg:col-span-2 bg-bg-card border border-border-subtle rounded-[14px] p-[22px]">
-          <h2 className="text-[14px] font-semibold text-white mb-4">Leads por dia</h2>
+        <div className="lg:col-span-2 bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-6">
+          <h2 className="font-display text-[16px] font-medium text-[#F0F0F5] mb-4">Leads por dia</h2>
           {graficoDados.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
               <AreaChart data={graficoDados}>
                 <defs>
                   <linearGradient id="gradViolet" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#6c5ce7" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="#6c5ce7" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#7C3AED" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#7C3AED" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid stroke="rgba(255,255,255,0.04)" strokeDasharray="3 3" />
@@ -277,7 +277,7 @@ export default function Dashboard() {
                 <Area
                   type="monotone"
                   dataKey="total"
-                  stroke="#6c5ce7"
+                  stroke="#7C3AED"
                   fill="url(#gradViolet)"
                   strokeWidth={2}
                 />
@@ -289,11 +289,11 @@ export default function Dashboard() {
         </div>
 
         {/* Ranking */}
-        <div className="bg-bg-card border border-border-subtle rounded-[14px] p-[22px]">
-          <h2 className="text-[14px] font-semibold text-white mb-4">Ranking do Time</h2>
+        <div className="bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-6">
+          <h2 className="font-display text-[16px] font-medium text-[#F0F0F5] mb-4">Ranking do Time</h2>
           {vendedorId && (
-            <div className="mb-4 bg-[rgba(108,92,231,0.1)] rounded-[10px] p-3 text-center">
-              <p className="text-[10px] text-accent-violet-light">Sua posicao</p>
+            <div className="mb-4 bg-[rgba(124,58,237,0.12)] rounded-[10px] p-3 text-center">
+              <p className="text-[10px] text-[#A78BFA]">Sua posicao</p>
               <p className="text-[28px] font-extrabold text-white">#{posicaoRanking}</p>
             </div>
           )}
@@ -304,14 +304,14 @@ export default function Dashboard() {
                 <li
                   key={v.id}
                   className={`flex items-center justify-between p-[10px_12px] rounded-[10px] text-[12px] ${
-                    v.id === vendedorId ? 'bg-[rgba(108,92,231,0.1)]' : 'hover:bg-white/[0.02]'
+                    v.id === vendedorId ? 'bg-[rgba(124,58,237,0.1)]' : 'hover:bg-[#16161F]'
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <span className={`text-[13px] font-extrabold w-5 ${i < 3 ? posColors[i] : 'text-text-faint'}`}>
                       {v.rankingPosicao}
                     </span>
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#6c5ce7] to-[#00cec9] flex items-center justify-center text-[10px] font-bold text-white">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#7C3AED] to-[#3B82F6] flex items-center justify-center text-[10px] font-bold text-white">
                       {v.nomeExibicao?.[0]}
                     </div>
                     <span className="font-medium text-text-primary">{v.nomeExibicao}</span>
@@ -325,9 +325,9 @@ export default function Dashboard() {
       </div>
 
       {/* Follow-ups pendentes */}
-      <div className="bg-bg-card border border-border-subtle rounded-[14px] p-[22px]">
+      <div className="bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-[14px] font-semibold text-white">Follow-ups Pendentes</h2>
+          <h2 className="font-display text-[16px] font-medium text-[#F0F0F5]">Follow-ups Pendentes</h2>
           <span className="text-[12px] text-text-muted">{followUps.length} pendentes</span>
         </div>
 
