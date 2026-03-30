@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import DateRangeFilter from '../components/DateRangeFilter';
+import FiltroUnificado from '../components/FiltroUnificado';
 import AIResumoPeriodo from '../components/AIResumoPeriodo';
 import { Users, TrendingUp, DollarSign, Target, Clock, Phone, MessageSquare, AlertTriangle } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -195,10 +195,9 @@ export default function Dashboard() {
             {isAdmin ? 'Visao geral do time' : `Bem-vindo, ${usuario?.nome}`}
           </p>
         </div>
-        <DateRangeFilter
-          dataInicio={dataInicio}
-          dataFim={dataFim}
-          onChange={(inicio, fim) => { setDataInicio(inicio); setDataFim(fim); }}
+        <FiltroUnificado
+          dataInicio={dataInicio} setDataInicio={setDataInicio}
+          dataFim={dataFim} setDataFim={setDataFim}
         />
       </div>
 

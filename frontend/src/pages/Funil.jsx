@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import FiltroUnificado from '../components/FiltroUnificado';
 import { Filter, Clock, User, Instagram, Megaphone, Trash2, Calendar, X, Plus, ChevronLeft, ChevronRight, Settings } from 'lucide-react';
 
 const CORES = ['#3b82f6','#eab308','#a855f7','#f97316','#22c55e','#ef4444','#06b6d4','#ec4899','#6366f1','#84cc16'];
@@ -251,6 +252,7 @@ export default function Funil() {
   const [filtroVendedor, setFiltroVendedor] = useState('');
   const [filtroClasse, setFiltroClasse] = useState('');
   const [filtroCanal, setFiltroCanal] = useState('');
+  const [produtosExcluidos, setProdutosExcluidos] = useState(new Set());
   const [dataInicio, setDataInicio] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
@@ -405,7 +407,20 @@ export default function Funil() {
     }
   };
 
-  const temFiltro = filtroVendedor || filtroClasse || filtroCanal;
+  const temFiltro = filtroVendedor || filtroClasse || filtroCanal || produtosExcluidos.size > 0;
+
+  // Extract unique products from funil data for filter
+  const produtosDisponiveis = useMemo(() => {
+    const set = new Set();
+    if (funilData?.etapas) {
+      for (const data of Object.values(funilData.etapas)) {
+        for (const l of data.leads) {
+          set.add(l.dadosRespondi?.hubla?.produto || l.formularioTitulo || 'Outro');
+        }
+      }
+    }
+    return [...set].sort();
+  }, [funilData]);
 
   if (carregando && !funilData) {
     return (
@@ -427,7 +442,11 @@ export default function Funil() {
   if (funilData?.etapas) {
     for (const [slug, data] of Object.entries(funilData.etapas)) {
       total += data.leads.length;
-      const soma = data.leads.reduce((s, l) => s + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
+      const leadsContab = data.leads.filter(l => {
+        const p = l.dadosRespondi?.hubla?.produto || l.formularioTitulo || 'Outro';
+        return !produtosExcluidos.has(p);
+      });
+      const soma = leadsContab.reduce((s, l) => s + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
       if (ganhoSlugs.has(slug)) receitaTotal += soma;
       else if (!perdidoSlugs.has(slug)) pipelineTotal += soma;
     }
@@ -477,64 +496,18 @@ export default function Funil() {
       </div>
 
       {/* Filtros */}
-      <div className="flex items-center gap-3 flex-wrap bg-bg-card border border-border-subtle rounded-[14px] p-3">
-        <Filter size={16} className="text-text-muted shrink-0" />
-
-        <select
-          value={filtroVendedor}
-          onChange={(e) => setFiltroVendedor(e.target.value)}
-          className="bg-bg-input border border-border-default rounded-lg px-3 py-1.5 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)]"
-        >
-          <option value="">Todos os vendedores</option>
-          {vendedores.map((v) => (
-            <option key={v.id} value={v.id}>{v.nomeExibicao}</option>
-          ))}
-        </select>
-
-        <select
-          value={filtroClasse}
-          onChange={(e) => setFiltroClasse(e.target.value)}
-          className="bg-bg-input border border-border-default rounded-lg px-3 py-1.5 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)]"
-        >
-          <option value="">Todas as classes</option>
-          <option value="A">Classe A</option>
-          <option value="B">Classe B</option>
-          <option value="C">Classe C</option>
-        </select>
-
-        <select
-          value={filtroCanal}
-          onChange={(e) => setFiltroCanal(e.target.value)}
-          className="bg-bg-input border border-border-default rounded-lg px-3 py-1.5 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)]"
-        >
-          <option value="">Todos os canais</option>
-          <option value="bio">Bio</option>
-          <option value="anuncio">Anuncio</option>
-          <option value="evento">Evento</option>
-        </select>
-
-        <input
-          type="date"
-          value={dataInicio}
-          onChange={(e) => setDataInicio(e.target.value)}
-          className="bg-bg-input border border-border-default rounded-lg px-3 py-1.5 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)]"
-          title="Data inicio"
+      <div className="flex items-center gap-3 flex-wrap">
+        <FiltroUnificado
+          dataInicio={dataInicio} setDataInicio={(v) => setDataInicio(v instanceof Date ? v.toISOString().slice(0, 10) : v)}
+          dataFim={dataFim} setDataFim={(v) => setDataFim(v instanceof Date ? v.toISOString().slice(0, 10) : v)}
+          vendedorId={filtroVendedor} setVendedorId={setFiltroVendedor}
+          canal={filtroCanal} setCanal={setFiltroCanal}
+          classe={filtroClasse} setClasse={setFiltroClasse}
+          produtosExcluidos={produtosExcluidos} setProdutosExcluidos={setProdutosExcluidos}
+          vendedores={vendedores}
+          produtosDisponiveis={produtosDisponiveis}
+          onLimpar={() => { setFiltroVendedor(''); setFiltroClasse(''); setFiltroCanal(''); setProdutosExcluidos(new Set()); const n = new Date(); setDataInicio(new Date(n.getFullYear(), n.getMonth(), 1).toISOString().slice(0, 10)); setDataFim(n.toISOString().slice(0, 10)); }}
         />
-        <input
-          type="date"
-          value={dataFim}
-          onChange={(e) => setDataFim(e.target.value)}
-          className="bg-bg-input border border-border-default rounded-lg px-3 py-1.5 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)]"
-          title="Data fim"
-        />
-
-        {temFiltro && (
-          <button
-            onClick={() => { setFiltroVendedor(''); setFiltroClasse(''); setFiltroCanal(''); const n = new Date(); setDataInicio(new Date(n.getFullYear(), n.getMonth(), 1).toISOString().slice(0, 10)); setDataFim(n.toISOString().slice(0, 10)); }}
-            className="text-[11px] text-accent-violet-light hover:underline"
-          >
-            Limpar filtros
-          </button>
         )}
       </div>
 

@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import DateRangeFilter from '../components/DateRangeFilter';
-import { DollarSign, TrendingUp, Trophy, ArrowUpDown, Search, Phone, MessageCircle, Mail, Filter, X } from 'lucide-react';
+import FiltroUnificado from '../components/FiltroUnificado';
+import { DollarSign, TrendingUp, Trophy, ArrowUpDown, Search, Phone, MessageCircle, Mail } from 'lucide-react';
 
 function MetricCard({ titulo, valor, subtitulo, icone: Icon, cor }) {
   const corMap = {
@@ -42,6 +42,16 @@ function getProdutoDisplay(lead) {
   return '\u2014';
 }
 
+function buildDateParams(dataInicio, dataFim) {
+  const inicioStr = dataInicio instanceof Date ? dataInicio.toISOString().slice(0, 10) : dataInicio;
+  const fimStr = dataFim instanceof Date ? dataFim.toISOString().slice(0, 10) : dataFim;
+  const inicioISO = inicioStr + 'T03:00:00.000Z';
+  const fimDate = new Date(fimStr + 'T12:00:00.000Z');
+  fimDate.setUTCDate(fimDate.getUTCDate() + 1);
+  const fimISO = fimDate.toISOString().slice(0, 10) + 'T02:59:59.999Z';
+  return `data_inicio=${inicioISO}&data_fim=${fimISO}`;
+}
+
 export default function Vendas() {
   const navigate = useNavigate();
   const [vendas, setVendas] = useState([]);
@@ -49,26 +59,17 @@ export default function Vendas() {
   const [carregando, setCarregando] = useState(true);
   const [busca, setBusca] = useState('');
   const [ordenacao, setOrdenacao] = useState({ campo: 'dataConversao', dir: 'desc' });
-  const [produtosExcluidos, setProdutosExcluidos] = useState(new Set());
-  const [filtroAberto, setFiltroAberto] = useState(false);
-  const filtroRef = useRef(null);
 
-  const [dataInicio, setDataInicio] = useState(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1);
-  });
+  const [dataInicio, setDataInicio] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
   const [dataFim, setDataFim] = useState(() => new Date());
+  const [filtroVendedor, setFiltroVendedor] = useState('');
+  const [filtroCanal, setFiltroCanal] = useState('');
+  const [produtosExcluidos, setProdutosExcluidos] = useState(new Set());
 
   const carregarVendas = useCallback(async () => {
     setCarregando(true);
     try {
-      const inicioStr = dataInicio instanceof Date ? dataInicio.toISOString().slice(0, 10) : dataInicio;
-      const fimStr = dataFim instanceof Date ? dataFim.toISOString().slice(0, 10) : dataFim;
-      const inicioISO = inicioStr + 'T03:00:00.000Z';
-      const fimDate = new Date(fimStr + 'T12:00:00.000Z');
-      fimDate.setUTCDate(fimDate.getUTCDate() + 1);
-      const fimISO = fimDate.toISOString().slice(0, 10) + 'T02:59:59.999Z';
-      const dp = `data_inicio=${inicioISO}&data_fim=${fimISO}`;
+      const dp = buildDateParams(dataInicio, dataFim);
       const [vendasRes, vendedoresRes] = await Promise.all([
         api.get(`/leads/vendas?${dp}`),
         api.get('/vendedores'),
@@ -84,104 +85,76 @@ export default function Vendas() {
 
   useEffect(() => { carregarVendas(); }, [carregarVendas]);
 
-  // Close filter dropdown on outside click
-  useEffect(() => {
-    function handleClick(e) {
-      if (filtroRef.current && !filtroRef.current.contains(e.target)) setFiltroAberto(false);
-    }
-    if (filtroAberto) document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [filtroAberto]);
+  const produtosDisponiveis = useMemo(() => {
+    const set = new Set();
+    vendas.forEach(v => set.add(getProduto(v)));
+    return [...set].sort();
+  }, [vendas]);
 
-  // Produtos unicos com contagem
-  const produtosMap = new Map();
-  for (const v of vendas) {
-    const p = getProduto(v);
-    if (!produtosMap.has(p)) produtosMap.set(p, { nome: p, count: 0, valor: 0 });
-    const entry = produtosMap.get(p);
-    entry.count++;
-    entry.valor += v.valorVenda ? Number(v.valorVenda) : 0;
-  }
-  const produtosUnicos = Array.from(produtosMap.values()).sort((a, b) => b.count - a.count);
-
-  const toggleProduto = (nome) => {
-    setProdutosExcluidos(prev => {
-      const next = new Set(prev);
-      if (next.has(nome)) next.delete(nome);
-      else next.add(nome);
-      return next;
-    });
-  };
-
-  // Filtro por busca de texto + exclusao de produtos
-  const vendasFiltradas = vendas
-    .filter(l => {
-      const produto = getProduto(l);
-      if (produtosExcluidos.has(produto)) return false;
-      if (!busca) return true;
-      const b = busca.toLowerCase();
-      return (l.nome || '').toLowerCase().includes(b) || (l.telefone || '').includes(b) || (l.vendedor?.nomeExibicao || '').toLowerCase().includes(b);
-    })
-    .sort((a, b) => {
-      const { campo, dir } = ordenacao;
-      let va, vb;
-      if (campo === 'valorVenda') { va = Number(a.valorVenda || 0); vb = Number(b.valorVenda || 0); }
-      else if (campo === 'nome') { va = (a.nome || '').toLowerCase(); vb = (b.nome || '').toLowerCase(); }
-      else if (campo === 'vendedor') { va = (a.vendedor?.nomeExibicao || '').toLowerCase(); vb = (b.vendedor?.nomeExibicao || '').toLowerCase(); }
-      else { va = new Date(a.dataConversao || a.createdAt).getTime(); vb = new Date(b.dataConversao || b.createdAt).getTime(); }
-      if (va < vb) return dir === 'asc' ? -1 : 1;
-      if (va > vb) return dir === 'asc' ? 1 : -1;
-      return 0;
-    });
+  const vendasFiltradas = useMemo(() => {
+    return vendas
+      .filter(l => {
+        if (produtosExcluidos.has(getProduto(l))) return false;
+        if (filtroVendedor && l.vendedorId !== parseInt(filtroVendedor)) return false;
+        if (filtroCanal && l.canal !== filtroCanal) return false;
+        if (busca) {
+          const b = busca.toLowerCase();
+          if (!(l.nome || '').toLowerCase().includes(b) && !(l.telefone || '').includes(b) && !(l.vendedor?.nomeExibicao || '').toLowerCase().includes(b)) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        const { campo, dir } = ordenacao;
+        let va, vb;
+        if (campo === 'valorVenda') { va = Number(a.valorVenda || 0); vb = Number(b.valorVenda || 0); }
+        else if (campo === 'nome') { va = (a.nome || '').toLowerCase(); vb = (b.nome || '').toLowerCase(); }
+        else if (campo === 'vendedor') { va = (a.vendedor?.nomeExibicao || '').toLowerCase(); vb = (b.vendedor?.nomeExibicao || '').toLowerCase(); }
+        else { va = new Date(a.dataConversao || a.createdAt).getTime(); vb = new Date(b.dataConversao || b.createdAt).getTime(); }
+        if (va < vb) return dir === 'asc' ? -1 : 1;
+        if (va > vb) return dir === 'asc' ? 1 : -1;
+        return 0;
+      });
+  }, [vendas, produtosExcluidos, filtroVendedor, filtroCanal, busca, ordenacao]);
 
   const totalFaturamento = vendasFiltradas.reduce((s, l) => s + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
   const totalVendas = vendasFiltradas.length;
   const ticketMedio = totalVendas > 0 ? Math.round(totalFaturamento / totalVendas) : 0;
   const maiorVenda = vendasFiltradas.reduce((m, l) => Math.max(m, Number(l.valorVenda || 0)), 0);
-  const numExcluidos = produtosExcluidos.size;
 
   const toggleOrdem = (campo) => {
-    setOrdenacao(prev => ({
-      campo,
-      dir: prev.campo === campo && prev.dir === 'desc' ? 'asc' : 'desc',
-    }));
+    setOrdenacao(prev => ({ campo, dir: prev.campo === campo && prev.dir === 'desc' ? 'asc' : 'desc' }));
   };
 
   const salvarValor = async (leadId, novoValor) => {
     try {
       await api.patch(`/leads/${leadId}`, { valorVenda: novoValor });
       setVendas(prev => prev.map(l => l.id === leadId ? { ...l, valorVenda: novoValor } : l));
-    } catch (err) {
-      console.error('Erro ao salvar valor:', err);
-    }
+    } catch (err) { console.error('Erro ao salvar valor:', err); }
   };
 
   const redistribuir = async (leadId, novoVendedorId) => {
     try {
       await api.patch(`/leads/${leadId}/vendedor`, { vendedor_id: novoVendedorId, motivo: 'Atribuicao manual na aba Vendas' });
       carregarVendas();
-    } catch (err) {
-      console.error('Erro ao redistribuir:', err);
-    }
+    } catch (err) { console.error('Erro ao redistribuir:', err); }
+  };
+
+  const limparFiltros = () => {
+    const n = new Date();
+    setDataInicio(new Date(n.getFullYear(), n.getMonth(), 1));
+    setDataFim(n);
+    setFiltroVendedor('');
+    setFiltroCanal('');
+    setProdutosExcluidos(new Set());
   };
 
   if (carregando) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-violet" />
-      </div>
-    );
+    return (<div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-violet" /></div>);
   }
 
   const ThSort = ({ campo, children }) => (
-    <th
-      onClick={() => toggleOrdem(campo)}
-      className="text-left text-[10px] font-semibold text-text-muted uppercase px-4 py-3 cursor-pointer hover:text-text-secondary select-none"
-    >
-      <span className="inline-flex items-center gap-1">
-        {children}
-        <ArrowUpDown size={10} className={ordenacao.campo === campo ? 'text-accent-violet-light' : 'opacity-30'} />
-      </span>
+    <th onClick={() => toggleOrdem(campo)} className="text-left text-[10px] font-semibold text-text-muted uppercase px-4 py-3 cursor-pointer hover:text-text-secondary select-none">
+      <span className="inline-flex items-center gap-1">{children}<ArrowUpDown size={10} className={ordenacao.campo === campo ? 'text-accent-violet-light' : 'opacity-30'} /></span>
     </th>
   );
 
@@ -192,109 +165,40 @@ export default function Vendas() {
           <h1 className="text-[22px] font-bold text-white">Vendas</h1>
           <p className="text-[13px] text-text-secondary mt-1">Gestao de vendas e faturamento</p>
         </div>
-        <DateRangeFilter
-          dataInicio={dataInicio}
-          dataFim={dataFim}
-          onChange={(inicio, fim) => { setDataInicio(inicio); setDataFim(fim); }}
+        <FiltroUnificado
+          dataInicio={dataInicio} setDataInicio={setDataInicio}
+          dataFim={dataFim} setDataFim={setDataFim}
+          vendedorId={filtroVendedor} setVendedorId={setFiltroVendedor}
+          canal={filtroCanal} setCanal={setFiltroCanal}
+          produtosExcluidos={produtosExcluidos} setProdutosExcluidos={setProdutosExcluidos}
+          vendedores={vendedores}
+          produtosDisponiveis={produtosDisponiveis}
+          onLimpar={limparFiltros}
         />
       </div>
 
-      {/* Metricas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-[14px]">
         <MetricCard titulo="Total de Vendas" valor={totalVendas} icone={TrendingUp} cor="green" />
         <MetricCard
           titulo="Faturamento Total"
           valor={fmtMoeda(totalFaturamento)}
-          subtitulo={numExcluidos > 0 ? `excluindo ${numExcluidos} produto${numExcluidos > 1 ? 's' : ''}` : undefined}
-          icone={DollarSign}
-          cor="yellow"
+          subtitulo={produtosExcluidos.size > 0 ? `excluindo ${produtosExcluidos.size} produto${produtosExcluidos.size > 1 ? 's' : ''}` : undefined}
+          icone={DollarSign} cor="yellow"
         />
         <MetricCard titulo="Ticket Medio" valor={fmtMoeda(ticketMedio)} icone={DollarSign} cor="purple" />
         <MetricCard titulo="Maior Venda" valor={fmtMoeda(maiorVenda)} icone={Trophy} cor="blue" />
       </div>
 
-      {/* Busca + filtro de produtos */}
+      {/* Busca */}
       <div className="flex items-center gap-3 bg-bg-card border border-border-subtle rounded-[14px] p-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-          <input
-            type="text"
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
+          <input type="text" value={busca} onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar por nome, telefone ou vendedor..."
             className="w-full pl-9 pr-3 py-1.5 bg-bg-input border border-border-default rounded-lg text-[12px] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-[rgba(108,92,231,0.4)]"
           />
         </div>
-
-        {/* Filtro de produtos */}
-        <div className="relative" ref={filtroRef}>
-          <button
-            onClick={() => setFiltroAberto(!filtroAberto)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${
-              numExcluidos > 0
-                ? 'bg-[rgba(225,112,85,0.12)] text-accent-danger border border-[rgba(225,112,85,0.2)]'
-                : 'bg-bg-input border border-border-default text-text-secondary hover:border-border-active'
-            }`}
-          >
-            <Filter size={12} />
-            Produtos
-            {numExcluidos > 0 && (
-              <span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-accent-danger text-white text-[9px] font-bold leading-none">
-                {numExcluidos}
-              </span>
-            )}
-          </button>
-
-          {filtroAberto && (
-            <div className="absolute right-0 top-full mt-2 w-[320px] bg-bg-card border border-border-subtle rounded-[12px] shadow-xl z-50 overflow-hidden">
-              <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle">
-                <span className="text-[11px] font-semibold text-text-primary">Filtrar por produto</span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setProdutosExcluidos(new Set())}
-                    className="text-[10px] text-accent-emerald hover:underline"
-                  >
-                    Marcar todos
-                  </button>
-                  <button
-                    onClick={() => setProdutosExcluidos(new Set(produtosUnicos.map(p => p.nome)))}
-                    className="text-[10px] text-accent-danger hover:underline"
-                  >
-                    Desmarcar todos
-                  </button>
-                </div>
-              </div>
-              <div className="max-h-[300px] overflow-y-auto">
-                {produtosUnicos.map((p) => {
-                  const isExcluido = produtosExcluidos.has(p.nome);
-                  return (
-                    <label
-                      key={p.nome}
-                      className="flex items-center gap-2 px-3 py-2 hover:bg-white/[0.02] cursor-pointer border-b border-border-subtle last:border-b-0"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={!isExcluido}
-                        onChange={() => toggleProduto(p.nome)}
-                        className="rounded border-border-default"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-[11px] truncate ${isExcluido ? 'text-text-muted line-through' : 'text-text-primary'}`}>
-                          {p.nome}
-                        </p>
-                      </div>
-                      <span className="text-[10px] text-text-muted shrink-0">{p.count} vendas</span>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <span className="text-[11px] text-text-muted shrink-0">
-          {vendasFiltradas.length} vendas | {fmtMoeda(totalFaturamento)}
-        </span>
+        <span className="text-[11px] text-text-muted shrink-0">{vendasFiltradas.length} vendas | {fmtMoeda(totalFaturamento)}</span>
       </div>
 
       {/* Tabela */}
@@ -313,101 +217,46 @@ export default function Vendas() {
             </thead>
             <tbody>
               {vendasFiltradas.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-12 text-text-muted">
-                    Nenhuma venda encontrada no periodo
-                  </td>
-                </tr>
+                <tr><td colSpan={6} className="text-center py-12 text-text-muted">Nenhuma venda encontrada no periodo</td></tr>
               ) : (
                 vendasFiltradas.map((lead) => (
                   <tr key={lead.id} className="hover:bg-white/[0.02] border-b border-border-subtle last:border-b-0 transition-colors">
-                    {/* Cliente */}
                     <td className="px-4 py-3">
-                      <p
-                        className="text-[12px] font-medium text-text-primary hover:text-accent-violet-light cursor-pointer"
-                        onClick={() => navigate(`/leads/${lead.id}`)}
-                      >
-                        {lead.nome}
-                      </p>
-                      {lead.email && (
-                        <div className="flex items-center gap-1 text-[10px] text-text-muted mt-0.5">
-                          <Mail size={9} />
-                          <span className="truncate max-w-[150px]">{lead.email}</span>
-                        </div>
-                      )}
+                      <p className="text-[12px] font-medium text-text-primary hover:text-accent-violet-light cursor-pointer" onClick={() => navigate(`/leads/${lead.id}`)}>{lead.nome}</p>
+                      {lead.email && (<div className="flex items-center gap-1 text-[10px] text-text-muted mt-0.5"><Mail size={9} /><span className="truncate max-w-[150px]">{lead.email}</span></div>)}
                     </td>
-
-                    {/* Contato */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1 text-[12px] text-text-secondary">
-                        <Phone size={11} />
-                        <span>{lead.telefone}</span>
-                        <a
-                          href={`https://wa.me/${(lead.telefone || '').replace(/\D/g, '')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-0.5 rounded text-accent-emerald hover:bg-[rgba(0,184,148,0.08)] transition-all"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <MessageCircle size={12} />
-                        </a>
+                        <Phone size={11} /><span>{lead.telefone}</span>
+                        <a href={`https://wa.me/${(lead.telefone || '').replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="p-0.5 rounded text-accent-emerald hover:bg-[rgba(0,184,148,0.08)] transition-all" onClick={(e) => e.stopPropagation()}><MessageCircle size={12} /></a>
                       </div>
                     </td>
-
-                    {/* Valor editavel */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-0.5">
                         <span className="text-[10px] text-text-muted">R$</span>
-                        <input
-                          type="text"
-                          defaultValue={lead.valorVenda ? Number(lead.valorVenda).toLocaleString('pt-BR') : '0'}
+                        <input type="text" defaultValue={lead.valorVenda ? Number(lead.valorVenda).toLocaleString('pt-BR') : '0'}
                           onFocus={(e) => { e.target.value = lead.valorVenda ? String(Number(lead.valorVenda)) : ''; e.target.select(); }}
-                          onBlur={(e) => {
-                            const valor = parseFloat(e.target.value.replace(/[^\d.,]/g, '').replace(',', '.')) || null;
-                            const atual = lead.valorVenda ? Number(lead.valorVenda) : null;
-                            if (valor !== atual) salvarValor(lead.id, valor);
-                            e.target.value = valor ? Number(valor).toLocaleString('pt-BR') : '0';
-                          }}
+                          onBlur={(e) => { const valor = parseFloat(e.target.value.replace(/[^\d.,]/g, '').replace(',', '.')) || null; const atual = lead.valorVenda ? Number(lead.valorVenda) : null; if (valor !== atual) salvarValor(lead.id, valor); e.target.value = valor ? Number(valor).toLocaleString('pt-BR') : '0'; }}
                           onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
                           className="w-[90px] text-right px-2 py-1 rounded-lg bg-transparent border border-transparent hover:border-border-default focus:border-[rgba(108,92,231,0.4)] focus:bg-bg-input text-accent-amber font-semibold text-[12px] outline-none transition-all"
                         />
                       </div>
                     </td>
-
-                    {/* Produto */}
+                    <td className="px-4 py-3"><span className="text-[11px] text-text-secondary truncate max-w-[150px] block">{getProdutoDisplay(lead)}</span></td>
                     <td className="px-4 py-3">
-                      <span className="text-[11px] text-text-secondary truncate max-w-[150px] block">{getProdutoDisplay(lead)}</span>
-                    </td>
-
-                    {/* Vendedor editavel */}
-                    <td className="px-4 py-3">
-                      <select
-                        value={lead.vendedorId || ''}
-                        onChange={(e) => {
-                          const novoId = parseInt(e.target.value, 10);
-                          if (novoId && novoId !== lead.vendedorId) redistribuir(lead.id, novoId);
-                        }}
-                        className="bg-bg-input border border-border-default rounded-lg text-text-primary text-[11px] px-2 py-1 outline-none focus:border-[rgba(108,92,231,0.4)] transition-all"
-                      >
+                      <select value={lead.vendedorId || ''} onChange={(e) => { const novoId = parseInt(e.target.value, 10); if (novoId && novoId !== lead.vendedorId) redistribuir(lead.id, novoId); }}
+                        className="bg-bg-input border border-border-default rounded-lg text-text-primary text-[11px] px-2 py-1 outline-none focus:border-[rgba(108,92,231,0.4)] transition-all">
                         <option value="">{'\u2014'}</option>
-                        {vendedores.map(v => (
-                          <option key={v.id} value={v.id}>{v.nomeExibicao}</option>
-                        ))}
+                        {vendedores.map(v => (<option key={v.id} value={v.id}>{v.nomeExibicao}</option>))}
                       </select>
                     </td>
-
-                    {/* Data */}
-                    <td className="px-4 py-3 text-[11px] text-text-muted whitespace-nowrap">
-                      {new Date(lead.dataConversao || lead.createdAt).toLocaleDateString('pt-BR')}
-                    </td>
+                    <td className="px-4 py-3 text-[11px] text-text-muted whitespace-nowrap">{new Date(lead.dataConversao || lead.createdAt).toLocaleDateString('pt-BR')}</td>
                   </tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
-
-        {/* Totalizador */}
         {vendasFiltradas.length > 0 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-border-subtle bg-bg-elevated/50">
             <span className="text-[11px] font-semibold text-text-muted">{vendasFiltradas.length} vendas</span>

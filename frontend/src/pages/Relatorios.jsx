@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
-import DateRangeFilter from '../components/DateRangeFilter';
+import FiltroUnificado from '../components/FiltroUnificado';
 import AIResumoPeriodo from '../components/AIResumoPeriodo';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { FileDown, TrendingUp, DollarSign, Users } from 'lucide-react';
@@ -134,10 +134,9 @@ export default function Relatorios() {
           <p className="text-[13px] text-text-secondary mt-1">Visao gerencial do CRM</p>
         </div>
         <div className="flex items-center gap-3">
-          <DateRangeFilter
-            dataInicio={dataInicio}
-            dataFim={dataFim}
-            onChange={(inicio, fim) => { setDataInicio(inicio); setDataFim(fim); }}
+          <FiltroUnificado
+            dataInicio={dataInicio} setDataInicio={setDataInicio}
+            dataFim={dataFim} setDataFim={setDataFim}
           />
           <button
             onClick={() => exportarCSV(porCloser, 'relatorio-closers')}
