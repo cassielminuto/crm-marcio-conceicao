@@ -427,8 +427,7 @@ export default function Funil() {
   if (funilData?.etapas) {
     for (const [slug, data] of Object.entries(funilData.etapas)) {
       total += data.leads.length;
-      const leadsContab = data.leads.filter(l => !l.produtoExcluido);
-      const soma = leadsContab.reduce((s, l) => s + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
+      const soma = data.leads.reduce((s, l) => s + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
       if (ganhoSlugs.has(slug)) receitaTotal += soma;
       else if (!perdidoSlugs.has(slug)) pipelineTotal += soma;
     }

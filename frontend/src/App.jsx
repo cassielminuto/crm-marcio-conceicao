@@ -18,7 +18,6 @@ import VendedoresAdmin from './pages/VendedoresAdmin';
 import LeadCard from './pages/LeadCard';
 import Perfil from './pages/Perfil';
 import Vendas from './pages/Vendas';
-import ProdutosExcluidos from './pages/ProdutosExcluidos';
 
 export default function App() {
   return (
@@ -50,7 +49,6 @@ export default function App() {
               <Route path="vendedores" element={<VendedoresAdmin />} />
               <Route path="whatsapp" element={<WhatsAppAdmin />} />
               <Route path="templates" element={<Templates />} />
-              <Route path="produtos" element={<ProdutosExcluidos />} />
             </Route>
           </Route>
 

@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import DateRangeFilter from '../components/DateRangeFilter';
-import { DollarSign, TrendingUp, Trophy, ArrowUpDown, Search, Phone, MessageCircle, Mail } from 'lucide-react';
+import { DollarSign, TrendingUp, Trophy, ArrowUpDown, Search, Phone, MessageCircle, Mail, Filter, X } from 'lucide-react';
 
-function MetricCard({ titulo, valor, icone: Icon, cor }) {
+function MetricCard({ titulo, valor, subtitulo, icone: Icon, cor }) {
   const corMap = {
     yellow: { bg: 'rgba(253,203,110,0.1)', text: 'text-accent-amber' },
     green: { bg: 'rgba(0,184,148,0.1)', text: 'text-accent-emerald' },
@@ -18,6 +18,7 @@ function MetricCard({ titulo, valor, icone: Icon, cor }) {
         <div>
           <p className="text-[11px] text-text-muted font-medium">{titulo}</p>
           <p className="text-[26px] font-extrabold text-white tracking-tight mt-1">{valor}</p>
+          {subtitulo && <p className="text-[10px] text-text-muted mt-0.5">{subtitulo}</p>}
         </div>
         <div className="w-[42px] h-[42px] rounded-[10px] flex items-center justify-center" style={{ background: c.bg }}>
           <Icon size={20} className={c.text} />
@@ -31,8 +32,14 @@ function fmtMoeda(v) {
   return `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
-function fmtDate(d) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+function getProduto(lead) {
+  return lead.produtoHubla || lead.dadosRespondi?.hubla?.produto || lead.formularioTitulo || 'Outro';
+}
+
+function getProdutoDisplay(lead) {
+  if (lead.dadosRespondi?.hubla?.produto) return lead.dadosRespondi.hubla.produto;
+  if (lead.formularioTitulo && lead.formularioTitulo !== 'Manual') return lead.formularioTitulo;
+  return '\u2014';
 }
 
 export default function Vendas() {
@@ -42,6 +49,9 @@ export default function Vendas() {
   const [carregando, setCarregando] = useState(true);
   const [busca, setBusca] = useState('');
   const [ordenacao, setOrdenacao] = useState({ campo: 'dataConversao', dir: 'desc' });
+  const [produtosExcluidos, setProdutosExcluidos] = useState(new Set());
+  const [filtroAberto, setFiltroAberto] = useState(false);
+  const filtroRef = useRef(null);
 
   const [dataInicio, setDataInicio] = useState(() => {
     const now = new Date();
@@ -52,7 +62,6 @@ export default function Vendas() {
   const carregarVendas = useCallback(async () => {
     setCarregando(true);
     try {
-      // BRT (UTC-3): inicio = 03:00Z mesmo dia, fim = 02:59:59Z dia seguinte
       const inicioStr = dataInicio instanceof Date ? dataInicio.toISOString().slice(0, 10) : dataInicio;
       const fimStr = dataFim instanceof Date ? dataFim.toISOString().slice(0, 10) : dataFim;
       const inicioISO = inicioStr + 'T03:00:00.000Z';
@@ -75,9 +84,40 @@ export default function Vendas() {
 
   useEffect(() => { carregarVendas(); }, [carregarVendas]);
 
-  // Filtro + ordenação
+  // Close filter dropdown on outside click
+  useEffect(() => {
+    function handleClick(e) {
+      if (filtroRef.current && !filtroRef.current.contains(e.target)) setFiltroAberto(false);
+    }
+    if (filtroAberto) document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [filtroAberto]);
+
+  // Produtos unicos com contagem
+  const produtosMap = new Map();
+  for (const v of vendas) {
+    const p = getProduto(v);
+    if (!produtosMap.has(p)) produtosMap.set(p, { nome: p, count: 0, valor: 0 });
+    const entry = produtosMap.get(p);
+    entry.count++;
+    entry.valor += v.valorVenda ? Number(v.valorVenda) : 0;
+  }
+  const produtosUnicos = Array.from(produtosMap.values()).sort((a, b) => b.count - a.count);
+
+  const toggleProduto = (nome) => {
+    setProdutosExcluidos(prev => {
+      const next = new Set(prev);
+      if (next.has(nome)) next.delete(nome);
+      else next.add(nome);
+      return next;
+    });
+  };
+
+  // Filtro por busca de texto + exclusao de produtos
   const vendasFiltradas = vendas
     .filter(l => {
+      const produto = getProduto(l);
+      if (produtosExcluidos.has(produto)) return false;
       if (!busca) return true;
       const b = busca.toLowerCase();
       return (l.nome || '').toLowerCase().includes(b) || (l.telefone || '').includes(b) || (l.vendedor?.nomeExibicao || '').toLowerCase().includes(b);
@@ -94,12 +134,11 @@ export default function Vendas() {
       return 0;
     });
 
-  const vendasContabilizadas = vendasFiltradas.filter(l => !l.produtoExcluido);
-  const totalFaturamento = vendasContabilizadas.reduce((s, l) => s + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
-  const totalVendas = vendasContabilizadas.length;
+  const totalFaturamento = vendasFiltradas.reduce((s, l) => s + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
+  const totalVendas = vendasFiltradas.length;
   const ticketMedio = totalVendas > 0 ? Math.round(totalFaturamento / totalVendas) : 0;
-  const maiorVenda = vendasContabilizadas.reduce((m, l) => Math.max(m, Number(l.valorVenda || 0)), 0);
-  const faturamentoExcluido = vendasFiltradas.filter(l => l.produtoExcluido).reduce((s, l) => s + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
+  const maiorVenda = vendasFiltradas.reduce((m, l) => Math.max(m, Number(l.valorVenda || 0)), 0);
+  const numExcluidos = produtosExcluidos.size;
 
   const toggleOrdem = (campo) => {
     setOrdenacao(prev => ({
@@ -124,12 +163,6 @@ export default function Vendas() {
     } catch (err) {
       console.error('Erro ao redistribuir:', err);
     }
-  };
-
-  const produto = (lead) => {
-    if (lead.dadosRespondi?.hubla?.produto) return lead.dadosRespondi.hubla.produto;
-    if (lead.formularioTitulo && lead.formularioTitulo !== 'Manual') return lead.formularioTitulo;
-    return '—';
   };
 
   if (carregando) {
@@ -166,15 +199,21 @@ export default function Vendas() {
         />
       </div>
 
-      {/* Métricas */}
+      {/* Metricas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-[14px]">
         <MetricCard titulo="Total de Vendas" valor={totalVendas} icone={TrendingUp} cor="green" />
-        <MetricCard titulo="Faturamento Total" valor={fmtMoeda(totalFaturamento)} icone={DollarSign} cor="yellow" />
+        <MetricCard
+          titulo="Faturamento Total"
+          valor={fmtMoeda(totalFaturamento)}
+          subtitulo={numExcluidos > 0 ? `excluindo ${numExcluidos} produto${numExcluidos > 1 ? 's' : ''}` : undefined}
+          icone={DollarSign}
+          cor="yellow"
+        />
         <MetricCard titulo="Ticket Medio" valor={fmtMoeda(ticketMedio)} icone={DollarSign} cor="purple" />
         <MetricCard titulo="Maior Venda" valor={fmtMoeda(maiorVenda)} icone={Trophy} cor="blue" />
       </div>
 
-      {/* Busca */}
+      {/* Busca + filtro de produtos */}
       <div className="flex items-center gap-3 bg-bg-card border border-border-subtle rounded-[14px] p-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
@@ -186,6 +225,73 @@ export default function Vendas() {
             className="w-full pl-9 pr-3 py-1.5 bg-bg-input border border-border-default rounded-lg text-[12px] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-[rgba(108,92,231,0.4)]"
           />
         </div>
+
+        {/* Filtro de produtos */}
+        <div className="relative" ref={filtroRef}>
+          <button
+            onClick={() => setFiltroAberto(!filtroAberto)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${
+              numExcluidos > 0
+                ? 'bg-[rgba(225,112,85,0.12)] text-accent-danger border border-[rgba(225,112,85,0.2)]'
+                : 'bg-bg-input border border-border-default text-text-secondary hover:border-border-active'
+            }`}
+          >
+            <Filter size={12} />
+            Produtos
+            {numExcluidos > 0 && (
+              <span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-accent-danger text-white text-[9px] font-bold leading-none">
+                {numExcluidos}
+              </span>
+            )}
+          </button>
+
+          {filtroAberto && (
+            <div className="absolute right-0 top-full mt-2 w-[320px] bg-bg-card border border-border-subtle rounded-[12px] shadow-xl z-50 overflow-hidden">
+              <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle">
+                <span className="text-[11px] font-semibold text-text-primary">Filtrar por produto</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setProdutosExcluidos(new Set())}
+                    className="text-[10px] text-accent-emerald hover:underline"
+                  >
+                    Marcar todos
+                  </button>
+                  <button
+                    onClick={() => setProdutosExcluidos(new Set(produtosUnicos.map(p => p.nome)))}
+                    className="text-[10px] text-accent-danger hover:underline"
+                  >
+                    Desmarcar todos
+                  </button>
+                </div>
+              </div>
+              <div className="max-h-[300px] overflow-y-auto">
+                {produtosUnicos.map((p) => {
+                  const isExcluido = produtosExcluidos.has(p.nome);
+                  return (
+                    <label
+                      key={p.nome}
+                      className="flex items-center gap-2 px-3 py-2 hover:bg-white/[0.02] cursor-pointer border-b border-border-subtle last:border-b-0"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={!isExcluido}
+                        onChange={() => toggleProduto(p.nome)}
+                        className="rounded border-border-default"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-[11px] truncate ${isExcluido ? 'text-text-muted line-through' : 'text-text-primary'}`}>
+                          {p.nome}
+                        </p>
+                      </div>
+                      <span className="text-[10px] text-text-muted shrink-0">{p.count} vendas</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
         <span className="text-[11px] text-text-muted shrink-0">
           {vendasFiltradas.length} vendas | {fmtMoeda(totalFaturamento)}
         </span>
@@ -214,7 +320,7 @@ export default function Vendas() {
                 </tr>
               ) : (
                 vendasFiltradas.map((lead) => (
-                  <tr key={lead.id} className={`hover:bg-white/[0.02] border-b border-border-subtle last:border-b-0 transition-colors ${lead.produtoExcluido ? 'opacity-50' : ''}`}>
+                  <tr key={lead.id} className="hover:bg-white/[0.02] border-b border-border-subtle last:border-b-0 transition-colors">
                     {/* Cliente */}
                     <td className="px-4 py-3">
                       <p
@@ -248,7 +354,7 @@ export default function Vendas() {
                       </div>
                     </td>
 
-                    {/* Valor editável */}
+                    {/* Valor editavel */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-0.5">
                         <span className="text-[10px] text-text-muted">R$</span>
@@ -270,15 +376,10 @@ export default function Vendas() {
 
                     {/* Produto */}
                     <td className="px-4 py-3">
-                      <span className="text-[11px] text-text-secondary truncate max-w-[150px] block">
-                        {produto(lead)}
-                        {lead.produtoExcluido && (
-                          <span className="ml-1 inline-flex px-1.5 py-0.5 rounded text-[9px] font-medium bg-[rgba(225,112,85,0.12)] text-accent-danger">Excluido</span>
-                        )}
-                      </span>
+                      <span className="text-[11px] text-text-secondary truncate max-w-[150px] block">{getProdutoDisplay(lead)}</span>
                     </td>
 
-                    {/* Vendedor editável */}
+                    {/* Vendedor editavel */}
                     <td className="px-4 py-3">
                       <select
                         value={lead.vendedorId || ''}
@@ -288,7 +389,7 @@ export default function Vendas() {
                         }}
                         className="bg-bg-input border border-border-default rounded-lg text-text-primary text-[11px] px-2 py-1 outline-none focus:border-[rgba(108,92,231,0.4)] transition-all"
                       >
-                        <option value="">—</option>
+                        <option value="">{'\u2014'}</option>
                         {vendedores.map(v => (
                           <option key={v.id} value={v.id}>{v.nomeExibicao}</option>
                         ))}
@@ -309,11 +410,8 @@ export default function Vendas() {
         {/* Totalizador */}
         {vendasFiltradas.length > 0 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-border-subtle bg-bg-elevated/50">
-            <span className="text-[11px] font-semibold text-text-muted">{totalVendas} vendas{faturamentoExcluido > 0 ? ` (${vendasFiltradas.length - totalVendas} excluidas)` : ''}</span>
-            <span className="text-[13px] font-bold text-accent-amber">
-              Total: {fmtMoeda(totalFaturamento)}
-              {faturamentoExcluido > 0 && <span className="text-[10px] font-normal text-text-muted ml-2">({fmtMoeda(faturamentoExcluido)} excluido)</span>}
-            </span>
+            <span className="text-[11px] font-semibold text-text-muted">{vendasFiltradas.length} vendas</span>
+            <span className="text-[13px] font-bold text-accent-amber">Total: {fmtMoeda(totalFaturamento)}</span>
           </div>
         )}
       </div>

@@ -763,17 +763,14 @@ async function listarFunil(req, res, next) {
       where.vendedorId = req.usuario.vendedorId;
     }
 
-    const [leads, nomesExcluidos] = await Promise.all([
-      prisma.lead.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        take: 5000,
-        include: {
-          vendedor: { select: { id: true, nomeExibicao: true } },
-        },
-      }),
-      getProdutosExcluidos(),
-    ]);
+    const leads = await prisma.lead.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: 5000,
+      include: {
+        vendedor: { select: { id: true, nomeExibicao: true } },
+      },
+    });
 
     const TICKET_MEDIO = 1229;
     const etapasList = ['novo', 'em_abordagem', 'qualificado', 'proposta', 'fechado_ganho', 'fechado_perdido', 'nurturing'];
@@ -786,13 +783,10 @@ async function listarFunil(req, res, next) {
     for (const lead of leads) {
       const e = lead.etapaFunil;
       if (!etapas[e]) etapas[e] = { leads: [], count: 0, valorTotal: 0 };
-      const isExcluido = nomesExcluidos.has(getProdutoLead(lead));
-      etapas[e].leads.push({ ...lead, produtoExcluido: isExcluido });
+      etapas[e].leads.push(lead);
       etapas[e].count++;
-      if (!isExcluido) {
-        const valor = Number(lead.valorVenda) || (lead.pontuacao >= 45 ? TICKET_MEDIO : 0);
-        etapas[e].valorTotal += valor;
-      }
+      const valor = Number(lead.valorVenda) || (lead.pontuacao >= 45 ? TICKET_MEDIO : 0);
+      etapas[e].valorTotal += valor;
     }
 
     let pipelineTotal = 0;
@@ -863,17 +857,6 @@ async function buscar(req, res, next) {
   }
 }
 
-// Buscar nomes de produtos excluídos do faturamento
-async function getProdutosExcluidos() {
-  const produtos = await prisma.produtoExcluido.findMany({ select: { nome: true } });
-  return new Set(produtos.map(p => p.nome));
-}
-
-// Extrair nome do produto de um lead
-function getProdutoLead(lead) {
-  return lead.produtoHubla || lead.dadosRespondi?.hubla?.produto || lead.formularioTitulo || '';
-}
-
 // Listar vendas por dataConversao (fallback createdAt para importadas)
 async function listarVendas(req, res, next) {
   try {
@@ -899,45 +882,31 @@ async function listarVendas(req, res, next) {
       where.vendedorId = req.usuario.vendedorId;
     }
 
-    const [vendas, nomesExcluidos] = await Promise.all([
-      prisma.lead.findMany({
-        where,
-        select: {
-          id: true,
-          nome: true,
-          telefone: true,
-          email: true,
-          valorVenda: true,
-          vendaRealizada: true,
-          dataConversao: true,
-          createdAt: true,
-          vendedorId: true,
-          formularioTitulo: true,
-          dadosRespondi: true,
-          produtoHubla: true,
-          vendedor: { select: { id: true, nomeExibicao: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-      }),
-      getProdutosExcluidos(),
-    ]);
+    const vendas = await prisma.lead.findMany({
+      where,
+      select: {
+        id: true,
+        nome: true,
+        telefone: true,
+        email: true,
+        valorVenda: true,
+        vendaRealizada: true,
+        dataConversao: true,
+        createdAt: true,
+        vendedorId: true,
+        formularioTitulo: true,
+        dadosRespondi: true,
+        produtoHubla: true,
+        vendedor: { select: { id: true, nomeExibicao: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
 
-    // Marcar cada venda se é de produto excluído
-    const vendasComFlag = vendas.map(v => ({
-      ...v,
-      produtoExcluido: nomesExcluidos.has(getProdutoLead(v)),
-    }));
+    // Calcular totais
+    const totalVendas = vendas.length;
+    const faturamento = vendas.reduce((s, l) => s + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
 
-    // Calcular totais (excluindo produtos marcados)
-    const vendasContabilizadas = vendasComFlag.filter(v => !v.produtoExcluido);
-    const totalVendas = vendasContabilizadas.length;
-    const faturamento = vendasContabilizadas.reduce((s, l) => s + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
-
-    // Total sem exclusão (para referência)
-    const faturamentoTotal = vendasComFlag.reduce((s, l) => s + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
-    const totalVendasGeral = vendasComFlag.length;
-
-    res.json({ vendas: vendasComFlag, totalVendas, faturamento, faturamentoTotal, totalVendasGeral });
+    res.json({ vendas, totalVendas, faturamento });
   } catch (err) {
     next(err);
   }

@@ -387,16 +387,6 @@ model Proposta {
   @@map("propostas")
 }
 
-/// Tabela: produtos_excluidos (produtos que nao contam no faturamento)
-model ProdutoExcluido {
-  id        Int      @id @default(autoincrement())
-  nome      String   @unique
-  criadoEm  DateTime @default(now()) @map("criado_em")
-  criadoPor Int?     @map("criado_por")
-
-  @@map("produtos_excluidos")
-}
-
 /// Tabela 14: notificacoes
 model Notificacao {
   id        Int      @id @default(autoincrement())

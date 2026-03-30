@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { Settings, Clock, Smartphone, FileText, Users, Package } from 'lucide-react';
+import { Settings, Clock, Smartphone, FileText, Users } from 'lucide-react';
 
 export default function Admin() {
   const location = useLocation();
@@ -60,18 +60,6 @@ export default function Admin() {
           }
         >
           <FileText size={16} /> Templates
-        </NavLink>
-        <NavLink
-          to="/admin/produtos"
-          className={({ isActive }) =>
-            `flex items-center gap-2 px-4 py-2 rounded-[10px] text-[12px] font-semibold transition-all duration-250 ${
-              isActive
-                ? 'bg-gradient-to-r from-[#e17055] to-[#fdcb6e] text-white shadow-[0_4px_16px_rgba(225,112,85,0.25)]'
-                : 'bg-bg-elevated border border-border-default text-text-secondary hover:border-border-active hover:text-[#b0b0d0]'
-            }`
-          }
-        >
-          <Package size={16} /> Produtos
         </NavLink>
       </div>
 
