@@ -195,7 +195,6 @@ model Lead {
   followUps           FollowUp[]
   funilHistorico      FunilHistorico[]
   propostas           Proposta[]
-  produtoHubla        String?       @map("produto_hubla")
   duplicatasOrigem    PossivelDuplicata[] @relation("DuplicataOrigem")
   duplicatasDe        PossivelDuplicata[] @relation("DuplicataDuplicata")
 

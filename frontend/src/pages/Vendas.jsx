@@ -33,7 +33,7 @@ function fmtMoeda(v) {
 }
 
 function getProduto(lead) {
-  return lead.produtoHubla || lead.dadosRespondi?.hubla?.produto || lead.formularioTitulo || 'Outro';
+  return lead.dadosRespondi?.hubla?.produto || lead.formularioTitulo || 'Outro';
 }
 
 function getProdutoDisplay(lead) {

@@ -896,7 +896,6 @@ async function listarVendas(req, res, next) {
         vendedorId: true,
         formularioTitulo: true,
         dadosRespondi: true,
-        produtoHubla: true,
         vendedor: { select: { id: true, nomeExibicao: true } },
       },
       orderBy: { createdAt: 'desc' },
