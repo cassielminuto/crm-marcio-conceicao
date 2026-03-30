@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../services/api';
 import FiltroUnificado from '../components/FiltroUnificado';
 import AIResumoPeriodo from '../components/AIResumoPeriodo';
@@ -43,6 +43,11 @@ export default function Relatorios() {
   const [porCloser, setPorCloser] = useState([]);
   const [leadsPorDia, setLeadsPorDia] = useState([]);
   const [carregando, setCarregando] = useState(true);
+  const [vendedores, setVendedores] = useState([]);
+  const [rawVendas, setRawVendas] = useState([]);
+  const [filtroVendedor, setFiltroVendedor] = useState('');
+  const [filtroCanal, setFiltroCanal] = useState('');
+  const [produtosExcluidos, setProdutosExcluidos] = useState(new Set());
 
   const [dataInicio, setDataInicio] = useState(() => {
     const now = new Date();
@@ -62,14 +67,17 @@ export default function Relatorios() {
       const fimISO = fimDate.toISOString().slice(0, 10) + 'T02:59:59.999Z';
       const dp = `data_inicio=${inicioISO}&data_fim=${fimISO}`;
 
-      const [funilRes, vendasRes, canalRes, classeRes, closerRes, diasRes] = await Promise.all([
+      const [funilRes, vendasRes, canalRes, classeRes, closerRes, diasRes, vendedoresRes] = await Promise.all([
         api.get(`/leads/funil?${dp}`),
         api.get(`/leads/vendas?${dp}`),
         api.get(`/relatorios/por-canal?${dp}`),
         api.get(`/relatorios/por-classe?${dp}`),
         api.get(`/relatorios/por-closer?${dp}`),
         api.get(`/leads/por-dia?${dp}`),
+        api.get('/vendedores'),
       ]);
+
+      setVendedores(Array.isArray(vendedoresRes.data) ? vendedoresRes.data : []);
 
       // Total de leads do funil (por createdAt)
       const funilData = funilRes.data;
@@ -81,6 +89,8 @@ export default function Relatorios() {
       }
       // Vendas/faturamento por dataConversao (fonte correta)
       const vendasData = vendasRes.data;
+      const vendasList = vendasData?.vendas || [];
+      setRawVendas(vendasList);
       const totalLeads = allLeads.length;
       const convertidos = vendasData?.totalVendas || 0;
       const faturamento = vendasData?.faturamento || 0;
@@ -101,6 +111,30 @@ export default function Relatorios() {
   useEffect(() => {
     carregar();
   }, [carregar]);
+
+  const getProduto = (l) => l.dadosRespondi?.hubla?.produto || l.formularioTitulo || 'Outro';
+
+  const produtosDisponiveis = useMemo(() => {
+    const set = new Set();
+    rawVendas.forEach(v => set.add(getProduto(v)));
+    return [...set].sort();
+  }, [rawVendas]);
+
+  // Recalculate faturamento with frontend filters applied
+  const geralFiltrado = useMemo(() => {
+    if (!geral) return null;
+    if (!filtroVendedor && !filtroCanal && produtosExcluidos.size === 0) return geral;
+    const vendasFiltradas = rawVendas.filter(v => {
+      if (filtroVendedor && v.vendedorId !== parseInt(filtroVendedor)) return false;
+      if (filtroCanal && v.canal !== filtroCanal) return false;
+      if (produtosExcluidos.has(getProduto(v))) return false;
+      return true;
+    });
+    const faturamento = vendasFiltradas.reduce((s, v) => s + (v.valorVenda ? Number(v.valorVenda) : 0), 0);
+    const convertidos = vendasFiltradas.length;
+    const taxaConversao = geral.totalLeads > 0 ? Math.round((convertidos / geral.totalLeads) * 10000) / 100 : 0;
+    return { ...geral, faturamento, convertidos, taxaConversao };
+  }, [geral, rawVendas, filtroVendedor, filtroCanal, produtosExcluidos]);
 
   const exportarCSV = (dados, nome) => {
     if (!dados || dados.length === 0) return;
@@ -137,6 +171,12 @@ export default function Relatorios() {
           <FiltroUnificado
             dataInicio={dataInicio} setDataInicio={setDataInicio}
             dataFim={dataFim} setDataFim={setDataFim}
+            vendedorId={filtroVendedor} setVendedorId={setFiltroVendedor}
+            canal={filtroCanal} setCanal={setFiltroCanal}
+            produtosExcluidos={produtosExcluidos} setProdutosExcluidos={setProdutosExcluidos}
+            vendedores={vendedores}
+            produtosDisponiveis={produtosDisponiveis}
+            onLimpar={() => { setFiltroVendedor(''); setFiltroCanal(''); setProdutosExcluidos(new Set()); }}
           />
           <button
             onClick={() => exportarCSV(porCloser, 'relatorio-closers')}
@@ -153,12 +193,12 @@ export default function Relatorios() {
         </div>
       </div>
 
-      {geral && (
+      {geralFiltrado && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-[14px]">
-          <CardMetrica titulo="Total de Leads" valor={geral.totalLeads} icone={Users} cor="bg-[rgba(116,185,255,0.1)] text-accent-info" />
-          <CardMetrica titulo="Taxa de Conversao" valor={`${geral.taxaConversao}%`} icone={TrendingUp} cor="bg-[rgba(0,184,148,0.1)] text-accent-emerald" />
-          <CardMetrica titulo="Faturamento" valor={`R$ ${geral.faturamento.toLocaleString('pt-BR')}`} icone={DollarSign} cor="bg-[rgba(253,203,110,0.1)] text-accent-amber" />
-          <CardMetrica titulo="Convertidos" valor={geral.convertidos} icone={TrendingUp} cor="bg-[rgba(108,92,231,0.1)] text-accent-violet-light" />
+          <CardMetrica titulo="Total de Leads" valor={geralFiltrado.totalLeads} icone={Users} cor="bg-[rgba(116,185,255,0.1)] text-accent-info" />
+          <CardMetrica titulo="Taxa de Conversao" valor={`${geralFiltrado.taxaConversao}%`} icone={TrendingUp} cor="bg-[rgba(0,184,148,0.1)] text-accent-emerald" />
+          <CardMetrica titulo="Faturamento" valor={`R$ ${geralFiltrado.faturamento.toLocaleString('pt-BR')}`} icone={DollarSign} cor="bg-[rgba(253,203,110,0.1)] text-accent-amber" />
+          <CardMetrica titulo="Convertidos" valor={geralFiltrado.convertidos} icone={TrendingUp} cor="bg-[rgba(108,92,231,0.1)] text-accent-violet-light" />
         </div>
       )}
 

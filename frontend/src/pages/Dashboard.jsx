@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import FiltroUnificado from '../components/FiltroUnificado';
@@ -64,18 +64,24 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 export default function Dashboard() {
   const { usuario } = useAuth();
-  const [metricas, setMetricas] = useState(null);
   const [followUps, setFollowUps] = useState([]);
   const [ranking, setRanking] = useState([]);
   const [graficoDados, setGraficoDados] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [vendedorInfo, setVendedorInfo] = useState(null);
+  const [rawLeads, setRawLeads] = useState([]);
+  const [rawVendas, setRawVendas] = useState([]);
+  const [rawVendasData, setRawVendasData] = useState(null);
 
   const [dataInicio, setDataInicio] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
   const [dataFim, setDataFim] = useState(() => new Date());
+  const [filtroVendedor, setFiltroVendedor] = useState('');
+  const [filtroCanal, setFiltroCanal] = useState('');
+  const [produtosExcluidos, setProdutosExcluidos] = useState(new Set());
+  const [todosVendedores, setTodosVendedores] = useState([]);
 
   const vendedorId = usuario?.vendedorId;
   const isAdmin = usuario?.perfil === 'admin' || usuario?.perfil === 'gestor';
@@ -105,7 +111,9 @@ export default function Dashboard() {
       }
 
       const resultados = await Promise.all(promises);
-      setRanking(resultados[0].data);
+      const vendedoresData = resultados[0].data;
+      setRanking(vendedoresData);
+      setTodosVendedores(Array.isArray(vendedoresData) ? vendedoresData : []);
       setGraficoDados(resultados[1].data);
 
       // Leads do funil (contagem por etapa)
@@ -116,49 +124,18 @@ export default function Dashboard() {
           if (etapaData.leads) leads.push(...etapaData.leads);
         }
       }
+      setRawLeads(leads);
 
       // Vendas por dataConversao (faturamento real do período)
       const vendasData = resultados[3].data;
-      const vendasList = vendasData?.vendas || [];
-
-      const totalLeads = leads.length;
-      const leadsConvertidos = vendasData?.totalVendas || 0;
-      const leadsAtivos = leads.filter(l => !['fechado_ganho', 'fechado_perdido', 'nurturing'].includes(l.etapaFunil)).length;
-      const taxaConversao = totalLeads > 0 ? Math.round((leadsConvertidos / totalLeads) * 10000) / 100 : 0;
-      const faturamento = vendasData?.faturamento || 0;
-
-      // Filtrar vendas do vendedor logado se aplicavel
-      let myLeads = leads;
-      let myVendas = vendasList;
-      if (vendedorId) {
-        myLeads = leads.filter(l => l.vendedorId === vendedorId);
-        myVendas = vendasList.filter(v => v.vendedorId === vendedorId);
-      }
-      const myTotal = myLeads.length;
-      const myConvertidos = myVendas.length;
-      const myAtivos = myLeads.filter(l => !['fechado_ganho', 'fechado_perdido', 'nurturing'].includes(l.etapaFunil)).length;
-      const myTaxa = myTotal > 0 ? Math.round((myConvertidos / myTotal) * 10000) / 100 : 0;
-      const myFaturamento = myVendas.reduce((sum, v) => sum + (v.valorVenda ? Number(v.valorVenda) : 0), 0);
-
-      setMetricas(vendedorId ? {
-        totalLeads: myTotal,
-        leadsConvertidos: myConvertidos,
-        leadsAtivos: myAtivos,
-        taxaConversao: myTaxa,
-        faturamento: myFaturamento,
-      } : {
-        totalLeads,
-        leadsConvertidos,
-        leadsAtivos,
-        taxaConversao,
-        faturamento,
-      });
+      setRawVendasData(vendasData);
+      setRawVendas(vendasData?.vendas || []);
 
       // Vendedor info (leads max, etc) — nao depende de data
       if (vendedorId) {
-        const vInfo = resultados[0].data.find(v => v.id === vendedorId);
+        const vInfo = vendedoresData.find(v => v.id === vendedorId);
         setVendedorInfo(vInfo);
-        setFollowUps(resultados[3]?.data || []);
+        setFollowUps(resultados[4]?.data || []);
       } else if (isAdmin) {
         setVendedorInfo(null);
         setFollowUps([]);
@@ -173,6 +150,41 @@ export default function Dashboard() {
   useEffect(() => {
     carregarDados();
   }, [carregarDados]);
+
+  const getProduto = (l) => l.dadosRespondi?.hubla?.produto || l.formularioTitulo || 'Outro';
+
+  const produtosDisponiveis = useMemo(() => {
+    const set = new Set();
+    rawVendas.forEach(v => set.add(getProduto(v)));
+    return [...set].sort();
+  }, [rawVendas]);
+
+  const metricas = useMemo(() => {
+    const filterLead = (l) => {
+      if (filtroVendedor && l.vendedorId !== parseInt(filtroVendedor)) return false;
+      if (filtroCanal && l.canal !== filtroCanal) return false;
+      if (produtosExcluidos.has(getProduto(l))) return false;
+      return true;
+    };
+
+    const leads = rawLeads.filter(filterLead);
+    const vendasList = rawVendas.filter(filterLead);
+
+    let myLeads = leads;
+    let myVendas = vendasList;
+    if (vendedorId) {
+      myLeads = leads.filter(l => l.vendedorId === vendedorId);
+      myVendas = vendasList.filter(v => v.vendedorId === vendedorId);
+    }
+
+    const totalLeads = myLeads.length;
+    const leadsConvertidos = myVendas.length;
+    const leadsAtivos = myLeads.filter(l => !['fechado_ganho', 'fechado_perdido', 'nurturing'].includes(l.etapaFunil)).length;
+    const taxaConversao = totalLeads > 0 ? Math.round((leadsConvertidos / totalLeads) * 10000) / 100 : 0;
+    const faturamento = myVendas.reduce((sum, v) => sum + (v.valorVenda ? Number(v.valorVenda) : 0), 0);
+
+    return { totalLeads, leadsConvertidos, leadsAtivos, taxaConversao, faturamento };
+  }, [rawLeads, rawVendas, vendedorId, filtroVendedor, filtroCanal, produtosExcluidos]);
 
   if (carregando) {
     return (
@@ -198,6 +210,12 @@ export default function Dashboard() {
         <FiltroUnificado
           dataInicio={dataInicio} setDataInicio={setDataInicio}
           dataFim={dataFim} setDataFim={setDataFim}
+          vendedorId={filtroVendedor} setVendedorId={setFiltroVendedor}
+          canal={filtroCanal} setCanal={setFiltroCanal}
+          produtosExcluidos={produtosExcluidos} setProdutosExcluidos={setProdutosExcluidos}
+          vendedores={todosVendedores}
+          produtosDisponiveis={produtosDisponiveis}
+          onLimpar={() => { setFiltroVendedor(''); setFiltroCanal(''); setProdutosExcluidos(new Set()); }}
         />
       </div>
 
