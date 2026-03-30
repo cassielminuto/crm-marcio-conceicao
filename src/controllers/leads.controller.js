@@ -871,10 +871,10 @@ async function listarVendas(req, res, next) {
         ...(fim ? { lte: fim } : {}),
       };
 
-      // Vendas com dataConversao no periodo OU createdAt no periodo
+      // Vendas com dataConversao no periodo, ou createdAt no periodo se nao tem dataConversao
       where.OR = [
         { dataConversao: dateRange },
-        { createdAt: dateRange },
+        { dataConversao: null, createdAt: dateRange },
       ];
     }
 

@@ -54,9 +54,11 @@ export default function Relatorios() {
     setCarregando(true);
     try {
       // BRT (UTC-3): inicio = 03:00Z mesmo dia, fim = 02:59:59Z dia seguinte
-      const inicioISO = dataInicio.toISOString().slice(0, 10) + 'T03:00:00.000Z';
-      const fimDate = new Date(dataFim);
-      fimDate.setDate(fimDate.getDate() + 1);
+      const inicioStr = dataInicio instanceof Date ? dataInicio.toISOString().slice(0, 10) : dataInicio;
+      const fimStr = dataFim instanceof Date ? dataFim.toISOString().slice(0, 10) : dataFim;
+      const inicioISO = inicioStr + 'T03:00:00.000Z';
+      const fimDate = new Date(fimStr + 'T12:00:00.000Z');
+      fimDate.setUTCDate(fimDate.getUTCDate() + 1);
       const fimISO = fimDate.toISOString().slice(0, 10) + 'T02:59:59.999Z';
       const dp = `data_inicio=${inicioISO}&data_fim=${fimISO}`;
 
