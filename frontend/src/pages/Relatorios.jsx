@@ -3,6 +3,7 @@ import api from '../services/api';
 import FiltroUnificado from '../components/FiltroUnificado';
 import { extrairProduto, extrairProdutosUnicos, isProdutoExcluido } from '../utils/produtos';
 import AIResumoPeriodo from '../components/AIResumoPeriodo';
+import OrigemLeads from '../components/OrigemLeads';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { FileDown, TrendingUp, DollarSign, Users } from 'lucide-react';
 
@@ -288,6 +289,8 @@ export default function Relatorios() {
       )}
 
       <AIResumoPeriodo dataInicio={dataInicio} dataFim={dataFim} />
+
+      <OrigemLeads leads={leadsFiltrados} vendas={vendasFiltradas} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-bg-card border border-border-subtle rounded-[14px] p-[22px]">
