@@ -126,6 +126,8 @@ export default function Dashboard() {
       const leadsAtivos = leads.filter(l => !['fechado_ganho', 'fechado_perdido', 'nurturing'].includes(l.etapaFunil)).length;
       const taxaConversao = totalLeads > 0 ? Math.round((leadsConvertidos / totalLeads) * 10000) / 100 : 0;
       const faturamento = vendasData?.faturamento || 0;
+      const faturamentoTotal = vendasData?.faturamentoTotal || faturamento;
+      const temExcluidos = faturamentoTotal > faturamento;
 
       // Filtrar vendas do vendedor logado se aplicavel
       let myLeads = leads;
@@ -138,20 +140,25 @@ export default function Dashboard() {
       const myConvertidos = myVendas.length;
       const myAtivos = myLeads.filter(l => !['fechado_ganho', 'fechado_perdido', 'nurturing'].includes(l.etapaFunil)).length;
       const myTaxa = myTotal > 0 ? Math.round((myConvertidos / myTotal) * 10000) / 100 : 0;
-      const myFaturamento = myVendas.reduce((sum, v) => sum + (v.valorVenda ? Number(v.valorVenda) : 0), 0);
+      const myVendasContab = myVendas.filter(v => !v.produtoExcluido);
+      const myFaturamento = myVendasContab.reduce((sum, v) => sum + (v.valorVenda ? Number(v.valorVenda) : 0), 0);
 
       setMetricas(vendedorId ? {
         totalLeads: myTotal,
-        leadsConvertidos: myConvertidos,
+        leadsConvertidos: myVendasContab.length,
         leadsAtivos: myAtivos,
         taxaConversao: myTaxa,
         faturamento: myFaturamento,
+        faturamentoTotal: myVendas.reduce((sum, v) => sum + (v.valorVenda ? Number(v.valorVenda) : 0), 0),
+        temExcluidos: myVendas.length > myVendasContab.length,
       } : {
         totalLeads,
         leadsConvertidos,
         leadsAtivos,
         taxaConversao,
         faturamento,
+        faturamentoTotal,
+        temExcluidos,
       });
 
       // Vendedor info (leads max, etc) — nao depende de data
@@ -223,7 +230,9 @@ export default function Dashboard() {
           valor={`R$ ${(metricas?.faturamento ?? 0).toLocaleString('pt-BR')}`}
           icone={DollarSign}
           cor="yellow"
-          subtitulo={`${metricas?.leadsConvertidos ?? 0} vendas no periodo`}
+          subtitulo={metricas?.temExcluidos
+            ? `R$ ${(metricas.faturamentoTotal).toLocaleString('pt-BR')} total (R$ ${(metricas.faturamentoTotal - metricas.faturamento).toLocaleString('pt-BR')} excluido)`
+            : `${metricas?.leadsConvertidos ?? 0} vendas no periodo`}
         />
         <MetricCard
           titulo="Conversoes"

@@ -84,8 +84,9 @@ export default function Relatorios() {
       const totalLeads = allLeads.length;
       const convertidos = vendasData?.totalVendas || 0;
       const faturamento = vendasData?.faturamento || 0;
+      const faturamentoTotal = vendasData?.faturamentoTotal || faturamento;
       const taxaConversao = totalLeads > 0 ? Math.round((convertidos / totalLeads) * 10000) / 100 : 0;
-      setGeral({ totalLeads, convertidos, faturamento, taxaConversao });
+      setGeral({ totalLeads, convertidos, faturamento, taxaConversao, faturamentoTotal });
 
       setPorCanal(canalRes.data);
       setPorClasse(classeRes.data);

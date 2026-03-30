@@ -94,10 +94,12 @@ export default function Vendas() {
       return 0;
     });
 
-  const totalFaturamento = vendasFiltradas.reduce((s, l) => s + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
-  const totalVendas = vendasFiltradas.length;
+  const vendasContabilizadas = vendasFiltradas.filter(l => !l.produtoExcluido);
+  const totalFaturamento = vendasContabilizadas.reduce((s, l) => s + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
+  const totalVendas = vendasContabilizadas.length;
   const ticketMedio = totalVendas > 0 ? Math.round(totalFaturamento / totalVendas) : 0;
-  const maiorVenda = vendasFiltradas.reduce((m, l) => Math.max(m, Number(l.valorVenda || 0)), 0);
+  const maiorVenda = vendasContabilizadas.reduce((m, l) => Math.max(m, Number(l.valorVenda || 0)), 0);
+  const faturamentoExcluido = vendasFiltradas.filter(l => l.produtoExcluido).reduce((s, l) => s + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
 
   const toggleOrdem = (campo) => {
     setOrdenacao(prev => ({
@@ -212,7 +214,7 @@ export default function Vendas() {
                 </tr>
               ) : (
                 vendasFiltradas.map((lead) => (
-                  <tr key={lead.id} className="hover:bg-white/[0.02] border-b border-border-subtle last:border-b-0 transition-colors">
+                  <tr key={lead.id} className={`hover:bg-white/[0.02] border-b border-border-subtle last:border-b-0 transition-colors ${lead.produtoExcluido ? 'opacity-50' : ''}`}>
                     {/* Cliente */}
                     <td className="px-4 py-3">
                       <p
@@ -268,7 +270,12 @@ export default function Vendas() {
 
                     {/* Produto */}
                     <td className="px-4 py-3">
-                      <span className="text-[11px] text-text-secondary truncate max-w-[150px] block">{produto(lead)}</span>
+                      <span className="text-[11px] text-text-secondary truncate max-w-[150px] block">
+                        {produto(lead)}
+                        {lead.produtoExcluido && (
+                          <span className="ml-1 inline-flex px-1.5 py-0.5 rounded text-[9px] font-medium bg-[rgba(225,112,85,0.12)] text-accent-danger">Excluido</span>
+                        )}
+                      </span>
                     </td>
 
                     {/* Vendedor editável */}
@@ -302,8 +309,11 @@ export default function Vendas() {
         {/* Totalizador */}
         {vendasFiltradas.length > 0 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-border-subtle bg-bg-elevated/50">
-            <span className="text-[11px] font-semibold text-text-muted">{vendasFiltradas.length} vendas</span>
-            <span className="text-[13px] font-bold text-accent-amber">Total: {fmtMoeda(totalFaturamento)}</span>
+            <span className="text-[11px] font-semibold text-text-muted">{totalVendas} vendas{faturamentoExcluido > 0 ? ` (${vendasFiltradas.length - totalVendas} excluidas)` : ''}</span>
+            <span className="text-[13px] font-bold text-accent-amber">
+              Total: {fmtMoeda(totalFaturamento)}
+              {faturamentoExcluido > 0 && <span className="text-[10px] font-normal text-text-muted ml-2">({fmtMoeda(faturamentoExcluido)} excluido)</span>}
+            </span>
           </div>
         )}
       </div>

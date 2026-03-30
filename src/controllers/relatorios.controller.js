@@ -9,12 +9,23 @@ function buildDateFilter(req) {
   return { createdAt: filter };
 }
 
-async function somarFaturamento(where) {
-  const result = await prisma.lead.aggregate({
+async function getProdutosExcluidos() {
+  const produtos = await prisma.produtoExcluido.findMany({ select: { nome: true } });
+  return new Set(produtos.map(p => p.nome));
+}
+
+function getProdutoLead(lead) {
+  return lead.produtoHubla || lead.dadosRespondi?.hubla?.produto || lead.formularioTitulo || '';
+}
+
+async function somarFaturamento(where, nomesExcluidos) {
+  const leads = await prisma.lead.findMany({
     where: { ...where, vendaRealizada: true },
-    _sum: { valorVenda: true },
+    select: { valorVenda: true, produtoHubla: true, dadosRespondi: true, formularioTitulo: true },
   });
-  return Number(result._sum.valorVenda || 0);
+  return leads
+    .filter(l => !nomesExcluidos || !nomesExcluidos.has(getProdutoLead(l)))
+    .reduce((s, l) => s + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
 }
 
 async function geral(req, res, next) {
@@ -30,7 +41,8 @@ async function geral(req, res, next) {
     ]);
 
     const taxaConversao = totalLeads > 0 ? Math.round((convertidos / totalLeads) * 10000) / 100 : 0;
-    const faturamento = await somarFaturamento(dateWhere);
+    const nomesExcluidos = await getProdutosExcluidos();
+    const faturamento = await somarFaturamento(dateWhere, nomesExcluidos);
     const ticketMedio = convertidos > 0 ? Math.round(faturamento / convertidos) : 0;
 
     res.json({
@@ -53,6 +65,7 @@ async function porCanal(req, res, next) {
   try {
     const dateWhere = buildDateFilter(req);
     const canais = ['bio', 'anuncio', 'evento'];
+    const nomesExcluidos = await getProdutosExcluidos();
     const resultado = [];
 
     for (const canal of canais) {
@@ -63,7 +76,7 @@ async function porCanal(req, res, next) {
       if (total === 0) continue;
 
       const taxa = Math.round((convertidos / total) * 10000) / 100;
-      const faturamento = await somarFaturamento({ ...dateWhere, canal });
+      const faturamento = await somarFaturamento({ ...dateWhere, canal }, nomesExcluidos);
       resultado.push({
         canal,
         totalLeads: total,
@@ -83,6 +96,7 @@ async function porClasse(req, res, next) {
   try {
     const dateWhere = buildDateFilter(req);
     const classes = ['A', 'B', 'C'];
+    const nomesExcluidos = await getProdutosExcluidos();
     const resultado = [];
 
     for (const classe of classes) {
@@ -93,7 +107,7 @@ async function porClasse(req, res, next) {
       if (total === 0) continue;
 
       const taxa = Math.round((convertidos / total) * 10000) / 100;
-      const faturamento = await somarFaturamento({ ...dateWhere, classe });
+      const faturamento = await somarFaturamento({ ...dateWhere, classe }, nomesExcluidos);
       resultado.push({
         classe,
         totalLeads: total,
@@ -118,6 +132,7 @@ async function porCloser(req, res, next) {
     });
 
     const resultado = [];
+    let nomesExcluidosCloser = null;
 
     for (const v of vendedores) {
       const [total, convertidos, leadsComAbordagem] = await Promise.all([
@@ -139,7 +154,8 @@ async function porCloser(req, res, next) {
 
       const taxa = total > 0 ? Math.round((convertidos / total) * 10000) / 100 : 0;
 
-      const faturamento = await somarFaturamento({ ...dateWhere, vendedorId: v.id });
+      if (!nomesExcluidosCloser) nomesExcluidosCloser = await getProdutosExcluidos();
+      const faturamento = await somarFaturamento({ ...dateWhere, vendedorId: v.id }, nomesExcluidosCloser);
       const ticketMedio = convertidos > 0 ? Math.round(faturamento / convertidos) : 0;
 
       resultado.push({
