@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../services/api';
 import FiltroUnificado from '../components/FiltroUnificado';
+import { extrairProdutosUnicos, isProdutoExcluido } from '../utils/produtos';
 import AIResumoPeriodo from '../components/AIResumoPeriodo';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { FileDown, TrendingUp, DollarSign, Users } from 'lucide-react';
@@ -112,13 +113,7 @@ export default function Relatorios() {
     carregar();
   }, [carregar]);
 
-  const getProduto = (l) => l.dadosRespondi?.hubla?.produto || l.formularioTitulo || 'Outro';
-
-  const produtosDisponiveis = useMemo(() => {
-    const set = new Set();
-    rawVendas.forEach(v => set.add(getProduto(v)));
-    return [...set].sort();
-  }, [rawVendas]);
+  const produtosDisponiveis = useMemo(() => extrairProdutosUnicos(rawVendas), [rawVendas]);
 
   // Recalculate faturamento with frontend filters applied
   const geralFiltrado = useMemo(() => {
@@ -127,7 +122,7 @@ export default function Relatorios() {
     const vendasFiltradas = rawVendas.filter(v => {
       if (filtroVendedor && v.vendedorId !== parseInt(filtroVendedor)) return false;
       if (filtroCanal && v.canal !== filtroCanal) return false;
-      if (produtosExcluidos.has(getProduto(v))) return false;
+      if (isProdutoExcluido(v, produtosExcluidos)) return false;
       return true;
     });
     const faturamento = vendasFiltradas.reduce((s, v) => s + (v.valorVenda ? Number(v.valorVenda) : 0), 0);

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import FiltroUnificado from '../components/FiltroUnificado';
+import { extrairProdutosUnicos, isProdutoExcluido } from '../utils/produtos';
 import AIResumoPeriodo from '../components/AIResumoPeriodo';
 import { Users, TrendingUp, DollarSign, Target, Clock, Phone, MessageSquare, AlertTriangle } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -151,19 +152,13 @@ export default function Dashboard() {
     carregarDados();
   }, [carregarDados]);
 
-  const getProduto = (l) => l.dadosRespondi?.hubla?.produto || l.formularioTitulo || 'Outro';
-
-  const produtosDisponiveis = useMemo(() => {
-    const set = new Set();
-    rawVendas.forEach(v => set.add(getProduto(v)));
-    return [...set].sort();
-  }, [rawVendas]);
+  const produtosDisponiveis = useMemo(() => extrairProdutosUnicos(rawVendas), [rawVendas]);
 
   const metricas = useMemo(() => {
     const filterLead = (l) => {
       if (filtroVendedor && l.vendedorId !== parseInt(filtroVendedor)) return false;
       if (filtroCanal && l.canal !== filtroCanal) return false;
-      if (produtosExcluidos.has(getProduto(l))) return false;
+      if (isProdutoExcluido(l, produtosExcluidos)) return false;
       return true;
     };
 

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import FiltroUnificado from '../components/FiltroUnificado';
+import { extrairProdutosUnicos, isProdutoExcluido } from '../utils/produtos';
 import { DollarSign, TrendingUp, Trophy, ArrowUpDown, Search, Phone, MessageCircle, Mail } from 'lucide-react';
 
 function MetricCard({ titulo, valor, subtitulo, icone: Icon, cor }) {
@@ -32,12 +33,11 @@ function fmtMoeda(v) {
   return `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
-function getProduto(lead) {
-  return lead.dadosRespondi?.hubla?.produto || lead.formularioTitulo || 'Outro';
-}
-
 function getProdutoDisplay(lead) {
-  if (lead.dadosRespondi?.hubla?.produto) return lead.dadosRespondi.hubla.produto;
+  const dr = lead.dadosRespondi;
+  if (dr?.hubla?.produto) return dr.hubla.produto;
+  if (dr?.hubla?.produtos?.length > 0) return dr.hubla.produtos[0];
+  if (dr?.produtos?.length > 0) return dr.produtos[0];
   if (lead.formularioTitulo && lead.formularioTitulo !== 'Manual') return lead.formularioTitulo;
   return '\u2014';
 }
@@ -85,16 +85,12 @@ export default function Vendas() {
 
   useEffect(() => { carregarVendas(); }, [carregarVendas]);
 
-  const produtosDisponiveis = useMemo(() => {
-    const set = new Set();
-    vendas.forEach(v => set.add(getProduto(v)));
-    return [...set].sort();
-  }, [vendas]);
+  const produtosDisponiveis = useMemo(() => extrairProdutosUnicos(vendas), [vendas]);
 
   const vendasFiltradas = useMemo(() => {
     return vendas
       .filter(l => {
-        if (produtosExcluidos.has(getProduto(l))) return false;
+        if (isProdutoExcluido(l, produtosExcluidos)) return false;
         if (filtroVendedor && l.vendedorId !== parseInt(filtroVendedor)) return false;
         if (filtroCanal && l.canal !== filtroCanal) return false;
         if (busca) {

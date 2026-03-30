@@ -4,6 +4,7 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import FiltroUnificado from '../components/FiltroUnificado';
+import { extrairProduto, extrairProdutosUnicos, isProdutoExcluido } from '../utils/produtos';
 import { Filter, Clock, User, Instagram, Megaphone, Trash2, Calendar, X, Plus, ChevronLeft, ChevronRight, Settings } from 'lucide-react';
 
 const CORES = ['#3b82f6','#eab308','#a855f7','#f97316','#22c55e','#ef4444','#06b6d4','#ec4899','#6366f1','#84cc16'];
@@ -409,17 +410,15 @@ export default function Funil() {
 
   const temFiltro = filtroVendedor || filtroClasse || filtroCanal || produtosExcluidos.size > 0;
 
-  // Extract unique products from funil data for filter
+  // Extract unique products from funil data (only vendaRealizada leads with real Hubla product)
   const produtosDisponiveis = useMemo(() => {
-    const set = new Set();
+    const allLeads = [];
     if (funilData?.etapas) {
       for (const data of Object.values(funilData.etapas)) {
-        for (const l of data.leads) {
-          set.add(l.dadosRespondi?.hubla?.produto || l.formularioTitulo || 'Outro');
-        }
+        allLeads.push(...data.leads);
       }
     }
-    return [...set].sort();
+    return extrairProdutosUnicos(allLeads);
   }, [funilData]);
 
   if (carregando && !funilData) {
@@ -442,10 +441,7 @@ export default function Funil() {
   if (funilData?.etapas) {
     for (const [slug, data] of Object.entries(funilData.etapas)) {
       total += data.leads.length;
-      const leadsContab = data.leads.filter(l => {
-        const p = l.dadosRespondi?.hubla?.produto || l.formularioTitulo || 'Outro';
-        return !produtosExcluidos.has(p);
-      });
+      const leadsContab = data.leads.filter(l => !isProdutoExcluido(l, produtosExcluidos));
       const soma = leadsContab.reduce((s, l) => s + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
       if (ganhoSlugs.has(slug)) receitaTotal += soma;
       else if (!perdidoSlugs.has(slug)) pipelineTotal += soma;
