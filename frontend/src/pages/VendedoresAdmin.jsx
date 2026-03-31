@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
+import AvatarVendedor from '../components/AvatarVendedor';
 import { Save, Phone } from 'lucide-react';
 
 export default function VendedoresAdmin() {
@@ -65,9 +66,7 @@ export default function VendedoresAdmin() {
 
       {vendedores.map((v) => (
         <div key={v.id} className="bg-bg-elevated border border-border-subtle rounded-[14px] p-[18px] flex items-center gap-4">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#6c5ce7] to-[#00cec9] flex items-center justify-center text-[13px] font-bold text-white shrink-0">
-            {v.nomeExibicao?.[0] || '?'}
-          </div>
+          <AvatarVendedor nome={v.nomeExibicao} fotoUrl={v.usuario?.fotoUrl} id={v.id} tamanho={40} />
           <div className="flex-1 min-w-0">
             <p className="text-[13px] font-semibold text-white">{v.nomeExibicao}</p>
             <p className="text-[10px] text-text-muted">{v.papel?.replace('_', ' ')} — {v.usuario?.email}</p>

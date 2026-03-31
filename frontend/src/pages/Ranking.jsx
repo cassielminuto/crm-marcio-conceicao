@@ -1,14 +1,8 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import AvatarVendedor from '../components/AvatarVendedor';
 import { Trophy, Clock } from 'lucide-react';
-
-const AVATAR_GRADIENTS = [
-  'from-[#6c5ce7] to-[#00cec9]',
-  'from-[#e17055] to-[#fdcb6e]',
-  'from-[#00b894] to-[#74b9ff]',
-  'from-[#a78bfa] to-[#e17055]',
-];
 
 const POS_COLORS = ['text-[#fdcb6e]', 'text-[#a0a0be]', 'text-[#e17055]'];
 
@@ -74,13 +68,7 @@ export default function Ranking() {
             >
               <div className="flex items-center gap-3 mb-4">
                 <div className="relative">
-                  {v.usuario?.fotoUrl ? (
-                    <img src={v.usuario.fotoUrl} alt={v.nomeExibicao} className="w-12 h-12 rounded-full object-cover" />
-                  ) : (
-                  <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${AVATAR_GRADIENTS[i]} flex items-center justify-center text-[16px] font-bold text-white`}>
-                    {v.nomeExibicao?.[0]}
-                  </div>
-                  )}
+                  <AvatarVendedor nome={v.nomeExibicao} fotoUrl={v.usuario?.fotoUrl} id={v.id} tamanho={48} />
                   <Trophy size={14} className={`absolute -top-1 -right-1 ${POS_COLORS[i]}`} />
                 </div>
                 <div>
@@ -127,13 +115,7 @@ export default function Ranking() {
               </span>
 
               <div className="flex items-center gap-3 w-40 shrink-0">
-                {v.usuario?.fotoUrl ? (
-                  <img src={v.usuario.fotoUrl} alt={v.nomeExibicao} className="w-8 h-8 rounded-full object-cover shrink-0" />
-                ) : (
-                  <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${AVATAR_GRADIENTS[i % AVATAR_GRADIENTS.length]} flex items-center justify-center text-[10px] font-bold text-white shrink-0`}>
-                    {v.nomeExibicao?.[0]}
-                  </div>
-                )}
+                <AvatarVendedor nome={v.nomeExibicao} fotoUrl={v.usuario?.fotoUrl} id={v.id} tamanho={32} />
                 <div className="min-w-0">
                   <p className="text-[12px] font-medium text-text-primary truncate">
                     {v.nomeExibicao} {isMe && <span className="text-accent-violet-light text-[10px]">(voce)</span>}

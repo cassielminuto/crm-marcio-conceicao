@@ -4,6 +4,7 @@ import api from '../services/api';
 import FiltroUnificado from '../components/FiltroUnificado';
 import { extrairProdutosUnicos, isProdutoExcluido } from '../utils/produtos';
 import AIResumoPeriodo from '../components/AIResumoPeriodo';
+import AvatarVendedor from '../components/AvatarVendedor';
 import { Users, TrendingUp, DollarSign, Target, Clock, Phone, MessageSquare, AlertTriangle } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -311,9 +312,7 @@ export default function Dashboard() {
                     <span className={`text-[13px] font-extrabold w-5 ${i < 3 ? posColors[i] : 'text-text-faint'}`}>
                       {v.rankingPosicao}
                     </span>
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#7C3AED] to-[#3B82F6] flex items-center justify-center text-[10px] font-bold text-white">
-                      {v.nomeExibicao?.[0]}
-                    </div>
+                    <AvatarVendedor nome={v.nomeExibicao} fotoUrl={v.usuario?.fotoUrl} id={v.id} tamanho={32} />
                     <span className="font-medium text-text-primary">{v.nomeExibicao}</span>
                   </div>
                   <span className="text-[12px] font-bold text-white">{v.totalConversoes} conv.</span>

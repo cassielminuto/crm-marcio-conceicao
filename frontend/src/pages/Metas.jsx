@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import AvatarVendedor from '../components/AvatarVendedor';
 import { Target, Plus, X } from 'lucide-react';
 
 const STATUS_COR = {
@@ -139,9 +140,7 @@ export default function Metas() {
               <div key={meta.id} className="bg-bg-card border border-border-subtle rounded-[14px] p-[22px] hover:border-border-hover transition-all duration-300">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#6c5ce7] to-[#00cec9] flex items-center justify-center text-[14px] font-bold text-white">
-                      {meta.vendedor?.nomeExibicao?.[0] || '?'}
-                    </div>
+                    <AvatarVendedor nome={meta.vendedor?.nomeExibicao} fotoUrl={meta.vendedor?.usuario?.fotoUrl} id={meta.vendedor?.id} tamanho={40} />
                     <div>
                       <p className="font-semibold text-white text-[13px]">{meta.vendedor?.nomeExibicao}</p>
                       <p className="text-[10px] text-text-muted">{meta.vendedor?.papel?.replace('_', ' ')}</p>

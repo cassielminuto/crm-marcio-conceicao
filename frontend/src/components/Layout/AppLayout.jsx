@@ -9,20 +9,10 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import { Search, Bell, Plus, Loader } from 'lucide-react';
 import HeaderBranding from '../HeaderBranding';
+import AvatarVendedor from '../AvatarVendedor';
 
 let toastIdCounter = 0;
 
-function UserAvatar({ nome, fotoUrl }) {
-  const iniciais = (nome || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-  if (fotoUrl) {
-    return <img src={fotoUrl} alt={nome} className="w-[34px] h-[34px] rounded-full object-cover" />;
-  }
-  return (
-    <div className="w-[34px] h-[34px] rounded-full bg-gradient-to-br from-[#7C3AED] to-[#3B82F6] flex items-center justify-center text-[11px] font-bold text-white">
-      {iniciais}
-    </div>
-  );
-}
 
 export default function AppLayout() {
   const navigate = useNavigate();
@@ -179,7 +169,7 @@ export default function AppLayout() {
               )}
             </div>
             <button onClick={() => navigate('/perfil')} className="hover:opacity-80 transition-opacity">
-              <UserAvatar nome={usuario?.nome} fotoUrl={usuario?.fotoUrl} />
+              <AvatarVendedor nome={usuario?.nome} fotoUrl={usuario?.fotoUrl} id={usuario?.id} tamanho={34} />
             </button>
           </div>
         </header>

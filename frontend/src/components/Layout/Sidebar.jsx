@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import AvatarVendedor from '../AvatarVendedor';
 import {
   LayoutDashboard,
   Kanban,
@@ -53,7 +54,6 @@ function SidebarIcon({ to, label, icon: Icon }) {
 export default function Sidebar() {
   const { usuario, logout } = useAuth();
   const isAdmin = usuario?.perfil === 'admin' || usuario?.perfil === 'gestor';
-  const iniciais = (usuario?.nome || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   return (
     <aside className="w-16 shrink-0 bg-[#0C0C12] flex flex-col items-center min-h-screen border-r border-[rgba(255,255,255,0.06)] py-4">
@@ -80,16 +80,8 @@ export default function Sidebar() {
 
       {/* Bottom: user + logout */}
       <div className="flex flex-col items-center gap-2 mt-auto">
-        <NavLink
-          to="/perfil"
-          title={usuario?.nome}
-          className="w-9 h-9 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#3B82F6] flex items-center justify-center text-[11px] font-bold text-white hover:shadow-[0_0_12px_rgba(124,58,237,0.3)] transition-shadow"
-        >
-          {usuario?.fotoUrl ? (
-            <img src={usuario.fotoUrl} alt="" className="w-9 h-9 rounded-full object-cover" />
-          ) : (
-            iniciais
-          )}
+        <NavLink to="/perfil" title={usuario?.nome} className="hover:shadow-[0_0_12px_rgba(124,58,237,0.3)] rounded-full transition-shadow">
+          <AvatarVendedor nome={usuario?.nome} fotoUrl={usuario?.fotoUrl} id={usuario?.id} tamanho={36} />
         </NavLink>
         <button
           onClick={logout}
