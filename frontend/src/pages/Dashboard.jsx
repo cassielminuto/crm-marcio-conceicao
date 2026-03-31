@@ -18,12 +18,12 @@ function MetricCard({ titulo, valor, icone: Icon, cor, subtitulo }) {
   const c = corMap[cor] || corMap.blue;
 
   return (
-    <div className="bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-5 hover:border-[rgba(255,255,255,0.10)] transition-all duration-300">
+    <div className="bg-bg-card border border-border-default rounded-[14px] p-5 hover:border-border-hover transition-all duration-300">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-[11px] uppercase tracking-[1.5px] text-[#5C5C6F] font-medium">{titulo}</p>
-          <p className="font-display text-[32px] font-bold text-[#F0F0F5] tracking-tight mt-1">{valor}</p>
-          {subtitulo && <p className="text-[12px] text-[#5C5C6F] mt-1">{subtitulo}</p>}
+          <p className="text-[11px] uppercase tracking-[1.5px] text-text-muted font-medium">{titulo}</p>
+          <p className="font-display text-[32px] font-bold text-text-primary tracking-tight mt-1">{valor}</p>
+          {subtitulo && <p className="text-[12px] text-text-muted mt-1">{subtitulo}</p>}
         </div>
         <div className="w-10 h-10 rounded-[10px] flex items-center justify-center" style={{ background: c.bg }}>
           <Icon size={20} className={c.text} />
@@ -57,7 +57,7 @@ const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   const d = new Date(label + 'T12:00:00');
   return (
-    <div className="bg-[#1a1a28] border border-[rgba(255,255,255,0.06)] rounded-[10px] px-3 py-2">
+    <div className="bg-bg-elevated border border-border-default rounded-[10px] px-3 py-2">
       <p className="text-[11px] text-[#e2e2ef] font-medium">{d.toLocaleDateString('pt-BR')}</p>
       <p className="text-[11px] text-text-secondary">{payload[0].value} Leads</p>
     </div>
@@ -198,8 +198,8 @@ export default function Dashboard() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-[24px] font-semibold text-[#F0F0F5]">Dashboard</h1>
-          <p className="text-[#8B8B9E] text-[13px] mt-1">
+          <h1 className="font-display text-[24px] font-semibold text-text-primary">Dashboard</h1>
+          <p className="text-text-secondary text-[13px] mt-1">
             {isAdmin ? 'Visao geral do time' : `Bem-vindo, ${usuario?.nome}`}
           </p>
         </div>
@@ -251,8 +251,8 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Grafico */}
-        <div className="lg:col-span-2 bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-6">
-          <h2 className="font-display text-[16px] font-medium text-[#F0F0F5] mb-4">Leads por dia</h2>
+        <div className="lg:col-span-2 bg-bg-card border border-border-default rounded-[14px] p-6">
+          <h2 className="font-display text-[16px] font-medium text-text-primary mb-4">Leads por dia</h2>
           {graficoDados.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
               <AreaChart data={graficoDados}>
@@ -290,8 +290,8 @@ export default function Dashboard() {
         </div>
 
         {/* Ranking */}
-        <div className="bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-6">
-          <h2 className="font-display text-[16px] font-medium text-[#F0F0F5] mb-4">Ranking do Time</h2>
+        <div className="bg-bg-card border border-border-default rounded-[14px] p-6">
+          <h2 className="font-display text-[16px] font-medium text-text-primary mb-4">Ranking do Time</h2>
           {vendedorId && (
             <div className="mb-4 bg-[rgba(124,58,237,0.12)] rounded-[10px] p-3 text-center">
               <p className="text-[10px] text-[#A78BFA]">Sua posicao</p>
@@ -305,7 +305,7 @@ export default function Dashboard() {
                 <li
                   key={v.id}
                   className={`flex items-center justify-between p-[10px_12px] rounded-[10px] text-[12px] ${
-                    v.id === vendedorId ? 'bg-[rgba(124,58,237,0.1)]' : 'hover:bg-[#16161F]'
+                    v.id === vendedorId ? 'bg-[rgba(124,58,237,0.1)]' : 'hover:bg-bg-card-hover'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -324,9 +324,9 @@ export default function Dashboard() {
       </div>
 
       {/* Follow-ups pendentes */}
-      <div className="bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-6">
+      <div className="bg-bg-card border border-border-default rounded-[14px] p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-[16px] font-medium text-[#F0F0F5]">Follow-ups Pendentes</h2>
+          <h2 className="font-display text-[16px] font-medium text-text-primary">Follow-ups Pendentes</h2>
           <span className="text-[12px] text-text-muted">{followUps.length} pendentes</span>
         </div>
 

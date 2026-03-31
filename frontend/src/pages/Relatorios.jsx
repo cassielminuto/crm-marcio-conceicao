@@ -15,8 +15,8 @@ function CardMetrica({ titulo, valor, icone: Icon, cor }) {
     <div className="bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-5 hover:border-[rgba(255,255,255,0.10)] transition-all duration-300">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-[11px] uppercase tracking-[1.5px] text-[#5C5C6F] font-medium">{titulo}</p>
-          <p className="font-display text-[24px] font-bold text-[#F0F0F5] mt-1">{valor}</p>
+          <p className="text-[11px] uppercase tracking-[1.5px] text-text-muted font-medium">{titulo}</p>
+          <p className="font-display text-[24px] font-bold text-text-primary mt-1">{valor}</p>
         </div>
         <div className={`w-10 h-10 rounded-[10px] flex items-center justify-center ${cor}`}>
           <Icon size={18} />
@@ -248,8 +248,8 @@ export default function Relatorios() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="font-display text-[24px] font-semibold text-[#F0F0F5]">Relatorios</h1>
-          <p className="text-[13px] text-[#8B8B9E] mt-1">Visao gerencial do CRM</p>
+          <h1 className="font-display text-[24px] font-semibold text-text-primary">Relatorios</h1>
+          <p className="text-[13px] text-text-secondary mt-1">Visao gerencial do CRM</p>
         </div>
         <FiltroUnificado
           dataInicio={dataInicio} setDataInicio={setDataInicio}
@@ -293,7 +293,7 @@ export default function Relatorios() {
       <OrigemLeads leads={leadsFiltrados} vendas={vendasFiltradas} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-6">
+        <div className="bg-bg-card border border-border-default rounded-[14px] p-6">
           <h2 className="text-[13px] font-semibold text-white mb-4">Conversao por Canal</h2>
           {porCanal.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
@@ -329,7 +329,7 @@ export default function Relatorios() {
           </div>
         </div>
 
-        <div className="bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-6">
+        <div className="bg-bg-card border border-border-default rounded-[14px] p-6">
           <h2 className="text-[13px] font-semibold text-white mb-4">Conversao por Classe</h2>
           {porClasse.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
@@ -359,7 +359,7 @@ export default function Relatorios() {
         </div>
       </div>
 
-      <div className="bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-6">
+      <div className="bg-bg-card border border-border-default rounded-[14px] p-6">
         <h2 className="text-[13px] font-semibold text-white mb-4">Volume de Leads (30 dias)</h2>
         <ResponsiveContainer width="100%" height={250}>
           <BarChart data={leadsPorDia}>
@@ -378,7 +378,7 @@ export default function Relatorios() {
         </ResponsiveContainer>
       </div>
 
-      <div className="bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] overflow-hidden">
+      <div className="bg-bg-card border border-border-default rounded-[14px] overflow-hidden">
         <div className="px-[22px] py-3 border-b border-border-subtle">
           <h2 className="text-[13px] font-semibold text-white">Performance por Closer</h2>
         </div>

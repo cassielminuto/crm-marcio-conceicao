@@ -14,12 +14,12 @@ function MetricCard({ titulo, valor, subtitulo, icone: Icon, cor }) {
   };
   const c = corMap[cor] || corMap.yellow;
   return (
-    <div className="bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-5 hover:border-[rgba(255,255,255,0.10)] transition-all duration-300">
+    <div className="bg-bg-card border border-border-default rounded-[14px] p-5 hover:border-border-hover transition-all duration-300">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-[11px] uppercase tracking-[1.5px] text-[#5C5C6F] font-medium">{titulo}</p>
-          <p className="font-display text-[32px] font-bold text-[#F0F0F5] tracking-tight mt-1">{valor}</p>
-          {subtitulo && <p className="text-[12px] text-[#5C5C6F] mt-1">{subtitulo}</p>}
+          <p className="text-[11px] uppercase tracking-[1.5px] text-text-muted font-medium">{titulo}</p>
+          <p className="font-display text-[32px] font-bold text-text-primary tracking-tight mt-1">{valor}</p>
+          {subtitulo && <p className="text-[12px] text-text-muted mt-1">{subtitulo}</p>}
         </div>
         <div className="w-10 h-10 rounded-[10px] flex items-center justify-center" style={{ background: c.bg }}>
           <Icon size={20} className={c.text} />
@@ -158,8 +158,8 @@ export default function Vendas() {
     <div className="space-y-4 animate-fade-in">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="font-display text-[24px] font-semibold text-[#F0F0F5]">Vendas</h1>
-          <p className="text-[13px] text-[#8B8B9E] mt-1">Gestao de vendas e faturamento</p>
+          <h1 className="font-display text-[24px] font-semibold text-text-primary">Vendas</h1>
+          <p className="text-[13px] text-text-secondary mt-1">Gestao de vendas e faturamento</p>
         </div>
         <FiltroUnificado
           dataInicio={dataInicio} setDataInicio={setDataInicio}
@@ -186,19 +186,19 @@ export default function Vendas() {
       </div>
 
       {/* Busca */}
-      <div className="flex items-center gap-3 bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-3">
+      <div className="flex items-center gap-3 bg-bg-card border border-border-default rounded-[14px] p-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
           <input type="text" value={busca} onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar por nome, telefone ou vendedor..."
-            className="w-full pl-9 pr-3 py-2 bg-[#0F0F16] border border-[rgba(255,255,255,0.06)] rounded-[10px] text-[13px] text-[#F0F0F5] placeholder:text-[#3D3D4D] focus:outline-none focus:border-[#7C3AED] focus:ring-[3px] focus:ring-[rgba(124,58,237,0.15)]"
+            className="w-full pl-9 pr-3 py-2 bg-bg-input border border-border-default rounded-[10px] text-[13px] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-accent-violet focus:ring-[3px] focus:ring-[rgba(124,58,237,0.15)]"
           />
         </div>
         <span className="text-[11px] text-text-muted shrink-0">{vendasFiltradas.length} vendas | {fmtMoeda(totalFaturamento)}</span>
       </div>
 
       {/* Tabela */}
-      <div className="bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] overflow-hidden">
+      <div className="bg-bg-card border border-border-default rounded-[14px] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>

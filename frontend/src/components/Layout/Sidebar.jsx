@@ -2,16 +2,8 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import AvatarVendedor from '../AvatarVendedor';
 import {
-  LayoutDashboard,
-  Kanban,
-  DollarSign,
-  Users,
-  CalendarCheck,
-  Trophy,
-  Target,
-  BarChart3,
-  Settings,
-  LogOut,
+  LayoutDashboard, Kanban, DollarSign, Users, CalendarCheck,
+  Trophy, Target, BarChart3, Settings, LogOut,
 } from 'lucide-react';
 
 const navItems = [
@@ -38,13 +30,13 @@ function SidebarIcon({ to, label, icon: Icon }) {
       className={({ isActive }) =>
         `group relative w-10 h-10 flex items-center justify-center rounded-[10px] transition-all duration-200 ${
           isActive
-            ? 'bg-[rgba(124,58,237,0.15)] text-[#A78BFA]'
-            : 'text-[#5C5C6F] hover:bg-[#16161F] hover:text-[#8B8B9E]'
+            ? 'bg-[rgba(124,58,237,0.15)] text-accent-violet-light'
+            : 'text-text-muted hover:bg-bg-card-hover hover:text-text-secondary'
         }`
       }
     >
       <Icon size={20} />
-      <span className="absolute left-full ml-3 px-2.5 py-1 rounded-md bg-[#1A1A24] border border-[rgba(255,255,255,0.1)] text-[11px] font-medium text-[#F0F0F5] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 shadow-lg">
+      <span className="absolute left-full ml-3 px-2.5 py-1 rounded-md bg-bg-elevated border border-border-hover text-[11px] font-medium text-text-primary whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 shadow-lg">
         {label}
       </span>
     </NavLink>
@@ -56,7 +48,7 @@ export default function Sidebar() {
   const isAdmin = usuario?.perfil === 'admin' || usuario?.perfil === 'gestor';
 
   return (
-    <aside className="w-16 shrink-0 bg-[#0C0C12] flex flex-col items-center min-h-screen border-r border-[rgba(255,255,255,0.06)] py-4">
+    <aside className="w-16 shrink-0 bg-bg-secondary flex flex-col items-center min-h-screen border-r border-border-default py-4 relative z-[2]">
       {/* Logo */}
       <NavLink to="/" className="w-9 h-9 rounded-[10px] bg-gradient-to-br from-[#7C3AED] to-[#3B82F6] flex items-center justify-center mb-6 shrink-0 hover:shadow-[0_0_20px_rgba(124,58,237,0.3)] transition-shadow" title="HLPIPE">
         <span className="text-[11px] font-bold text-white tracking-tight">HL</span>
@@ -67,10 +59,9 @@ export default function Sidebar() {
         {navItems.filter(item => !item.adminOnly || isAdmin).map(item => (
           <SidebarIcon key={item.to} {...item} />
         ))}
-
         {isAdmin && (
           <>
-            <div className="w-6 h-px bg-[rgba(255,255,255,0.06)] my-2" />
+            <div className="w-6 h-px bg-border-default my-2" />
             {adminItems.map(item => (
               <SidebarIcon key={item.to} {...item} />
             ))}
@@ -86,7 +77,7 @@ export default function Sidebar() {
         <button
           onClick={logout}
           title="Sair"
-          className="w-10 h-10 flex items-center justify-center rounded-[10px] text-[#5C5C6F] hover:bg-[#16161F] hover:text-[#EF4444] transition-all"
+          className="w-10 h-10 flex items-center justify-center rounded-[10px] text-text-muted hover:bg-bg-card-hover hover:text-accent-danger transition-all"
         >
           <LogOut size={18} />
         </button>

@@ -52,14 +52,14 @@ export default function FiltroUnificado({
     setDataFim(f);
   };
 
-  const inputCls = 'w-full bg-[#0F0F16] border border-[rgba(255,255,255,0.06)] rounded-[10px] px-3 py-2 text-[13px] text-[#F0F0F5] focus:outline-none focus:border-[#7C3AED] focus:ring-[3px] focus:ring-[rgba(124,58,237,0.15)]';
-  const labelCls = 'text-[11px] font-medium text-[#7C3AED] uppercase tracking-[1.5px] mb-1.5 block';
+  const inputCls = 'w-full bg-bg-input border border-border-default rounded-[10px] px-3 py-2 text-[13px] text-text-primary focus:outline-none focus:border-accent-violet focus:ring-[3px] focus:ring-[rgba(124,58,237,0.15)]';
+  const labelCls = 'text-[11px] font-medium text-accent-violet uppercase tracking-[1.5px] mb-1.5 block';
 
   return (
     <div className="relative" ref={ref}>
       <button
         onClick={() => setAberto(!aberto)}
-        className="flex items-center gap-2 px-4 py-2 rounded-[10px] bg-[#111118] border border-[rgba(255,255,255,0.06)] text-[13px] font-medium text-[#8B8B9E] hover:border-[rgba(255,255,255,0.10)] transition-all"
+        className="flex items-center gap-2 px-4 py-2 rounded-[10px] bg-bg-card border border-border-default text-[13px] font-medium text-text-secondary hover:border-border-hover transition-all"
       >
         <SlidersHorizontal size={14} />
         Filtros
@@ -71,10 +71,10 @@ export default function FiltroUnificado({
       </button>
 
       {aberto && (
-        <div className="absolute right-0 top-12 z-50 w-[380px] max-w-[calc(100vw-2rem)] bg-[#1A1A24] border border-[rgba(255,255,255,0.10)] rounded-[18px] shadow-[0_8px_32px_rgba(0,0,0,0.4)] p-5 space-y-5">
+        <div className="absolute right-0 top-12 z-50 w-[380px] max-w-[calc(100vw-2rem)] bg-bg-elevated border border-border-hover rounded-[18px] shadow-[var(--t-shadow-elevated)] p-5 space-y-5">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <h3 className="font-display text-[14px] font-semibold text-[#F0F0F5] flex items-center gap-2">
+            <h3 className="font-display text-[14px] font-semibold text-text-primary flex items-center gap-2">
               <SlidersHorizontal size={14} /> Filtros
             </h3>
             {onLimpar && (
@@ -107,7 +107,7 @@ export default function FiltroUnificado({
                 <button
                   key={a.label}
                   onClick={() => aplicarAtalho(a)}
-                  className="px-2.5 py-1 rounded-full text-[10px] text-[#8B8B9E] bg-[#16161F] hover:bg-[rgba(255,255,255,0.06)] transition-colors"
+                  className="px-2.5 py-1 rounded-full text-[10px] text-text-secondary bg-bg-card-hover hover:bg-bg-card-hover transition-colors"
                 >
                   {a.label}
                 </button>
@@ -136,7 +136,7 @@ export default function FiltroUnificado({
                     key={c.v}
                     onClick={() => setCanal(c.v)}
                     className={`px-3 py-1 rounded-lg text-[11px] font-medium transition-all ${
-                      (canal || '') === c.v ? 'bg-[#7C3AED] text-white' : 'bg-[#16161F] text-[#8B8B9E] hover:bg-[rgba(255,255,255,0.06)]'
+                      (canal || '') === c.v ? 'bg-[#7C3AED] text-white' : 'bg-bg-card-hover text-text-secondary hover:bg-bg-card-hover'
                     }`}
                   >
                     {c.l}
@@ -156,7 +156,7 @@ export default function FiltroUnificado({
                     key={c.v}
                     onClick={() => setClasse(c.v)}
                     className={`px-3 py-1 rounded-lg text-[11px] font-medium transition-all ${
-                      (classe || '') === c.v ? 'bg-[#7C3AED] text-white' : 'bg-[#16161F] text-[#8B8B9E] hover:bg-[rgba(255,255,255,0.06)]'
+                      (classe || '') === c.v ? 'bg-[#7C3AED] text-white' : 'bg-bg-card-hover text-text-secondary hover:bg-bg-card-hover'
                     }`}
                   >
                     {c.l}
@@ -175,7 +175,7 @@ export default function FiltroUnificado({
                   <span className="text-[#EF4444]">({produtosExcluidos.size} excluido{produtosExcluidos.size > 1 ? 's' : ''})</span>
                 )}
               </label>
-              <div className="max-h-[150px] overflow-y-auto space-y-0.5 bg-[#0F0F16] rounded-[10px] p-2">
+              <div className="max-h-[150px] overflow-y-auto space-y-0.5 bg-bg-input rounded-[10px] p-2">
                 {produtosDisponiveis.map(produto => {
                   const excl = produtosExcluidos && produtosExcluidos.has(produto);
                   return (
@@ -190,7 +190,7 @@ export default function FiltroUnificado({
                         }}
                         className="rounded border-border-default"
                       />
-                      <span className={`text-[11px] truncate ${excl ? 'text-[#3D3D4D] line-through' : 'text-[#F0F0F5]'}`}>
+                      <span className={`text-[11px] truncate ${excl ? 'text-text-faint line-through' : 'text-text-primary'}`}>
                         {produto}
                       </span>
                     </label>
@@ -199,7 +199,7 @@ export default function FiltroUnificado({
               </div>
               <div className="flex gap-2 mt-1.5">
                 <button onClick={() => setProdutosExcluidos(new Set())} className="text-[10px] text-[#A78BFA] hover:underline">Marcar todos</button>
-                <button onClick={() => setProdutosExcluidos(new Set(produtosDisponiveis))} className="text-[10px] text-[#5C5C6F] hover:underline">Desmarcar todos</button>
+                <button onClick={() => setProdutosExcluidos(new Set(produtosDisponiveis))} className="text-[10px] text-text-muted hover:underline">Desmarcar todos</button>
               </div>
             </div>
           )}

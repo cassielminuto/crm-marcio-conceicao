@@ -33,7 +33,7 @@ const CanalTooltip = ({ active, payload }) => {
   const d = payload[0]?.payload;
   if (!d) return null;
   return (
-    <div className="bg-[#1A1A24] border border-[rgba(255,255,255,0.10)] rounded-[10px] shadow-[0_8px_32px_rgba(0,0,0,0.4)] px-3 py-2">
+    <div className="bg-bg-elevated border border-border-hover rounded-[10px] shadow-[var(--t-shadow-elevated)] px-3 py-2">
       <p className="text-[11px] text-[#F0F0F5] font-semibold">{d.canal}</p>
       {d.total != null && <p className="text-[11px] text-text-secondary">Leads: {d.total}</p>}
       {d.convertidos != null && <p className="text-[11px] text-text-secondary">Convertidos: {d.convertidos}</p>}
@@ -49,7 +49,7 @@ const FormTooltip = ({ active, payload }) => {
   const d = payload[0]?.payload;
   if (!d) return null;
   return (
-    <div className="bg-[#1A1A24] border border-[rgba(255,255,255,0.10)] rounded-[10px] shadow-[0_8px_32px_rgba(0,0,0,0.4)] px-3 py-2 max-w-[250px]">
+    <div className="bg-bg-elevated border border-border-hover rounded-[10px] shadow-[var(--t-shadow-elevated)] px-3 py-2 max-w-[250px]">
       <p className="text-[11px] text-[#F0F0F5] font-semibold truncate">{d.formulario}</p>
       <p className="text-[11px] text-text-secondary">Leads: {d.total}</p>
       <p className="text-[11px] text-text-secondary">Convertidos: {d.convertidos} ({d.taxa}%)</p>
@@ -106,7 +106,7 @@ export default function OrigemLeads({ leads, vendas }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 1. Distribuicao por Canal - Donut */}
-        <div className="bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-6">
+        <div className="bg-bg-card border border-border-default rounded-[14px] p-6">
           <h3 className="text-[13px] font-semibold text-white mb-4">Distribuicao por Canal</h3>
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
@@ -129,7 +129,7 @@ export default function OrigemLeads({ leads, vendas }) {
         </div>
 
         {/* 2. Conversao por Canal */}
-        <div className="bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-6">
+        <div className="bg-bg-card border border-border-default rounded-[14px] p-6">
           <h3 className="text-[13px] font-semibold text-white mb-4">Conversao por Canal</h3>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={dados} layout="vertical" margin={{ left: 10 }}>
@@ -145,7 +145,7 @@ export default function OrigemLeads({ leads, vendas }) {
         </div>
 
         {/* 3. Faturamento por Canal */}
-        <div className="bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-6">
+        <div className="bg-bg-card border border-border-default rounded-[14px] p-6">
           <h3 className="text-[13px] font-semibold text-white mb-4">Faturamento por Canal</h3>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={dados}>
@@ -168,7 +168,7 @@ export default function OrigemLeads({ leads, vendas }) {
         </div>
 
         {/* 4. Leads por Formulario */}
-        <div className="bg-[#111118] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-6">
+        <div className="bg-bg-card border border-border-default rounded-[14px] p-6">
           <h3 className="text-[13px] font-semibold text-white mb-4">Top 10 Formularios</h3>
           {porFormulario.length > 0 ? (
             <ResponsiveContainer width="100%" height={Math.max(220, porFormulario.length * 28)}>
