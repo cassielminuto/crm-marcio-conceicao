@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 
 function fmtDate(d) {
@@ -28,11 +28,25 @@ export default function FiltroUnificado({
   onLimpar,
 }) {
   const [aberto, setAberto] = useState(false);
-  const ref = useRef(null);
+  const [pos, setPos] = useState({ top: 0, right: 0 });
+  const btnRef = useRef(null);
+  const panelRef = useRef(null);
+
+  const abrirFiltro = useCallback(() => {
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+    }
+    setAberto(true);
+  }, []);
 
   useEffect(() => {
     if (!aberto) return;
-    function handle(e) { if (ref.current && !ref.current.contains(e.target)) setAberto(false); }
+    function handle(e) {
+      if (btnRef.current?.contains(e.target)) return;
+      if (panelRef.current?.contains(e.target)) return;
+      setAberto(false);
+    }
     document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
   }, [aberto]);
@@ -56,9 +70,10 @@ export default function FiltroUnificado({
   const labelCls = 'text-[11px] font-medium text-accent-violet uppercase tracking-[1.5px] mb-1.5 block';
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative">
       <button
-        onClick={() => setAberto(!aberto)}
+        ref={btnRef}
+        onClick={() => aberto ? setAberto(false) : abrirFiltro()}
         className="flex items-center gap-2 px-4 py-2 rounded-[10px] bg-bg-card border border-border-default text-[13px] font-medium text-text-secondary hover:border-border-hover transition-all"
       >
         <SlidersHorizontal size={14} />
@@ -71,14 +86,18 @@ export default function FiltroUnificado({
       </button>
 
       {aberto && (
-        <div className="absolute right-0 top-12 z-50 w-[380px] max-w-[calc(100vw-2rem)] bg-bg-elevated border border-border-hover rounded-[18px] shadow-[var(--t-shadow-elevated)] p-5 space-y-5">
+        <div
+          ref={panelRef}
+          className="fixed z-[100] w-[380px] max-w-[calc(100vw-2rem)] bg-bg-elevated border border-border-hover rounded-[18px] shadow-[var(--t-shadow-elevated)] p-5 space-y-5"
+          style={{ top: pos.top, right: pos.right }}
+        >
           {/* Header */}
           <div className="flex items-center justify-between">
             <h3 className="font-display text-[14px] font-semibold text-text-primary flex items-center gap-2">
               <SlidersHorizontal size={14} /> Filtros
             </h3>
             {onLimpar && (
-              <button onClick={onLimpar} className="text-[10px] text-[#A78BFA] hover:underline">
+              <button onClick={onLimpar} className="text-[10px] text-accent-violet-light hover:underline">
                 Limpar tudo
               </button>
             )}
@@ -107,7 +126,7 @@ export default function FiltroUnificado({
                 <button
                   key={a.label}
                   onClick={() => aplicarAtalho(a)}
-                  className="px-2.5 py-1 rounded-full text-[10px] text-text-secondary bg-bg-card-hover hover:bg-bg-card-hover transition-colors"
+                  className="px-2.5 py-1 rounded-full text-[10px] text-text-secondary bg-bg-card-hover hover:bg-border-hover transition-colors"
                 >
                   {a.label}
                 </button>
@@ -136,7 +155,7 @@ export default function FiltroUnificado({
                     key={c.v}
                     onClick={() => setCanal(c.v)}
                     className={`px-3 py-1 rounded-lg text-[11px] font-medium transition-all ${
-                      (canal || '') === c.v ? 'bg-[#7C3AED] text-white' : 'bg-bg-card-hover text-text-secondary hover:bg-bg-card-hover'
+                      (canal || '') === c.v ? 'bg-[#7C3AED] text-white' : 'bg-bg-card-hover text-text-secondary hover:bg-border-hover'
                     }`}
                   >
                     {c.l}
@@ -156,7 +175,7 @@ export default function FiltroUnificado({
                     key={c.v}
                     onClick={() => setClasse(c.v)}
                     className={`px-3 py-1 rounded-lg text-[11px] font-medium transition-all ${
-                      (classe || '') === c.v ? 'bg-[#7C3AED] text-white' : 'bg-bg-card-hover text-text-secondary hover:bg-bg-card-hover'
+                      (classe || '') === c.v ? 'bg-[#7C3AED] text-white' : 'bg-bg-card-hover text-text-secondary hover:bg-border-hover'
                     }`}
                   >
                     {c.l}
@@ -172,14 +191,14 @@ export default function FiltroUnificado({
               <label className={labelCls}>
                 Produtos{' '}
                 {produtosExcluidos && produtosExcluidos.size > 0 && (
-                  <span className="text-[#EF4444]">({produtosExcluidos.size} excluido{produtosExcluidos.size > 1 ? 's' : ''})</span>
+                  <span className="text-accent-danger">({produtosExcluidos.size} excluido{produtosExcluidos.size > 1 ? 's' : ''})</span>
                 )}
               </label>
               <div className="max-h-[150px] overflow-y-auto space-y-0.5 bg-bg-input rounded-[10px] p-2">
                 {produtosDisponiveis.map(produto => {
                   const excl = produtosExcluidos && produtosExcluidos.has(produto);
                   return (
-                    <label key={produto} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-white/[0.02] cursor-pointer">
+                    <label key={produto} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-bg-card-hover cursor-pointer">
                       <input
                         type="checkbox"
                         checked={!excl}
@@ -198,7 +217,7 @@ export default function FiltroUnificado({
                 })}
               </div>
               <div className="flex gap-2 mt-1.5">
-                <button onClick={() => setProdutosExcluidos(new Set())} className="text-[10px] text-[#A78BFA] hover:underline">Marcar todos</button>
+                <button onClick={() => setProdutosExcluidos(new Set())} className="text-[10px] text-accent-violet-light hover:underline">Marcar todos</button>
                 <button onClick={() => setProdutosExcluidos(new Set(produtosDisponiveis))} className="text-[10px] text-text-muted hover:underline">Desmarcar todos</button>
               </div>
             </div>

@@ -504,7 +504,6 @@ export default function Funil() {
           produtosDisponiveis={produtosDisponiveis}
           onLimpar={() => { setFiltroVendedor(''); setFiltroClasse(''); setFiltroCanal(''); setProdutosExcluidos(new Set()); const n = new Date(); setDataInicio(new Date(n.getFullYear(), n.getMonth(), 1).toISOString().slice(0, 10)); setDataFim(n.toISOString().slice(0, 10)); }}
         />
-        )}
       </div>
 
       {/* Kanban */}
