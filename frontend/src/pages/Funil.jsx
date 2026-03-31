@@ -494,6 +494,7 @@ export default function Funil() {
       {/* Filtros */}
       <div className="flex items-center gap-3 flex-wrap">
         <FiltroUnificado
+          align="left"
           dataInicio={dataInicio} setDataInicio={(v) => setDataInicio(v instanceof Date ? v.toISOString().slice(0, 10) : v)}
           dataFim={dataFim} setDataFim={(v) => setDataFim(v instanceof Date ? v.toISOString().slice(0, 10) : v)}
           vendedorId={filtroVendedor} setVendedorId={setFiltroVendedor}
