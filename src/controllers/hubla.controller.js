@@ -1,5 +1,6 @@
 const prisma = require('../config/database');
 const logger = require('../utils/logger');
+const { obterProximoVendedor } = require('../services/distribuicaoLeads');
 
 async function receberWebhookHubla(req, res, next) {
   try {
@@ -142,7 +143,8 @@ async function processarEventoHubla(dados, tipo, req) {
     }
 
   } else {
-    // Criar novo lead
+    // Criar novo lead (distribuicao round-robin)
+    const vendedorIdHubla = await obterProximoVendedor();
     await prisma.lead.create({
       data: {
         nome,
@@ -155,6 +157,7 @@ async function processarEventoHubla(dados, tipo, req) {
         status: isPagamento ? 'convertido' : 'aguardando',
         vendaRealizada: isPagamento && valor > 0,
         valorVenda: valor > 0 ? valor : null,
+        vendedorId: vendedorIdHubla,
         formularioTitulo: 'Hubla Webhook',
         dataPreenchimento: new Date(),
         dataAtribuicao: new Date(),

@@ -3,6 +3,7 @@ const { identificarCanal, calcularScore } = require('../services/scoreEngine');
 const { distribuir, incrementarLeadsAtivos } = require('../services/distribuidor');
 const { verificarDuplicidade, registrarDuplicatas } = require('../services/deduplicador');
 const logger = require('../utils/logger');
+const { obterProximoVendedor } = require('../services/distribuicaoLeads');
 
 async function receberLeadRespondi(req, res, next) {
   try {
@@ -103,8 +104,9 @@ async function receberLeadRespondi(req, res, next) {
       });
     }
 
-    // 5. Todos os leads vao para Lucas (vendedorId 1) por decisao do gestor
-    const vendedorFinal = await prisma.vendedor.findUnique({ where: { id: 1 }, select: { id: true, nomeExibicao: true, papel: true, usuarioId: true, telefoneWhatsapp: true } });
+    // 5. Distribuicao round-robin ponderada (2:1 Lucas:Leticia)
+    const vendedorIdDistribuido = await obterProximoVendedor();
+    const vendedorFinal = await prisma.vendedor.findUnique({ where: { id: vendedorIdDistribuido }, select: { id: true, nomeExibicao: true, papel: true, usuarioId: true, telefoneWhatsapp: true } });
     const agora = new Date();
 
     // 6. Extrair dor principal das respostas do Respondi
