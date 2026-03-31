@@ -88,9 +88,12 @@ export default function AppLayout() {
   useSocket(handleNovoLead, null, handleDuplicata);
 
   return (
-    <div className="flex min-h-screen bg-[#08080C]">
+    <div className="flex min-h-screen bg-[#08080C] relative">
+      {/* Background orbs */}
+      <div className="fixed w-[500px] h-[500px] rounded-full pointer-events-none z-0" style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.12) 0%, transparent 70%)', top: '-150px', left: '-100px' }} />
+      <div className="fixed w-[400px] h-[400px] rounded-full pointer-events-none z-0" style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)', bottom: '-100px', right: '-50px' }} />
       <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 relative z-[1]">
         {/* Topbar */}
         <header className="h-[56px] shrink-0 flex items-center justify-between px-8 border-b border-[rgba(255,255,255,0.06)] bg-[#0C0C12]/60 backdrop-blur-sm">
           <div className="flex items-center gap-3">
