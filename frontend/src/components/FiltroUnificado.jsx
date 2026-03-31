@@ -71,8 +71,8 @@ export default function FiltroUnificado({
   const panel = aberto && createPortal(
     <div
       ref={panelRef}
-      className="fixed z-[9999] w-[380px] max-w-[calc(100vw-2rem)] bg-bg-elevated border border-border-hover rounded-[18px] shadow-[var(--t-shadow-elevated)] p-5 space-y-5 animate-fade-in"
-      style={{ top: pos.top, left: pos.left }}
+      className="fixed z-[9999] w-[380px] max-w-[calc(100vw-2rem)] bg-bg-elevated border border-border-hover rounded-[18px] shadow-[var(--t-shadow-elevated)] p-5 space-y-5 animate-fade-in overflow-y-auto"
+      style={{ top: pos.top, left: pos.left, maxHeight: 'calc(100vh - 200px)' }}
     >
       <div className="flex items-center justify-between">
         <h3 className="font-display text-[14px] font-semibold text-text-primary flex items-center gap-2">
