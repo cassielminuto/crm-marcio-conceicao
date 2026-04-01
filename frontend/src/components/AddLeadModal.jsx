@@ -20,6 +20,7 @@ export default function AddLeadModal({ isOpen, onClose, onLeadCriado, vendedores
   const [telefone, setTelefone] = useState('');
   const [email, setEmail] = useState('');
   const [canal, setCanal] = useState('bio');
+  const [canalCustom, setCanalCustom] = useState('');
   const [classe, setClasse] = useState('B');
   const [vendedorSelecionado, setVendedorSelecionado] = useState('auto');
   const [observacao, setObservacao] = useState('');
@@ -44,7 +45,7 @@ export default function AddLeadModal({ isOpen, onClose, onLeadCriado, vendedores
   }, [isOpen, onClose]);
 
   const limparForm = () => {
-    setNome(''); setTelefone(''); setEmail(''); setCanal('bio'); setClasse('B');
+    setNome(''); setTelefone(''); setEmail(''); setCanal('bio'); setCanalCustom(''); setClasse('B');
     setVendedorSelecionado(usuario?.vendedorId ? String(usuario.vendedorId) : 'auto');
     setObservacao(''); setErro('');
   };
@@ -67,13 +68,17 @@ export default function AddLeadModal({ isOpen, onClose, onLeadCriado, vendedores
     setErro('');
 
     try {
+      const isCustom = canal === '_custom';
       const payload = {
         nome: nome.trim(),
         telefone: telefoneLimpo,
         email: email.trim() || null,
-        canal,
+        canal: isCustom ? 'evento' : canal,
         classe,
       };
+      if (isCustom) {
+        payload.formulario_titulo = canalCustom.trim() || 'Personalizado';
+      }
 
       if (vendedorSelecionado && vendedorSelecionado !== 'auto') {
         payload.vendedor_id = parseInt(vendedorSelecionado, 10);
@@ -209,7 +214,17 @@ export default function AddLeadModal({ isOpen, onClose, onLeadCriado, vendedores
                 <option value="bio">Bio (organico)</option>
                 <option value="anuncio">Anuncio (pago)</option>
                 <option value="evento">Evento</option>
+                <option value="_custom">Personalizado</option>
               </select>
+              {canal === '_custom' && (
+                <input
+                  type="text"
+                  value={canalCustom}
+                  onChange={(e) => setCanalCustom(e.target.value)}
+                  placeholder="Ex: Instagram DM, Indicacao..."
+                  className="w-full mt-2 bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)]"
+                />
+              )}
             </div>
 
             {/* Classe */}

@@ -245,15 +245,17 @@ export default function LeadCard() {
                 value={lead.etapaFunil}
                 onChange={async (e) => {
                   const novaEtapa = e.target.value;
+                  if (novaEtapa === lead.etapaFunil) { setEditandoEtapa(false); return; }
                   try {
-                    await api.patch(`/leads/${lead.id}`, { etapaFunil: novaEtapa });
-                    setLead(prev => ({ ...prev, etapaFunil: novaEtapa }));
+                    const { data } = await api.patch(`/leads/${lead.id}/etapa`, { etapa: novaEtapa });
+                    setLead(data);
                     setEditandoEtapa(false);
                   } catch (err) {
                     console.error('Erro ao mudar etapa:', err);
+                    setEditandoEtapa(false);
                   }
                 }}
-                onBlur={() => setEditandoEtapa(false)}
+                onBlur={() => setTimeout(() => setEditandoEtapa(false), 150)}
                 autoFocus
                 className="bg-bg-input border border-border-default rounded-lg text-text-primary text-[11px] px-2 py-1 outline-none focus:border-[rgba(108,92,231,0.4)]"
               >
