@@ -1,5 +1,7 @@
 const OpenAI = require('openai');
 const fs = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
 const prisma = require('../config/database');
 const env = require('../config/env');
 const logger = require('../utils/logger');
@@ -25,18 +27,75 @@ Retorne APENAS JSON valido, sem markdown, sem explicacoes.
 Transcricao:
 `;
 
-async function transcreverAudio(caminhoAudio) {
-  logger.info(`Transcrevendo audio: ${caminhoAudio}`);
+const MAX_WHISPER_SIZE = 24 * 1024 * 1024; // 24MB (margem pro limite de 25MB)
 
+async function transcreverDireto(caminhoAudio) {
   const transcription = await openai.audio.transcriptions.create({
     file: fs.createReadStream(caminhoAudio),
     model: 'whisper-1',
     language: 'pt',
     response_format: 'text',
   });
-
-  logger.info(`Transcricao concluida: ${transcription.length} caracteres`);
   return transcription;
+}
+
+async function transcreverAudio(caminhoAudio) {
+  logger.info(`Transcrevendo audio: ${caminhoAudio}`);
+
+  const stats = fs.statSync(caminhoAudio);
+
+  if (stats.size <= MAX_WHISPER_SIZE) {
+    const text = await transcreverDireto(caminhoAudio);
+    logger.info(`Transcricao concluida: ${text.length} caracteres`);
+    return text;
+  }
+
+  // Arquivo grande — dividir em chunks com ffmpeg
+  logger.info(`Audio grande (${(stats.size / 1024 / 1024).toFixed(1)}MB), dividindo em chunks...`);
+
+  const chunksDir = path.join(path.dirname(caminhoAudio), `chunks-${Date.now()}`);
+  fs.mkdirSync(chunksDir, { recursive: true });
+
+  const ext = path.extname(caminhoAudio) || '.webm';
+  const chunkPattern = path.join(chunksDir, `part-%03d${ext}`);
+
+  try {
+    execSync(
+      `ffmpeg -i "${caminhoAudio}" -f segment -segment_time 600 -c copy "${chunkPattern}" -y`,
+      { stdio: 'pipe', timeout: 120000 }
+    );
+  } catch (err) {
+    // Limpar e retornar erro amigavel
+    try { fs.rmSync(chunksDir, { recursive: true }); } catch (e) {}
+    logger.error(`Erro ao dividir audio: ${err.message}`);
+    throw new Error('Audio muito longo para transcricao automatica. Tente uma gravacao mais curta ou envie em partes.');
+  }
+
+  const chunks = fs.readdirSync(chunksDir)
+    .filter(f => f.startsWith('part-'))
+    .sort()
+    .map(f => path.join(chunksDir, f));
+
+  if (chunks.length === 0) {
+    try { fs.rmSync(chunksDir, { recursive: true }); } catch (e) {}
+    throw new Error('Falha ao dividir audio em partes.');
+  }
+
+  logger.info(`Audio dividido em ${chunks.length} partes`);
+
+  let fullText = '';
+  for (let i = 0; i < chunks.length; i++) {
+    logger.info(`Transcrevendo parte ${i + 1}/${chunks.length}...`);
+    const text = await transcreverDireto(chunks[i]);
+    fullText += text + ' ';
+    try { fs.unlinkSync(chunks[i]); } catch (e) {}
+  }
+
+  try { fs.rmSync(chunksDir, { recursive: true }); } catch (e) {}
+
+  const result = fullText.trim();
+  logger.info(`Transcricao completa: ${result.length} caracteres (${chunks.length} partes)`);
+  return result;
 }
 
 async function analisarTranscricao(transcricao) {
