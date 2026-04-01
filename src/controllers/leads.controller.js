@@ -115,7 +115,7 @@ async function detalhe(req, res, next) {
 
 async function criar(req, res, next) {
   try {
-    const { nome, telefone, email, canal, formulario_titulo, dados_respondi, classe: classeManual, vendedor_id, observacao } = req.body;
+    const { nome, telefone, email, canal, formulario_titulo, dados_respondi, classe: classeManual, vendedor_id, observacao, etapa_funil, venda_realizada, valor_venda } = req.body;
 
     // Verificar duplicidade exata
     const { exato } = await verificarDuplicidade(telefone, email);
@@ -168,8 +168,11 @@ async function criar(req, res, next) {
         formularioTitulo: formulario_titulo || 'Manual',
         pontuacao,
         classe,
-        etapaFunil: classe === 'C' ? 'nurturing' : 'novo',
-        status: classe === 'C' ? 'nurturing' : 'aguardando',
+        etapaFunil: etapa_funil || (classe === 'C' ? 'nurturing' : 'novo'),
+        status: etapa_funil === 'fechado_ganho' ? 'convertido' : etapa_funil === 'fechado_perdido' ? 'perdido' : etapa_funil === 'nurturing' ? 'nurturing' : (classe === 'C' ? 'nurturing' : 'aguardando'),
+        vendaRealizada: venda_realizada || false,
+        valorVenda: valor_venda ? parseFloat(valor_venda) : null,
+        dataConversao: venda_realizada ? new Date() : null,
         vendedorId,
         dadosRespondi: dados_respondi || null,
         dataPreenchimento: agora,

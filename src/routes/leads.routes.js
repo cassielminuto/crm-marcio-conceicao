@@ -17,6 +17,9 @@ const criarLeadSchema = z.object({
   dados_respondi: z.record(z.any()).optional().nullable(),
   classe: z.enum(['A', 'B', 'C']).optional(),
   vendedor_id: z.number().int().positive().optional().nullable(),
+  etapa_funil: z.string().optional().nullable(),
+  venda_realizada: z.boolean().optional(),
+  valor_venda: z.number().optional().nullable(),
   observacao: z.string().optional().nullable(),
 });
 

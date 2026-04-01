@@ -23,17 +23,15 @@ export default function AddLeadModal({ isOpen, onClose, onLeadCriado, vendedores
   const [canalCustom, setCanalCustom] = useState('');
   const [classe, setClasse] = useState('B');
   const [vendedorSelecionado, setVendedorSelecionado] = useState('auto');
+  const [etapa, setEtapa] = useState('novo');
+  const [valorVenda, setValorVenda] = useState('');
   const [observacao, setObservacao] = useState('');
   const [criando, setCriando] = useState(false);
   const [erro, setErro] = useState('');
 
-  // Set default vendedor
+  // Set default vendedor — admin/gestor defaults to auto, vendedor defaults to self
   useEffect(() => {
-    if (usuario?.vendedorId) {
-      setVendedorSelecionado(String(usuario.vendedorId));
-    } else {
-      setVendedorSelecionado('auto');
-    }
+    setVendedorSelecionado(usuario?.vendedorId ? String(usuario.vendedorId) : 'auto');
   }, [usuario]);
 
   // ESC to close
@@ -45,7 +43,7 @@ export default function AddLeadModal({ isOpen, onClose, onLeadCriado, vendedores
   }, [isOpen, onClose]);
 
   const limparForm = () => {
-    setNome(''); setTelefone(''); setEmail(''); setCanal('bio'); setCanalCustom(''); setClasse('B');
+    setNome(''); setTelefone(''); setEmail(''); setCanal('bio'); setCanalCustom(''); setClasse('B'); setEtapa('novo'); setValorVenda('');
     setVendedorSelecionado(usuario?.vendedorId ? String(usuario.vendedorId) : 'auto');
     setObservacao(''); setErro('');
   };
@@ -82,6 +80,15 @@ export default function AddLeadModal({ isOpen, onClose, onLeadCriado, vendedores
 
       if (vendedorSelecionado && vendedorSelecionado !== 'auto') {
         payload.vendedor_id = parseInt(vendedorSelecionado, 10);
+      }
+
+      if (etapa !== 'novo') {
+        payload.etapa_funil = etapa;
+      }
+
+      if (etapa === 'fechado_ganho') {
+        payload.venda_realizada = true;
+        if (valorVenda) payload.valor_venda = parseFloat(valorVenda);
       }
 
       if (observacao.trim()) {
@@ -246,21 +253,58 @@ export default function AddLeadModal({ isOpen, onClose, onLeadCriado, vendedores
             {/* Vendedor */}
             <div>
               <label className="block text-[10px] font-semibold text-text-muted uppercase tracking-[0.5px] mb-1.5">
-                Atribuir para
+                Vendedor
               </label>
               <select
                 value={vendedorSelecionado}
                 onChange={(e) => setVendedorSelecionado(e.target.value)}
                 className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)]"
               >
-                <option value="auto">
-                  {usuario?.vendedorId ? 'Eu mesmo' : 'Distribuicao automatica'}
-                </option>
+                <option value="auto">Distribuicao automatica</option>
                 {vendedores?.filter(v => v.ativo !== false).map(v => (
-                  <option key={v.id} value={v.id}>{v.nomeExibicao || v.usuario?.nome}</option>
+                  <option key={v.id} value={v.id}>
+                    {v.nomeExibicao || v.usuario?.nome}{v.id === usuario?.vendedorId ? ' (eu)' : ''}
+                  </option>
                 ))}
               </select>
             </div>
+
+            {/* Etapa do Funil */}
+            <div>
+              <label className="block text-[10px] font-semibold text-text-muted uppercase tracking-[0.5px] mb-1.5">
+                Etapa do Funil
+              </label>
+              <select
+                value={etapa}
+                onChange={(e) => setEtapa(e.target.value)}
+                className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)]"
+              >
+                <option value="novo">Novo</option>
+                <option value="em_abordagem">Em Abordagem</option>
+                <option value="qualificado">Qualificado</option>
+                <option value="proposta">Proposta</option>
+                <option value="fechado_ganho">Fechado Ganho</option>
+                <option value="fechado_perdido">Fechado Perdido</option>
+                <option value="nurturing">Nurturing</option>
+              </select>
+            </div>
+
+            {/* Valor da Venda — so aparece quando etapa = fechado_ganho */}
+            {etapa === 'fechado_ganho' && (
+              <div>
+                <label className="block text-[10px] font-semibold text-text-muted uppercase tracking-[0.5px] mb-1.5">
+                  Valor da Venda (R$)
+                </label>
+                <input
+                  type="number"
+                  value={valorVenda}
+                  onChange={(e) => setValorVenda(e.target.value)}
+                  placeholder="1229"
+                  step="0.01"
+                  className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)]"
+                />
+              </div>
+            )}
           </div>
 
           {/* Observacao */}
