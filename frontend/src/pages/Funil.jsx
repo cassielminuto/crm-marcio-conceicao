@@ -5,7 +5,7 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import FiltroUnificado from '../components/FiltroUnificado';
 import { extrairProduto, extrairProdutosUnicos, isProdutoExcluido } from '../utils/produtos';
-import { Filter, Clock, User, Instagram, Megaphone, Trash2, Calendar, X, Plus, ChevronLeft, ChevronRight, Settings } from 'lucide-react';
+import { Filter, Clock, User, Instagram, Megaphone, Trash2, Calendar, X, Plus, ChevronLeft, ChevronRight, Settings, Package } from 'lucide-react';
 
 const CORES = ['#3b82f6','#eab308','#a855f7','#f97316','#22c55e','#ef4444','#06b6d4','#ec4899','#6366f1','#84cc16'];
 
@@ -74,8 +74,17 @@ function LeadCard({ lead, index, onClickLead, onDeleteLead, onSalvarValor }) {
             </span>
           </div>
 
+          {lead.vendaRealizada && extrairProduto(lead) && (
+            <div className="mt-1.5">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[11px] font-medium bg-[rgba(124,58,237,0.12)] text-[#A78BFA] max-w-full truncate">
+                <Package size={10} className="shrink-0" />
+                <span className="truncate">{extrairProduto(lead)}</span>
+              </span>
+            </div>
+          )}
+
           {lead.vendedor && (
-            <div className="flex items-center gap-1 mt-2 text-[10px] text-text-muted">
+            <div className="flex items-center gap-1 mt-1.5 text-[10px] text-text-muted">
               <User size={10} />
               {lead.vendedor.nomeExibicao}
             </div>
