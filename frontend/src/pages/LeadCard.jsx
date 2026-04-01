@@ -9,8 +9,9 @@ import { useAuth } from '../context/AuthContext';
 import {
   ArrowLeft, Phone, Mail, Instagram, Megaphone, Clock, User, Save,
   MessageSquare, PhoneCall, FileText, ChevronDown, ChevronUp, Bot, Camera,
-  Zap, CalendarPlus, RefreshCw, Loader, ChevronRight, Trash2, MessageCircle, ClipboardList,
+  Zap, CalendarPlus, RefreshCw, Loader, ChevronRight, Trash2, MessageCircle, ClipboardList, Package, DollarSign, Calendar,
 } from 'lucide-react';
+import { extrairProduto } from '../utils/produtos';
 
 function hexToRgba(hex, alpha) {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -547,6 +548,28 @@ export default function LeadCard() {
               </div>
             </div>
           </div>
+
+          {/* Info da venda — so se vendaRealizada */}
+          {lead.vendaRealizada && extrairProduto(lead) && (
+            <div className="bg-[rgba(16,185,129,0.06)] border border-[rgba(16,185,129,0.15)] rounded-[14px] px-[22px] py-4 flex items-center gap-6 flex-wrap">
+              <div className="flex items-center gap-2 text-[12px]">
+                <Package size={14} className="text-accent-emerald" />
+                <span className="text-text-primary font-medium">{extrairProduto(lead)}</span>
+              </div>
+              {lead.valorVenda && (
+                <div className="flex items-center gap-2 text-[12px]">
+                  <DollarSign size={14} className="text-accent-emerald" />
+                  <span className="text-text-primary font-medium">R$ {Number(lead.valorVenda).toLocaleString('pt-BR')}</span>
+                </div>
+              )}
+              {lead.dataConversao && (
+                <div className="flex items-center gap-2 text-[12px]">
+                  <Calendar size={14} className="text-accent-emerald" />
+                  <span className="text-text-primary">{new Date(lead.dataConversao).toLocaleDateString('pt-BR')}</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Respostas do Formulario */}
           {lead.dadosRespondi?.respondent?.answers && (
