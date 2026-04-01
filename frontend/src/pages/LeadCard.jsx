@@ -271,6 +271,12 @@ export default function LeadCard() {
                 {etapasConfig.find(e => e.slug === lead.etapaFunil)?.label || lead.etapaFunil}
               </span>
             )}
+            {lead.vendaRealizada && extrairProduto(lead) && (
+              <span className="px-2.5 py-0.5 rounded-full text-[12px] font-medium bg-[rgba(124,58,237,0.15)] text-[#7C3AED] flex items-center gap-1">
+                <Package size={12} />
+                {extrairProduto(lead)}
+              </span>
+            )}
           </div>
         </div>
         <button
@@ -548,28 +554,6 @@ export default function LeadCard() {
               </div>
             </div>
           </div>
-
-          {/* Info da venda — so se vendaRealizada */}
-          {lead.vendaRealizada && extrairProduto(lead) && (
-            <div className="bg-[rgba(16,185,129,0.06)] border border-[rgba(16,185,129,0.15)] rounded-[14px] px-[22px] py-4 flex items-center gap-6 flex-wrap">
-              <div className="flex items-center gap-2 text-[12px]">
-                <Package size={14} className="text-accent-emerald" />
-                <span className="text-text-primary font-medium">{extrairProduto(lead)}</span>
-              </div>
-              {lead.valorVenda && (
-                <div className="flex items-center gap-2 text-[12px]">
-                  <DollarSign size={14} className="text-accent-emerald" />
-                  <span className="text-text-primary font-medium">R$ {Number(lead.valorVenda).toLocaleString('pt-BR')}</span>
-                </div>
-              )}
-              {lead.dataConversao && (
-                <div className="flex items-center gap-2 text-[12px]">
-                  <Calendar size={14} className="text-accent-emerald" />
-                  <span className="text-text-primary">{new Date(lead.dataConversao).toLocaleDateString('pt-BR')}</span>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Respostas do Formulario */}
           {lead.dadosRespondi?.respondent?.answers && (
