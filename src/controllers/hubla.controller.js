@@ -88,6 +88,28 @@ async function processarEventoHubla(dados, tipo, req) {
   }
 
   if (leadExistente) {
+    // Verificar se é recorrência (lead já tem venda realizada)
+    if (isPagamento && valor > 0 && leadExistente.vendaRealizada === true) {
+      logger.info(`Hubla: Recorrencia detectada para Lead #${leadExistente.id} (${nome}) - R$ ${valor} - ${produto}`);
+
+      await prisma.interacao.create({
+        data: {
+          leadId: leadExistente.id,
+          vendedorId: leadExistente.vendedorId || 1,
+          tipo: 'nota',
+          conteudo: `Pagamento recorrente Hubla: R$ ${valor.toLocaleString('pt-BR')} - ${produto || 'Sem produto'} (${new Date().toLocaleDateString('pt-BR')})`,
+        },
+      });
+
+      // Atualizar email se faltava
+      if (email && !leadExistente.email) {
+        await prisma.lead.update({ where: { id: leadExistente.id }, data: { email } });
+      }
+
+      return;
+    }
+
+    // Venda nova — lead existe mas ainda não converteu
     const dadosUpdate = {};
 
     if (isPagamento && valor > 0) {
@@ -111,7 +133,7 @@ async function processarEventoHubla(dados, tipo, req) {
       logger.info('Hubla: Lead #' + leadExistente.id + ' (' + nome + ') atualizado - R$ ' + valor);
     }
 
-    // Notificar vendedor
+    // Notificar vendedor apenas para venda nova
     if (isPagamento && valor > 0 && leadExistente.vendedorId) {
       try {
         const vendedor = await prisma.vendedor.findUnique({
