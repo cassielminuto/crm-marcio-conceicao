@@ -241,11 +241,11 @@ async function atualizar(req, res, next) {
 
     // Campos permitidos para atualização
     const camposPermitidos = [
-      'nome', 'telefone', 'email', 'dorPrincipal', 'tracoCarater',
+      'nome', 'telefone', 'email', 'canal', 'dorPrincipal', 'tracoCarater',
       'objecaoPrincipal', 'resultadoCall', 'vendaRealizada', 'valorVenda',
-      'dataAbordagem', 'dataConversao', 'motivoPerda', 'status',
+      'dataAbordagem', 'dataConversao', 'dataPreenchimento', 'motivoPerda', 'status',
       'resumoConversa', 'proximaAcao', 'proximaAcaoData',
-      'previsaoFechamento', 'etapaFunil',
+      'previsaoFechamento', 'etapaFunil', 'dadosRespondi', 'createdAt',
     ];
 
     const dados = {};
@@ -262,7 +262,9 @@ async function atualizar(req, res, next) {
     // Converter datas se vierem como string
     if (dados.dataAbordagem) dados.dataAbordagem = new Date(dados.dataAbordagem);
     if (dados.dataConversao) dados.dataConversao = new Date(dados.dataConversao);
+    if (dados.dataPreenchimento) dados.dataPreenchimento = new Date(dados.dataPreenchimento);
     if (dados.previsaoFechamento) dados.previsaoFechamento = new Date(dados.previsaoFechamento);
+    if (dados.createdAt) dados.createdAt = new Date(dados.createdAt);
     if (dados.valorVenda !== undefined) dados.valorVenda = dados.valorVenda !== null ? parseFloat(dados.valorVenda) : null;
 
     // Se marcou venda realizada, atualizar conversões do vendedor
@@ -766,22 +768,45 @@ async function listarFunil(req, res, next) {
       where.vendedorId = req.usuario.vendedorId;
     }
 
+    // Buscar etapas configuradas para saber quais são ganho/perdido
+    const etapasConfig = await prisma.etapaFunil.findMany({ where: { ativo: true } });
+    const closedSlugs = new Set(
+      etapasConfig.filter(e => e.tipo === 'ganho' || e.tipo === 'perdido').map(e => e.slug)
+    );
+
+    const TICKET_MEDIO = 1229;
+    const etapas = {};
+
+    // Inicializar todas as etapas
+    for (const ec of etapasConfig) {
+      etapas[ec.slug] = { leads: [], count: 0, valorTotal: 0 };
+    }
+
+    // Colunas fechadas: apenas contagem e valor (sem carregar leads individuais)
+    const closedAggregations = await Promise.all(
+      [...closedSlugs].map(async (slug) => {
+        const closedWhere = { ...where, etapaFunil: slug };
+        const [countResult, valorResult] = await Promise.all([
+          prisma.lead.count({ where: closedWhere }),
+          prisma.lead.aggregate({ where: closedWhere, _sum: { valorVenda: true } }),
+        ]);
+        return { slug, count: countResult, valorTotal: Number(valorResult._sum.valorVenda) || 0 };
+      })
+    );
+
+    for (const agg of closedAggregations) {
+      etapas[agg.slug] = { leads: [], count: agg.count, valorTotal: agg.valorTotal };
+    }
+
+    // Colunas ativas: carregar todos os leads (sem limite)
+    const activeWhere = { ...where, etapaFunil: { notIn: [...closedSlugs] } };
     const leads = await prisma.lead.findMany({
-      where,
+      where: activeWhere,
       orderBy: { createdAt: 'desc' },
-      take: 5000,
       include: {
         vendedor: { select: { id: true, nomeExibicao: true } },
       },
     });
-
-    const TICKET_MEDIO = 1229;
-    const etapasList = ['novo', 'em_abordagem', 'qualificado', 'proposta', 'fechado_ganho', 'fechado_perdido', 'nurturing'];
-    const etapas = {};
-
-    for (const e of etapasList) {
-      etapas[e] = { leads: [], count: 0, valorTotal: 0 };
-    }
 
     for (const lead of leads) {
       const e = lead.etapaFunil;
@@ -792,14 +817,34 @@ async function listarFunil(req, res, next) {
       etapas[e].valorTotal += valor;
     }
 
-    let pipelineTotal = 0;
-    for (const e of ['novo', 'em_abordagem', 'qualificado', 'proposta']) {
-      pipelineTotal += etapas[e].valorTotal;
+    // Estimar valor para colunas fechadas que não têm valorVenda registrado
+    for (const agg of closedAggregations) {
+      if (agg.valorTotal === 0 && agg.count > 0) {
+        // Contar leads com pontuacao >= 45 para estimar
+        const qualificados = await prisma.lead.count({
+          where: { ...where, etapaFunil: agg.slug, pontuacao: { gte: 45 } },
+        });
+        etapas[agg.slug].valorTotal = qualificados * TICKET_MEDIO;
+      }
     }
 
-    const receitaTotal = etapas['fechado_ganho'].valorTotal;
+    let pipelineTotal = 0;
+    let totalLeads = leads.length;
+    for (const [slug, data] of Object.entries(etapas)) {
+      if (closedSlugs.has(slug)) continue;
+      pipelineTotal += data.valorTotal;
+    }
 
-    res.json({ etapas, total: leads.length, pipelineTotal, receitaTotal });
+    // Somar contagem dos fechados no total
+    for (const agg of closedAggregations) {
+      totalLeads += agg.count;
+    }
+
+    const receitaTotal = etapasConfig
+      .filter(e => e.tipo === 'ganho')
+      .reduce((sum, e) => sum + (etapas[e.slug]?.valorTotal || 0), 0);
+
+    res.json({ etapas, total: totalLeads, pipelineTotal, receitaTotal });
   } catch (err) {
     next(err);
   }

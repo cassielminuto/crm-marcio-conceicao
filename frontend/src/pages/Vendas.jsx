@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import FiltroUnificado from '../components/FiltroUnificado';
 import { extrairProdutosUnicos, isProdutoExcluido } from '../utils/produtos';
-import { DollarSign, TrendingUp, Trophy, ArrowUpDown, Search, Phone, MessageCircle, Mail } from 'lucide-react';
+import { DollarSign, TrendingUp, Trophy, ArrowUpDown, Search, Phone, MessageCircle, Mail, Trash2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 function MetricCard({ titulo, valor, subtitulo, icone: Icon, cor }) {
   const corMap = {
@@ -54,11 +55,15 @@ function buildDateParams(dataInicio, dataFim) {
 
 export default function Vendas() {
   const navigate = useNavigate();
+  const { usuario } = useAuth();
+  const isAdmin = usuario?.perfil === 'admin' || usuario?.perfil === 'gestor';
   const [vendas, setVendas] = useState([]);
   const [vendedores, setVendedores] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [busca, setBusca] = useState('');
   const [ordenacao, setOrdenacao] = useState({ campo: 'dataConversao', dir: 'desc' });
+  const [celulaSalva, setCelulaSalva] = useState(null); // { leadId, campo } - feedback visual
+  const [editandoCelula, setEditandoCelula] = useState(null); // { leadId, campo, valor }
 
   const [dataInicio, setDataInicio] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
   const [dataFim, setDataFim] = useState(() => new Date());
@@ -121,11 +126,39 @@ export default function Vendas() {
     setOrdenacao(prev => ({ campo, dir: prev.campo === campo && prev.dir === 'desc' ? 'asc' : 'desc' }));
   };
 
+  const mostrarFeedback = (leadId, campo) => {
+    setCelulaSalva({ leadId, campo });
+    setTimeout(() => setCelulaSalva(null), 1200);
+  };
+
   const salvarValor = async (leadId, novoValor) => {
     try {
       await api.patch(`/leads/${leadId}`, { valorVenda: novoValor });
       setVendas(prev => prev.map(l => l.id === leadId ? { ...l, valorVenda: novoValor } : l));
+      mostrarFeedback(leadId, 'valor');
     } catch (err) { console.error('Erro ao salvar valor:', err); }
+  };
+
+  const salvarProduto = async (leadId, novoProduto) => {
+    try {
+      const lead = vendas.find(l => l.id === leadId);
+      const dadosRespondi = { ...(lead.dadosRespondi || {}), hubla: { ...(lead.dadosRespondi?.hubla || {}), produto: novoProduto } };
+      await api.patch(`/leads/${leadId}`, { dadosRespondi });
+      setVendas(prev => prev.map(l => l.id === leadId ? { ...l, dadosRespondi } : l));
+      mostrarFeedback(leadId, 'produto');
+    } catch (err) { console.error('Erro ao salvar produto:', err); }
+    setEditandoCelula(null);
+  };
+
+  const salvarDataConversao = async (leadId, novaData) => {
+    if (!novaData) { setEditandoCelula(null); return; }
+    try {
+      const dataISO = new Date(novaData + 'T12:00:00').toISOString();
+      await api.patch(`/leads/${leadId}`, { dataConversao: dataISO });
+      setVendas(prev => prev.map(l => l.id === leadId ? { ...l, dataConversao: dataISO } : l));
+      mostrarFeedback(leadId, 'data');
+    } catch (err) { console.error('Erro ao salvar data:', err); }
+    setEditandoCelula(null);
   };
 
   const redistribuir = async (leadId, novoVendedorId) => {
@@ -133,6 +166,22 @@ export default function Vendas() {
       await api.patch(`/leads/${leadId}/vendedor`, { vendedor_id: novoVendedorId, motivo: 'Atribuicao manual na aba Vendas' });
       carregarVendas();
     } catch (err) { console.error('Erro ao redistribuir:', err); }
+  };
+
+  const removerVenda = async (lead) => {
+    if (!window.confirm(`Tem certeza que deseja remover esta venda?\nO lead "${lead.nome}" será mantido mas os campos de venda serão zerados.`)) return;
+    try {
+      await api.patch(`/leads/${lead.id}`, {
+        vendaRealizada: false,
+        valorVenda: null,
+        dataConversao: null,
+        etapaFunil: 'em_abordagem',
+      });
+      setVendas(prev => prev.filter(l => l.id !== lead.id));
+    } catch (err) {
+      console.error('Erro ao remover venda:', err);
+      alert('Erro ao remover venda. Tente novamente.');
+    }
   };
 
   const limparFiltros = () => {
@@ -209,11 +258,12 @@ export default function Vendas() {
                 <th className="text-left text-[10px] font-semibold text-text-muted uppercase px-4 py-3">Produto</th>
                 <ThSort campo="vendedor">Vendedor</ThSort>
                 <ThSort campo="dataConversao">Data</ThSort>
+                {isAdmin && <th className="text-left text-[10px] font-semibold text-text-muted uppercase px-4 py-3 w-[60px]">Ações</th>}
               </tr>
             </thead>
             <tbody>
               {vendasFiltradas.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-12 text-text-muted">Nenhuma venda encontrada no periodo</td></tr>
+                <tr><td colSpan={isAdmin ? 7 : 6} className="text-center py-12 text-text-muted">Nenhuma venda encontrada no periodo</td></tr>
               ) : (
                 vendasFiltradas.map((lead) => (
                   <tr key={lead.id} className="hover:bg-white/[0.02] border-b border-border-subtle last:border-b-0 transition-colors">
@@ -227,6 +277,7 @@ export default function Vendas() {
                         <a href={`https://wa.me/${(lead.telefone || '').replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="p-0.5 rounded text-accent-emerald hover:bg-[rgba(0,184,148,0.08)] transition-all" onClick={(e) => e.stopPropagation()}><MessageCircle size={12} /></a>
                       </div>
                     </td>
+                    {/* Valor - editavel inline */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-0.5">
                         <span className="text-[10px] text-text-muted">R$</span>
@@ -234,11 +285,34 @@ export default function Vendas() {
                           onFocus={(e) => { e.target.value = lead.valorVenda ? String(Number(lead.valorVenda)) : ''; e.target.select(); }}
                           onBlur={(e) => { const valor = parseFloat(e.target.value.replace(/[^\d.,]/g, '').replace(',', '.')) || null; const atual = lead.valorVenda ? Number(lead.valorVenda) : null; if (valor !== atual) salvarValor(lead.id, valor); e.target.value = valor ? Number(valor).toLocaleString('pt-BR') : '0'; }}
                           onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
-                          className="w-[90px] text-right px-2 py-1 rounded-lg bg-transparent border border-transparent hover:border-border-default focus:border-[rgba(108,92,231,0.4)] focus:bg-bg-input text-accent-amber font-semibold text-[12px] outline-none transition-all"
+                          className={`w-[90px] text-right px-2 py-1 rounded-lg bg-transparent border border-transparent hover:border-border-default focus:border-[rgba(108,92,231,0.4)] focus:bg-bg-input font-semibold text-[12px] outline-none transition-all ${celulaSalva?.leadId === lead.id && celulaSalva?.campo === 'valor' ? 'text-[#10B981]' : 'text-accent-amber'}`}
                         />
                       </div>
                     </td>
-                    <td className="px-4 py-3"><span className="text-[11px] text-text-secondary truncate max-w-[150px] block">{getProdutoDisplay(lead)}</span></td>
+
+                    {/* Produto - editavel inline */}
+                    <td className="px-4 py-3">
+                      {editandoCelula?.leadId === lead.id && editandoCelula?.campo === 'produto' ? (
+                        <input
+                          type="text"
+                          autoFocus
+                          defaultValue={editandoCelula.valor}
+                          onBlur={(e) => { const v = e.target.value.trim(); if (v !== getProdutoDisplay(lead) && v !== '\u2014') salvarProduto(lead.id, v); else setEditandoCelula(null); }}
+                          onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') setEditandoCelula(null); }}
+                          className="w-full bg-bg-input border border-[rgba(108,92,231,0.4)] rounded-lg text-text-primary text-[11px] px-2 py-1 outline-none transition-all"
+                        />
+                      ) : (
+                        <span
+                          onClick={() => setEditandoCelula({ leadId: lead.id, campo: 'produto', valor: getProdutoDisplay(lead) === '\u2014' ? '' : getProdutoDisplay(lead) })}
+                          className={`text-[11px] truncate max-w-[150px] block cursor-pointer hover:text-accent-violet-light transition-colors ${celulaSalva?.leadId === lead.id && celulaSalva?.campo === 'produto' ? 'text-[#10B981]' : 'text-text-secondary'}`}
+                          title="Clique para editar"
+                        >
+                          {getProdutoDisplay(lead)}
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Vendedor - select inline (ja existente) */}
                     <td className="px-4 py-3">
                       <select value={lead.vendedorId || ''} onChange={(e) => { const novoId = parseInt(e.target.value, 10); if (novoId && novoId !== lead.vendedorId) redistribuir(lead.id, novoId); }}
                         className="bg-bg-input border border-border-default rounded-lg text-text-primary text-[11px] px-2 py-1 outline-none focus:border-[rgba(108,92,231,0.4)] transition-all">
@@ -246,7 +320,35 @@ export default function Vendas() {
                         {vendedores.map(v => (<option key={v.id} value={v.id}>{v.nomeExibicao}</option>))}
                       </select>
                     </td>
-                    <td className="px-4 py-3 text-[11px] text-text-muted whitespace-nowrap">{new Date(lead.dataConversao || lead.createdAt).toLocaleDateString('pt-BR')}</td>
+
+                    {/* Data - editavel inline */}
+                    <td className="px-4 py-3">
+                      {editandoCelula?.leadId === lead.id && editandoCelula?.campo === 'data' ? (
+                        <input
+                          type="date"
+                          autoFocus
+                          defaultValue={editandoCelula.valor}
+                          onBlur={(e) => salvarDataConversao(lead.id, e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') setEditandoCelula(null); }}
+                          className="bg-bg-input border border-[rgba(108,92,231,0.4)] rounded-lg text-text-primary text-[11px] px-2 py-1 outline-none transition-all"
+                        />
+                      ) : (
+                        <span
+                          onClick={() => setEditandoCelula({ leadId: lead.id, campo: 'data', valor: new Date(lead.dataConversao || lead.createdAt).toISOString().slice(0, 10) })}
+                          className={`text-[11px] whitespace-nowrap cursor-pointer hover:text-accent-violet-light transition-colors ${celulaSalva?.leadId === lead.id && celulaSalva?.campo === 'data' ? 'text-[#10B981]' : 'text-text-muted'}`}
+                          title="Clique para editar"
+                        >
+                          {new Date(lead.dataConversao || lead.createdAt).toLocaleDateString('pt-BR')}
+                        </span>
+                      )}
+                    </td>
+                    {isAdmin && (
+                      <td className="px-4 py-3">
+                        <button onClick={() => removerVenda(lead)} title="Remover venda" className="p-1.5 rounded-lg text-text-tertiary hover:text-red-400 hover:bg-red-400/10 transition-all">
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}

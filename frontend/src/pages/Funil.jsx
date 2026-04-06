@@ -126,8 +126,9 @@ function LeadCard({ lead, index, onClickLead, onDeleteLead, onSalvarValor }) {
   );
 }
 
-function KanbanColuna({ etapa, leads, count, onClickLead, onDeleteLead, onSalvarValor, isAdmin, editandoLabel, setEditandoLabel, editLabel, setEditLabel, salvarLabel, editandoCor, setEditandoCor, atualizarCor, confirmarExclusaoEtapa, moverEtapa, etapaIndex, etapasTotal }) {
-  const somaColuna = leads.reduce((sum, l) => sum + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
+function KanbanColuna({ etapa, leads, count, valorTotal, onClickLead, onDeleteLead, onSalvarValor, isAdmin, editandoLabel, setEditandoLabel, editLabel, setEditLabel, salvarLabel, editandoCor, setEditandoCor, atualizarCor, confirmarExclusaoEtapa, moverEtapa, etapaIndex, etapasTotal }) {
+  const isClosed = etapa.tipo === 'ganho' || etapa.tipo === 'perdido';
+  const somaColuna = isClosed ? (valorTotal || 0) : leads.reduce((sum, l) => sum + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
   const valorCor = etapa.tipo === 'ganho' ? 'text-accent-emerald' : etapa.tipo === 'perdido' ? 'text-accent-danger' : 'text-accent-amber';
 
   return (
@@ -219,13 +220,19 @@ function KanbanColuna({ etapa, leads, count, onClickLead, onDeleteLead, onSalvar
           <div
             ref={provided.innerRef}
             {...provided.droppableProps}
-            className={`flex-1 p-2 rounded-b-[10px] border border-t-0 border-border-subtle min-h-[200px] max-h-[70vh] overflow-y-auto transition-colors ${
+            className={`flex-1 p-2 rounded-b-[10px] border border-t-0 border-border-subtle min-h-[200px] ${isClosed ? '' : 'max-h-[70vh] overflow-y-auto'} transition-colors ${
               snapshot.isDraggingOver ? 'bg-[rgba(108,92,231,0.04)]' : 'bg-bg-secondary'
             }`}
           >
-            {leads.map((lead, idx) => (
-              <LeadCard key={lead.id} lead={lead} index={idx} onClickLead={onClickLead} onDeleteLead={onDeleteLead} onSalvarValor={onSalvarValor} />
-            ))}
+            {isClosed ? (
+              <div className="flex flex-col items-center justify-center h-24 text-text-muted">
+                <span className="text-[11px]">Arraste leads para cá</span>
+              </div>
+            ) : (
+              leads.map((lead, idx) => (
+                <LeadCard key={lead.id} lead={lead} index={idx} onClickLead={onClickLead} onDeleteLead={onDeleteLead} onSalvarValor={onSalvarValor} />
+              ))
+            )}
             {provided.placeholder}
           </div>
         )}
@@ -449,11 +456,16 @@ export default function Funil() {
 
   if (funilData?.etapas) {
     for (const [slug, data] of Object.entries(funilData.etapas)) {
-      total += data.leads.length;
-      const leadsContab = data.leads.filter(l => !isProdutoExcluido(l, produtosExcluidos));
-      const soma = leadsContab.reduce((s, l) => s + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
-      if (ganhoSlugs.has(slug)) receitaTotal += soma;
-      else if (!perdidoSlugs.has(slug)) pipelineTotal += soma;
+      const isClosed = ganhoSlugs.has(slug) || perdidoSlugs.has(slug);
+      total += isClosed ? (data.count || 0) : data.leads.length;
+      if (isClosed) {
+        // Colunas fechadas: usar valorTotal do backend (sem cards carregados)
+        if (ganhoSlugs.has(slug)) receitaTotal += data.valorTotal || 0;
+      } else {
+        const leadsContab = data.leads.filter(l => !isProdutoExcluido(l, produtosExcluidos));
+        const soma = leadsContab.reduce((s, l) => s + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
+        pipelineTotal += soma;
+      }
     }
   }
 
@@ -520,13 +532,15 @@ export default function Funil() {
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex gap-4 overflow-x-auto pb-4">
           {etapas.map((etapa, idx) => {
-            const data = funilData?.etapas?.[etapa.slug] || { leads: [], count: 0 };
+            const data = funilData?.etapas?.[etapa.slug] || { leads: [], count: 0, valorTotal: 0 };
+            const isClosed = etapa.tipo === 'ganho' || etapa.tipo === 'perdido';
             return (
               <KanbanColuna
                 key={etapa.slug}
                 etapa={etapa}
                 leads={data.leads}
-                count={data.leads.length}
+                count={isClosed ? data.count : data.leads.length}
+                valorTotal={data.valorTotal}
                 onClickLead={(leadId) => navigate(`/leads/${leadId}`)}
                 onDeleteLead={(lead) => setLeadParaExcluir(lead)}
                 onSalvarValor={salvarValorLead}

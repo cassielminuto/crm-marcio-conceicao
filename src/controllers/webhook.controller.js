@@ -104,7 +104,7 @@ async function receberLeadRespondi(req, res, next) {
       });
     }
 
-    // 5. Distribuicao round-robin ponderada (2:1 Lucas:Leticia)
+    // 5. Distribuicao round-robin ponderada (2:1 Lucas:Gabriel)
     const vendedorIdDistribuido = await obterProximoVendedor();
     const vendedorFinal = await prisma.vendedor.findUnique({ where: { id: vendedorIdDistribuido }, select: { id: true, nomeExibicao: true, papel: true, usuarioId: true, telefoneWhatsapp: true } });
     const agora = new Date();

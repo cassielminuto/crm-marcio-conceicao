@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   ArrowLeft, Phone, Mail, Instagram, Megaphone, Clock, User, Save,
   MessageSquare, PhoneCall, FileText, ChevronDown, ChevronUp, Bot, Camera,
-  Zap, CalendarPlus, RefreshCw, Loader, ChevronRight, Trash2, MessageCircle, ClipboardList, Package, DollarSign, Calendar,
+  Zap, CalendarPlus, RefreshCw, Loader, ChevronRight, Trash2, MessageCircle, ClipboardList, Package, DollarSign, Calendar, Pencil,
 } from 'lucide-react';
 import { extrairProduto } from '../utils/produtos';
 
@@ -102,6 +102,10 @@ export default function LeadCard() {
   const [excluindo, setExcluindo] = useState(false);
   const [etapasConfig, setEtapasConfig] = useState([]);
   const [editandoEtapa, setEditandoEtapa] = useState(false);
+  const [editandoCampoInfo, setEditandoCampoInfo] = useState(null);
+  const [campoInfoValor, setCampoInfoValor] = useState('');
+  const [campoInfoSalvo, setCampoInfoSalvo] = useState(null); // campo name when success
+  const [campoInfoErro, setCampoInfoErro] = useState(null); // campo name when error
 
   const [campos, setCampos] = useState({
     dorPrincipal: '',
@@ -126,6 +130,27 @@ export default function LeadCard() {
     } finally {
       setRedistribuindo(false);
     }
+  };
+
+  const salvarCampoInfo = async (campo, valor) => {
+    setEditandoCampoInfo(null);
+    try {
+      const payload = { [campo]: valor || null };
+      const { data } = await api.patch(`/leads/${id}`, payload);
+      setLead(data);
+      setCampoInfoErro(null);
+      setCampoInfoSalvo(campo);
+      setTimeout(() => setCampoInfoSalvo(null), 1200);
+    } catch (err) {
+      console.error('Erro ao salvar campo:', err);
+      setCampoInfoErro(campo);
+      setTimeout(() => setCampoInfoErro(null), 2000);
+    }
+  };
+
+  const iniciarEdicaoCampoInfo = (campo, valorAtual) => {
+    setEditandoCampoInfo(campo);
+    setCampoInfoValor(valorAtual || '');
   };
 
   const excluirLead = async () => {
@@ -410,9 +435,29 @@ export default function LeadCard() {
           <div className="bg-bg-card border border-border-subtle rounded-[14px] p-[22px] space-y-4">
             <h2 className="text-[12px] font-semibold text-text-secondary">Informacoes do Lead</h2>
             <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center gap-2 text-[12px]">
-                <Phone size={14} className="text-text-muted" />
-                <span className="text-text-primary">{lead.telefone}</span>
+              {/* Telefone - editavel inline */}
+              <div className={`flex items-center gap-2 text-[12px] rounded-lg px-1.5 py-0.5 -mx-1.5 transition-all ${campoInfoSalvo === 'telefone' ? 'ring-1 ring-[#10B981]' : campoInfoErro === 'telefone' ? 'ring-1 ring-red-500' : ''}`}>
+                <Phone size={14} className="text-text-muted shrink-0" />
+                {editandoCampoInfo === 'telefone' ? (
+                  <input
+                    type="text"
+                    autoFocus
+                    value={campoInfoValor}
+                    onChange={(e) => setCampoInfoValor(e.target.value)}
+                    onBlur={() => salvarCampoInfo('telefone', campoInfoValor)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') setEditandoCampoInfo(null); }}
+                    className="bg-bg-input border border-[rgba(108,92,231,0.4)] rounded-lg text-text-primary text-[12px] px-2 py-0.5 outline-none w-[140px] transition-all"
+                  />
+                ) : (
+                  <span
+                    onClick={() => iniciarEdicaoCampoInfo('telefone', lead.telefone)}
+                    className="text-text-primary cursor-pointer hover:text-accent-violet-light transition-colors group flex items-center gap-1"
+                    title="Clique para editar"
+                  >
+                    {lead.telefone}
+                    <Pencil size={10} className="text-text-faint opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </span>
+                )}
                 <a
                   href={`https://wa.me/${lead.telefone.replace(/\D/g, '')}`}
                   target="_blank"
@@ -424,24 +469,97 @@ export default function LeadCard() {
                   WhatsApp
                 </a>
               </div>
-              {lead.email && (
-                <div className="flex items-center gap-2 text-[12px]">
-                  <Mail size={14} className="text-text-muted" />
-                  <span className="text-text-primary truncate">{lead.email}</span>
-                </div>
-              )}
-              <div className="flex items-center gap-2 text-[12px]">
-                <CanalIcone size={14} className="text-text-muted" />
-                <span className="text-text-primary">{lead.canal === 'bio' ? 'Bio (organico)' : 'Anuncio (pago)'}</span>
+
+              {/* Email - editavel inline */}
+              <div className={`flex items-center gap-2 text-[12px] rounded-lg px-1.5 py-0.5 -mx-1.5 transition-all ${campoInfoSalvo === 'email' ? 'ring-1 ring-[#10B981]' : campoInfoErro === 'email' ? 'ring-1 ring-red-500' : ''}`}>
+                <Mail size={14} className="text-text-muted shrink-0" />
+                {editandoCampoInfo === 'email' ? (
+                  <input
+                    type="email"
+                    autoFocus
+                    value={campoInfoValor}
+                    onChange={(e) => setCampoInfoValor(e.target.value)}
+                    onBlur={() => salvarCampoInfo('email', campoInfoValor)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') setEditandoCampoInfo(null); }}
+                    className="bg-bg-input border border-[rgba(108,92,231,0.4)] rounded-lg text-text-primary text-[12px] px-2 py-0.5 outline-none w-[180px] transition-all"
+                  />
+                ) : (
+                  <span
+                    onClick={() => iniciarEdicaoCampoInfo('email', lead.email)}
+                    className="text-text-primary truncate cursor-pointer hover:text-accent-violet-light transition-colors group flex items-center gap-1"
+                    title="Clique para editar"
+                  >
+                    {lead.email || 'Adicionar email...'}
+                    <Pencil size={10} className="text-text-faint opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                  </span>
+                )}
               </div>
-              <div className="flex items-center gap-2 text-[12px]">
-                <Clock size={14} className="text-text-muted" />
-                <span className="text-text-primary">
-                  {new Date(lead.createdAt).toLocaleDateString('pt-BR')} {new Date(lead.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                </span>
+
+              {/* Canal - select inline */}
+              <div className={`flex items-center gap-2 text-[12px] rounded-lg px-1.5 py-0.5 -mx-1.5 transition-all ${campoInfoSalvo === 'canal' ? 'ring-1 ring-[#10B981]' : campoInfoErro === 'canal' ? 'ring-1 ring-red-500' : ''}`}>
+                <CanalIcone size={14} className="text-text-muted shrink-0" />
+                {editandoCampoInfo === 'canal' ? (
+                  <select
+                    autoFocus
+                    value={campoInfoValor}
+                    onChange={(e) => { setCampoInfoValor(e.target.value); salvarCampoInfo('canal', e.target.value); }}
+                    onBlur={() => setEditandoCampoInfo(null)}
+                    className="bg-bg-input border border-[rgba(108,92,231,0.4)] rounded-lg text-text-primary text-[12px] px-2 py-0.5 outline-none transition-all"
+                  >
+                    <option value="bio">Bio (organico)</option>
+                    <option value="anuncio">Anuncio (pago)</option>
+                    <option value="evento">Evento</option>
+                  </select>
+                ) : (
+                  <span
+                    onClick={() => iniciarEdicaoCampoInfo('canal', lead.canal)}
+                    className="text-text-primary cursor-pointer hover:text-accent-violet-light transition-colors group flex items-center gap-1"
+                    title="Clique para editar"
+                  >
+                    {lead.canal === 'bio' ? 'Bio (organico)' : lead.canal === 'evento' ? 'Evento' : 'Anuncio (pago)'}
+                    <Pencil size={10} className="text-text-faint opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </span>
+                )}
               </div>
-              <div className="flex items-center gap-2 text-[12px]">
-                <User size={14} className="text-text-muted" />
+
+              {/* Data de entrada - datetime-local inline */}
+              <div className={`flex items-center gap-2 text-[12px] rounded-lg px-1.5 py-0.5 -mx-1.5 transition-all ${campoInfoSalvo === 'createdAt' ? 'ring-1 ring-[#10B981]' : campoInfoErro === 'createdAt' ? 'ring-1 ring-red-500' : ''}`}>
+                <Clock size={14} className="text-text-muted shrink-0" />
+                {editandoCampoInfo === 'createdAt' ? (
+                  <input
+                    type="datetime-local"
+                    autoFocus
+                    value={campoInfoValor}
+                    onChange={(e) => setCampoInfoValor(e.target.value)}
+                    onBlur={() => {
+                      if (campoInfoValor) {
+                        salvarCampoInfo('createdAt', new Date(campoInfoValor).toISOString());
+                      } else {
+                        setEditandoCampoInfo(null);
+                      }
+                    }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') setEditandoCampoInfo(null); }}
+                    className="bg-bg-input border border-[rgba(108,92,231,0.4)] rounded-lg text-text-primary text-[12px] px-2 py-0.5 outline-none transition-all"
+                  />
+                ) : (
+                  <span
+                    onClick={() => {
+                      const d = new Date(lead.createdAt);
+                      const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+                      iniciarEdicaoCampoInfo('createdAt', local);
+                    }}
+                    className="text-text-primary cursor-pointer hover:text-accent-violet-light transition-colors group flex items-center gap-1"
+                    title="Clique para editar"
+                  >
+                    {new Date(lead.createdAt).toLocaleDateString('pt-BR')} {new Date(lead.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    <Pencil size={10} className="text-text-faint opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </span>
+                )}
+              </div>
+
+              {/* Vendedor - select inline */}
+              <div className="flex items-center gap-2 text-[12px] rounded-lg px-1.5 py-0.5 -mx-1.5">
+                <User size={14} className="text-text-muted shrink-0" />
                 {isAdmin && !editandoCloser ? (
                   <button
                     onClick={() => setEditandoCloser(true)}
@@ -454,10 +572,11 @@ export default function LeadCard() {
                 ) : isAdmin && editandoCloser ? (
                   <div className="flex items-center gap-2">
                     <select
+                      autoFocus
                       value={lead.vendedorId || ''}
                       onChange={(e) => redistribuirLead(parseInt(e.target.value, 10))}
                       disabled={redistribuindo}
-                      className="bg-bg-input border border-border-default rounded-lg text-text-primary text-[12px] px-2 py-1 outline-none focus:border-[rgba(108,92,231,0.4)] disabled:opacity-50"
+                      className="bg-bg-input border border-[rgba(108,92,231,0.4)] rounded-lg text-text-primary text-[12px] px-2 py-1 outline-none disabled:opacity-50"
                     >
                       <option value="" disabled>Selecionar closer...</option>
                       {vendedores.filter(v => v.ativo !== false).map(v => (
