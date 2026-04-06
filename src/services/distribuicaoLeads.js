@@ -1,26 +1,22 @@
 const logger = require('../utils/logger');
 
-// Configuracao de distribuicao: vendedorId => peso
+// Distribuicao 2:1 — Lucas, Lucas, Gabriel
 const DISTRIBUICAO = [
-  { vendedorId: 1, peso: 2 },  // Lucas: 2 de cada 3
-  { vendedorId: 7, peso: 1 },  // Leticia: 1 de cada 3
+  1, // Lucas (posição 0)
+  1, // Lucas (posição 1)
+  6, // Gabriel (posição 2)
 ];
-
-// Expandir: [1, 1, 7]
-const FILA = [];
-for (const v of DISTRIBUICAO) {
-  for (let i = 0; i < v.peso; i++) FILA.push(v.vendedorId);
-}
 
 async function obterProximoVendedor() {
   try {
     const redis = require('../config/redis');
-    const contador = await redis.incr('crm:distribuicao:contador');
-    const vendedorId = FILA[(contador - 1) % FILA.length];
+    const contador = await redis.incr('lead_distribution_counter');
+    const indice = (contador - 1) % DISTRIBUICAO.length;
+    const vendedorId = DISTRIBUICAO[indice];
     logger.info(`Lead distribuido para vendedor ID ${vendedorId} (contador: ${contador})`);
     return vendedorId;
   } catch (e) {
-    logger.warn('Redis indisponivel para distribuicao, fallback para vendedorId=1');
+    logger.warn('Redis indisponivel para distribuicao, fallback para vendedorId=1 (Lucas)');
     return 1;
   }
 }

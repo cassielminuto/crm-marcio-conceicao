@@ -42,7 +42,7 @@ const notificacoesRoutes = require('./routes/notificacoes.routes');
 const perfilRoutes = require('./routes/perfil.routes');
 const etapasRoutes = require('./routes/etapas.routes');
 const hublaRoutes = require('./routes/hubla.routes');
-const { iniciarSlaChecker } = require('./jobs/slaChecker.job');
+// const { iniciarSlaChecker } = require('./jobs/slaChecker.job');
 const { iniciarWhatsappDispatcher } = require('./jobs/whatsappDispatcher.job');
 
 // Health check
@@ -118,7 +118,7 @@ server.listen(env.port, async () => {
 
   // Iniciar SLA Checker (BullMQ)
   try {
-    await iniciarSlaChecker(io);
+    // await iniciarSlaChecker(io);
     await iniciarWhatsappDispatcher();
   } catch (err) {
     logger.error(`Erro ao iniciar jobs: ${err.message}`);
