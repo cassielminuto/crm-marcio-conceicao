@@ -1,10 +1,9 @@
 const logger = require('../utils/logger');
 
-// Distribuicao 2:1 — Lucas, Lucas, Gabriel
+// Distribuicao 50/50 — Lucas, Emilia
 const DISTRIBUICAO = [
-  1, // Lucas (posição 0)
-  1, // Lucas (posição 1)
-  6, // Gabriel (posição 2)
+  1, // Lucas
+  8, // Emilia
 ];
 
 async function obterProximoVendedor() {
