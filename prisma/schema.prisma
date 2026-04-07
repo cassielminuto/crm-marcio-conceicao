@@ -107,6 +107,44 @@ enum StatusProposta {
   recusada
 }
 
+enum TipoInteracaoSDR {
+  curtiu
+  comentou
+  story
+  seguiu
+}
+
+enum TemperaturaSDR {
+  frio
+  morno
+  quente
+}
+
+enum TentouSolucao {
+  sim
+  nao
+  parcialmente
+}
+
+enum DecisaoRota {
+  convidar
+  lixeira
+}
+
+enum AceitouDiagnostico {
+  sim
+  nao
+  pendente
+}
+
+enum TomEmocional {
+  desesperado
+  racional
+  resistente
+  aberto
+  fragil
+}
+
 // ==========================================
 // TABELAS
 // ==========================================
@@ -144,6 +182,7 @@ model Vendedor {
   ticketMedio      Decimal        @default(0) @map("ticket_medio") @db.Decimal(10, 2)
   rankingPosicao   Int            @default(0) @map("ranking_posicao")
   ativo            Boolean        @default(true)
+  acessoSdr        Boolean        @default(false) @map("acesso_sdr")
 
   usuario          Usuario        @relation(fields: [usuarioId], references: [id])
   leads            Lead[]
@@ -153,6 +192,8 @@ model Vendedor {
   gamificacao      Gamificacao[]
   propostas        Proposta[]
   funilHistorico   FunilHistorico[]
+  sdrLeadsComoOperador  LeadSDR[] @relation("SdrOperador")
+  sdrLeadsComoCloser    LeadSDR[] @relation("SdrCloserDestino")
 
   @@map("vendedores")
 }
@@ -187,6 +228,7 @@ model Lead {
   dataConversao       DateTime?     @map("data_conversao")
   previsaoFechamento  DateTime?     @map("previsao_fechamento")
   motivoPerda         String?       @map("motivo_perda")
+  produtoHubla        String?       @map("produto_hubla") @db.VarChar(255)
   createdAt           DateTime      @default(now()) @map("created_at")
   updatedAt           DateTime      @updatedAt @map("updated_at")
 
@@ -197,6 +239,7 @@ model Lead {
   propostas           Proposta[]
   duplicatasOrigem    PossivelDuplicata[] @relation("DuplicataOrigem")
   duplicatasDe        PossivelDuplicata[] @relation("DuplicataDuplicata")
+  leadSdrOrigem       LeadSDR[]
 
   @@map("leads")
 }
@@ -384,6 +427,75 @@ model Proposta {
   vendedor        Vendedor       @relation(fields: [vendedorId], references: [id])
 
   @@map("propostas")
+}
+
+/// Tabela: leads_sdr
+model LeadSDR {
+  id                    Int                @id @default(autoincrement())
+  nome                  String             @db.VarChar(255)
+  instagram             String             @db.VarChar(255)
+  tipoInteracao         TipoInteracaoSDR   @map("tipo_interacao")
+  dataPrimeiroContato   DateTime           @default(now()) @map("data_primeiro_contato")
+  mensagemEnviada       String?            @map("mensagem_enviada")
+
+  // F2 - Conexao
+  respostaLead          String?            @map("resposta_lead")
+  temperaturaInicial    TemperaturaSDR?    @map("temperatura_inicial")
+  dorAparente           String?            @map("dor_aparente")
+
+  // F3 - Qualificacao
+  tentouSolucaoAnterior TentouSolucao?     @map("tentou_solucao_anterior")
+  temperaturaFinal      TemperaturaSDR?    @map("temperatura_final")
+  decisaoRota           DecisaoRota?       @map("decisao_rota")
+  detalheSituacao       String?            @map("detalhe_situacao")
+
+  // F4 - Convite
+  aceitouDiagnostico    AceitouDiagnostico? @map("aceitou_diagnostico")
+
+  // Kanban
+  etapa                 String             @default("f1_abertura") @db.VarChar(50)
+  ordem                 Int                @default(0)
+
+  // Handoff
+  whatsapp              String?            @db.VarChar(20)
+  dataReuniao           DateTime?          @map("data_reuniao")
+  closerDestinoId       Int?               @map("closer_destino_id")
+  resumoSituacao        String?            @map("resumo_situacao")
+  tomEmocional          TomEmocional?      @map("tom_emocional")
+  oqueFuncionou         String?            @map("oque_funcionou")
+  oqueEvitar            String?            @map("oque_evitar")
+  fraseChaveLead        String?            @map("frase_chave_lead")
+  resumoIa              String?            @map("resumo_ia")
+
+  // Referencia cruzada
+  leadCloserId          Int?               @map("lead_closer_id")
+  handoffRealizadoEm    DateTime?          @map("handoff_realizado_em")
+
+  // Operador
+  operadorId            Int                @map("operador_id")
+
+  createdAt             DateTime           @default(now()) @map("created_at")
+  updatedAt             DateTime           @updatedAt @map("updated_at")
+
+  closerDestino         Vendedor?          @relation("SdrCloserDestino", fields: [closerDestinoId], references: [id])
+  leadCloser            Lead?              @relation(fields: [leadCloserId], references: [id])
+  operador              Vendedor           @relation("SdrOperador", fields: [operadorId], references: [id])
+  prints                PrintConversaSDR[]
+
+  @@map("leads_sdr")
+}
+
+/// Tabela: prints_conversa_sdr
+model PrintConversaSDR {
+  id          Int      @id @default(autoincrement())
+  leadSdrId   Int      @map("lead_sdr_id")
+  imagemUrl   String   @map("imagem_url") @db.VarChar(500)
+  ordem       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  leadSdr     LeadSDR  @relation(fields: [leadSdrId], references: [id], onDelete: Cascade)
+
+  @@map("prints_conversa_sdr")
 }
 
 /// Tabela 14: notificacoes

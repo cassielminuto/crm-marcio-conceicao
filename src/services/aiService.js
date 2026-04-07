@@ -459,4 +459,45 @@ Retorne APENAS o texto do resumo, sem JSON, sem markdown.`;
   return { metricas: dadosParaIA, resumoIA: resumo };
 }
 
-module.exports = { transcreverAudio, analisarTranscricao, processarCall, analisarPrintWhatsApp, gerarResumoEProximaAcao, gerarResumoPeriodo };
+const PROMPT_SDR_PRINTS = `Voce e um analista comercial. Analise estas capturas de tela de uma conversa no Instagram entre um SDR e um potencial cliente de um programa de relacionamento para casais.
+
+Gere um briefing para o closer que fara a call de diagnostico:
+
+1. SITUACAO DO CASAL: Resuma em 2-3 frases o que esta acontecendo
+2. DOR PRINCIPAL: Qual e a dor central que o lead expressou
+3. URGENCIA: Baixa / Media / Alta / Critica
+4. PONTOS SENSIVEIS: O que o closer NAO deve mencionar ou como NAO abordar
+5. SUGESTAO DE ABERTURA: Como o closer deve iniciar a call para criar conexao imediata com o que o lead ja compartilhou
+
+Seja direto e objetivo. O closer vai ler isso 5 minutos antes da call.`;
+
+async function analisarPrintsSDR(prints) {
+  const imageMessages = prints.map((print) => {
+    const absolutePath = path.join(__dirname, '..', '..', print.imagemUrl);
+    const imageBuffer = fs.readFileSync(absolutePath);
+    const base64 = imageBuffer.toString('base64');
+    const mimeType = print.imagemUrl.endsWith('.png') ? 'image/png' : 'image/jpeg';
+    return {
+      type: 'image_url',
+      image_url: { url: `data:${mimeType};base64,${base64}` },
+    };
+  });
+
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4o',
+    messages: [
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: PROMPT_SDR_PRINTS },
+          ...imageMessages,
+        ],
+      },
+    ],
+    max_tokens: 1000,
+  });
+
+  return response.choices[0].message.content;
+}
+
+module.exports = { transcreverAudio, analisarTranscricao, processarCall, analisarPrintWhatsApp, gerarResumoEProximaAcao, gerarResumoPeriodo, analisarPrintsSDR };

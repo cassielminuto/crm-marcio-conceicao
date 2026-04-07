@@ -3,13 +3,14 @@ import { useAuth } from '../../context/AuthContext';
 import AvatarVendedor from '../AvatarVendedor';
 import {
   LayoutDashboard, Kanban, DollarSign, Users, CalendarCheck,
-  Trophy, Target, BarChart3, Settings, LogOut,
+  Trophy, Target, BarChart3, Settings, LogOut, Instagram,
 } from 'lucide-react';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/funil', label: 'Funil', icon: Kanban },
   { to: '/vendas', label: 'Vendas', icon: DollarSign },
+  { to: '/sdr', label: 'SDR Instagram', icon: Instagram },
   { to: '/meus-leads', label: 'Meus Leads', icon: Users },
   { to: '/follow-ups', label: 'Follow-ups', icon: CalendarCheck },
   { to: '/ranking', label: 'Ranking', icon: Trophy },
@@ -27,18 +28,27 @@ function SidebarIcon({ to, label, icon: Icon }) {
       to={to}
       end={to === '/'}
       title={label}
-      className={({ isActive }) =>
-        `group relative w-10 h-10 flex items-center justify-center rounded-[10px] transition-all duration-200 ${
+      className="group relative"
+    >
+      {({ isActive }) => (
+        <div className={`relative w-10 h-10 flex items-center justify-center rounded-[10px] transition-all duration-200 ${
           isActive
             ? 'bg-[rgba(124,58,237,0.15)] text-accent-violet-light'
             : 'text-text-muted hover:bg-bg-card-hover hover:text-text-secondary'
-        }`
-      }
-    >
-      <Icon size={20} />
-      <span className="absolute left-full ml-3 px-2.5 py-1 rounded-md bg-bg-elevated border border-border-hover text-[11px] font-medium text-text-primary whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 shadow-lg">
-        {label}
-      </span>
+        }`}>
+          {/* Active indicator bar on left */}
+          {isActive && (
+            <span className="absolute -left-[5px] top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full bg-accent-violet shadow-[0_0_8px_rgba(124,58,237,0.5)]" />
+          )}
+          <span className="transition-transform duration-200 group-hover:scale-110 flex items-center justify-center">
+            <Icon size={20} />
+          </span>
+          {/* Tooltip — slides in from left */}
+          <span className="absolute left-full ml-3 px-2.5 py-1 rounded-md bg-bg-elevated border border-border-hover text-[11px] font-medium text-text-primary whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 group-hover:animate-slide-in-left transition-opacity z-50 shadow-lg">
+            {label}
+          </span>
+        </div>
+      )}
     </NavLink>
   );
 }
@@ -49,8 +59,12 @@ export default function Sidebar() {
 
   return (
     <aside className="w-16 shrink-0 bg-bg-secondary flex flex-col items-center min-h-screen border-r border-border-default py-4 relative z-[2]">
-      {/* Logo */}
-      <NavLink to="/" className="w-9 h-9 rounded-[10px] bg-gradient-to-br from-[#7C3AED] to-[#3B82F6] flex items-center justify-center mb-6 shrink-0 hover:shadow-[0_0_20px_rgba(124,58,237,0.3)] transition-shadow" title="HLPIPE">
+      {/* Subtle gradient accent line on right edge */}
+      <div className="absolute top-0 right-0 w-px h-full bg-gradient-to-b from-transparent via-[rgba(124,58,237,0.2)] to-transparent pointer-events-none" />
+
+      {/* Logo with subtle glow */}
+      <NavLink to="/" className="relative w-9 h-9 rounded-[10px] bg-gradient-to-br from-[#7C3AED] to-[#3B82F6] flex items-center justify-center mb-6 shrink-0 hover:shadow-[0_0_20px_rgba(124,58,237,0.3)] transition-shadow" title="HLPIPE">
+        <span className="absolute inset-0 rounded-[10px] bg-gradient-to-br from-[#7C3AED] to-[#3B82F6] opacity-40 blur-[8px] -z-10" />
         <span className="text-[11px] font-bold text-white tracking-tight">HL</span>
       </NavLink>
 
@@ -61,7 +75,10 @@ export default function Sidebar() {
         ))}
         {isAdmin && (
           <>
-            <div className="w-6 h-px bg-border-default my-2" />
+            {/* Gradient separator between main nav and admin */}
+            <div className="w-6 my-2">
+              <div className="h-px bg-gradient-to-r from-transparent via-border-hover to-transparent" />
+            </div>
             {adminItems.map(item => (
               <SidebarIcon key={item.to} {...item} />
             ))}
@@ -77,9 +94,11 @@ export default function Sidebar() {
         <button
           onClick={logout}
           title="Sair"
-          className="w-10 h-10 flex items-center justify-center rounded-[10px] text-text-muted hover:bg-bg-card-hover hover:text-accent-danger transition-all"
+          className="group w-10 h-10 flex items-center justify-center rounded-[10px] text-text-muted hover:bg-bg-card-hover hover:text-accent-danger transition-all"
         >
-          <LogOut size={18} />
+          <span className="transition-transform duration-200 group-hover:scale-110 flex items-center justify-center">
+            <LogOut size={18} />
+          </span>
         </button>
       </div>
     </aside>

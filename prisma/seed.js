@@ -112,6 +112,13 @@ async function main() {
     console.log(`SLA configurado: Classe ${sla.classeLead} — ${sla.tempoMaximoMinutos} min`);
   }
 
+  // Habilitar acesso SDR para Taiana
+  await prisma.vendedor.updateMany({
+    where: { nomeExibicao: { contains: 'Taiana' } },
+    data: { acessoSdr: true },
+  });
+  console.log('Acesso SDR habilitado para Taiana');
+
   console.log('Seed completed!');
 }
 
