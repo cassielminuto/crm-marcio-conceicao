@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { ToastContainer } from '../Toast';
 import NotificationPanel from '../NotificationPanel';
@@ -16,6 +16,7 @@ let toastIdCounter = 0;
 
 export default function AppLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { tema, toggleTema } = useTheme();
   const [toasts, setToasts] = useState([]);
   const [notifAberto, setNotifAberto] = useState(false);
@@ -48,6 +49,19 @@ export default function AppLayout() {
     return () => clearTimeout(timer);
   }, [termoBusca]);
 
+  // Keyboard shortcut: Cmd+K / Ctrl+K to focus search
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        const input = document.getElementById('global-search-input');
+        if (input) input.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const adicionarToast = useCallback((mensagem, tipo = 'info') => {
     const id = ++toastIdCounter;
     setToasts((prev) => [...prev, { id, mensagem, tipo }]);
@@ -77,8 +91,9 @@ export default function AppLayout() {
       {/* Background orbs — hidden in light mode */}
       {tema === 'dark' && (
         <>
-          <div className="fixed w-[500px] h-[500px] rounded-full pointer-events-none z-0" style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.12) 0%, transparent 70%)', top: '-150px', left: '-100px' }} />
-          <div className="fixed w-[400px] h-[400px] rounded-full pointer-events-none z-0" style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)', bottom: '-100px', right: '-50px' }} />
+          <div className="fixed w-[500px] h-[500px] rounded-full pointer-events-none z-0 opacity-70" style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.08) 0%, transparent 70%)', top: '-150px', left: '-100px' }} />
+          <div className="fixed w-[400px] h-[400px] rounded-full pointer-events-none z-0 opacity-70" style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.06) 0%, transparent 70%)', bottom: '-100px', right: '-50px' }} />
+          <div className="fixed w-[350px] h-[350px] rounded-full pointer-events-none z-0 opacity-50" style={{ background: 'radial-gradient(circle, rgba(0,206,201,0.05) 0%, transparent 70%)', top: '40%', right: '15%' }} />
         </>
       )}
       <Sidebar />
@@ -90,14 +105,21 @@ export default function AppLayout() {
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted z-10" />
               {buscando && <Loader size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted animate-spin z-10" />}
               <input
+                id="global-search-input"
                 type="text"
                 value={termoBusca}
                 onChange={(e) => setTermoBusca(e.target.value)}
                 onFocus={() => { if (resultadosBusca.length > 0) setBuscaAberta(true); }}
                 onKeyDown={(e) => { if (e.key === 'Escape') { setBuscaAberta(false); e.target.blur(); } }}
                 placeholder="Buscar leads por nome, telefone..."
-                className="w-[360px] bg-bg-input border border-border-default rounded-[10px] pl-9 pr-3 py-2 text-[13px] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-accent-violet focus:ring-[3px] focus:ring-[rgba(124,58,237,0.15)] transition-all"
+                className="w-[360px] bg-bg-input border border-border-default rounded-[10px] pl-9 pr-14 py-2 text-[13px] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-accent-violet focus:ring-[3px] focus:ring-[rgba(124,58,237,0.15)] transition-all"
               />
+              {/* Keyboard shortcut hint */}
+              {!termoBusca && (
+                <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-text-faint bg-bg-elevated border border-border-default rounded-[4px] px-1.5 py-0.5 font-sans pointer-events-none select-none">
+                  ⌘K
+                </kbd>
+              )}
               {buscaAberta && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setBuscaAberta(false)} />
@@ -155,9 +177,13 @@ export default function AppLayout() {
               >
                 <Bell size={18} />
                 {totalNaoLidas > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-[18px] h-[18px] bg-red-500 rounded-full text-[9px] font-bold text-white flex items-center justify-center">
-                    {totalNaoLidas > 9 ? '9+' : totalNaoLidas}
-                  </span>
+                  <>
+                    {/* Pulse ring behind badge */}
+                    <span className="absolute -top-0.5 -right-0.5 w-[18px] h-[18px] bg-red-500/40 rounded-full animate-pulse-ring" />
+                    <span className="absolute -top-0.5 -right-0.5 w-[18px] h-[18px] bg-red-500 rounded-full text-[9px] font-bold text-white flex items-center justify-center">
+                      {totalNaoLidas > 9 ? '9+' : totalNaoLidas}
+                    </span>
+                  </>
                 )}
               </button>
               {notifAberto && (
@@ -173,13 +199,19 @@ export default function AppLayout() {
           </div>
         </header>
 
-        {/* Content */}
+        {/* Content with page transition */}
         <main className="flex-1 px-10 py-8 overflow-auto">
           <HeaderBranding />
-          <Outlet />
+          <div key={location.pathname} className="animate-page-enter">
+            <Outlet />
+          </div>
         </main>
       </div>
-      <ToastContainer toasts={toasts} removerToast={removerToast} />
+
+      {/* Toast container — bottom-right with safe spacing */}
+      <div className="fixed bottom-6 right-6 z-[9999]">
+        <ToastContainer toasts={toasts} removerToast={removerToast} />
+      </div>
 
       <AddLeadModal
         isOpen={modalLeadAberto}

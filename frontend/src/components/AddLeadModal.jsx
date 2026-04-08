@@ -116,10 +116,10 @@ export default function AddLeadModal({ isOpen, onClose, onLeadCriado, vendedores
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-backdrop-fade"
       onClick={handleOverlayClick}
     >
-      <div ref={modalRef} className="bg-bg-card border border-border-default rounded-2xl w-full max-w-[520px] mx-4 overflow-hidden animate-fade-in">
+      <div ref={modalRef} className="bg-bg-card border border-border-default rounded-2xl w-full max-w-[520px] mx-4 overflow-hidden animate-modal-scale-in shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
           <div className="flex items-center gap-2">
@@ -154,6 +154,14 @@ export default function AddLeadModal({ isOpen, onClose, onLeadCriado, vendedores
               {erro}
             </div>
           ) : null}
+
+          {/* Secao: Dados de Contato */}
+          <div className="space-y-1">
+            <p className="text-[10px] font-bold text-text-muted uppercase tracking-[1px] flex items-center gap-2">
+              <span className="w-5 h-5 rounded-md bg-gradient-to-br from-[#6c5ce7]/20 to-[#00cec9]/20 flex items-center justify-center text-[9px] text-accent-violet-light font-bold">1</span>
+              Dados de Contato
+            </p>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Nome */}
@@ -206,6 +214,14 @@ export default function AddLeadModal({ isOpen, onClose, onLeadCriado, vendedores
                   className="w-full bg-bg-input border border-border-default rounded-lg pl-8 pr-3 py-2 text-[12px] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)]"
                 />
               </div>
+            </div>
+
+            {/* Canal — Secao: Classificacao */}
+            <div className="md:col-span-2 mt-2 space-y-1">
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-[1px] flex items-center gap-2">
+                <span className="w-5 h-5 rounded-md bg-gradient-to-br from-[#6c5ce7]/20 to-[#00cec9]/20 flex items-center justify-center text-[9px] text-accent-violet-light font-bold">2</span>
+                Classificacao
+              </p>
             </div>
 
             {/* Canal */}
@@ -267,6 +283,14 @@ export default function AddLeadModal({ isOpen, onClose, onLeadCriado, vendedores
                   </option>
                 ))}
               </select>
+            </div>
+
+            {/* Etapa — Secao: Funil */}
+            <div className="md:col-span-2 mt-2 space-y-1">
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-[1px] flex items-center gap-2">
+                <span className="w-5 h-5 rounded-md bg-gradient-to-br from-[#6c5ce7]/20 to-[#00cec9]/20 flex items-center justify-center text-[9px] text-accent-violet-light font-bold">3</span>
+                Funil & Atribuicao
+              </p>
             </div>
 
             {/* Etapa do Funil */}
@@ -333,10 +357,19 @@ export default function AddLeadModal({ isOpen, onClose, onLeadCriado, vendedores
           <button
             onClick={handleSubmit}
             disabled={criando}
-            className="flex items-center gap-2 px-5 py-2 rounded-[10px] text-[12px] font-semibold text-white bg-gradient-to-r from-[#6c5ce7] to-[#00cec9] hover:shadow-[0_4px_16px_rgba(108,92,231,0.25)] disabled:opacity-50 transition-all"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-[10px] text-[12px] font-semibold text-white bg-gradient-to-r from-[#6c5ce7] to-[#00cec9] hover:shadow-[0_4px_16px_rgba(108,92,231,0.25)] disabled:opacity-50 transition-all min-w-[160px] justify-center"
           >
-            <UserPlus size={14} />
-            {criando ? 'Criando...' : 'Adicionar Lead'}
+            {criando ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Criando...
+              </>
+            ) : (
+              <>
+                <UserPlus size={14} />
+                Adicionar Lead
+              </>
+            )}
           </button>
         </div>
       </div>

@@ -8,7 +8,7 @@ async function listarKanban(req, res, next) {
     const operadorId = req.usuario.vendedorId;
 
     const leads = await prisma.leadSDR.findMany({
-      where: { operadorId },
+      where: { operadorId, deletedAt: null },
       orderBy: [{ ordem: 'asc' }, { createdAt: 'desc' }],
       include: {
         closerDestino: { select: { id: true, nomeExibicao: true } },
@@ -329,6 +329,7 @@ async function metricasDiarias(req, res, next) {
       prisma.leadSDR.count({
         where: {
           operadorId,
+          deletedAt: null,
           createdAt: { gte: hoje, lt: amanha },
         },
       }),
@@ -336,6 +337,7 @@ async function metricasDiarias(req, res, next) {
       prisma.leadSDR.count({
         where: {
           operadorId,
+          deletedAt: null,
           respostaLead: { not: null },
           updatedAt: { gte: hoje, lt: amanha },
         },
@@ -344,6 +346,7 @@ async function metricasDiarias(req, res, next) {
       prisma.leadSDR.count({
         where: {
           operadorId,
+          deletedAt: null,
           etapa: 'reuniao_marcada',
           updatedAt: { gte: hoje, lt: amanha },
         },
@@ -352,13 +355,14 @@ async function metricasDiarias(req, res, next) {
       prisma.leadSDR.count({
         where: {
           operadorId,
+          deletedAt: null,
           etapa: { notIn: ['lixeira', 'reuniao_marcada'] },
         },
       }),
       // Contagem por etapa (pipeline)
       prisma.leadSDR.groupBy({
         by: ['etapa'],
-        where: { operadorId },
+        where: { operadorId, deletedAt: null },
         _count: { id: true },
       }),
     ]);
@@ -372,12 +376,17 @@ async function metricasDiarias(req, res, next) {
       pipeline[item.etapa] = item._count.id;
     }
 
+    const taxaResposta = abordagensHoje > 0
+      ? Math.round((respostasHoje / abordagensHoje) * 100)
+      : null;
+
     res.json({
       abordagensHoje,
       respostasHoje,
       reunioesHoje,
       conversasAtivas,
       pipeline,
+      taxaResposta,
     });
   } catch (err) {
     next(err);
@@ -393,7 +402,17 @@ async function excluir(req, res, next) {
       return res.status(404).json({ error: 'Lead SDR não encontrado' });
     }
 
-    // Soft delete — mover para lixeira
+    if (lead.etapa === 'lixeira') {
+      // Exclusao definitiva — soft delete com deletedAt
+      await prisma.leadSDR.update({
+        where: { id: Number(id) },
+        data: { deletedAt: new Date() },
+      });
+      logger.info(`LeadSDR #${id} excluido definitivamente por usuário #${req.usuario.id}`);
+      return res.json({ removido: true, mensagem: 'Lead excluido definitivamente' });
+    }
+
+    // Mover para lixeira
     const leadAtualizado = await prisma.leadSDR.update({
       where: { id: Number(id) },
       data: { etapa: 'lixeira' },

@@ -20,14 +20,21 @@ export default function HeaderBranding() {
     <div className="flex items-center justify-between py-4 mb-2 border-b border-border-default">
       <div>
         <p className="font-display text-[24px] tracking-[1px]">
-          <span className="font-bold text-accent-violet" style={{ textShadow: '0 0 20px rgba(124,58,237,0.3)' }}>HL</span>
+          <span className="font-bold text-gradient" style={{ WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent', background: 'linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%)' }}>HL</span>
           <span className="font-normal text-text-primary">PIPE</span>
         </p>
-        <p className="text-[11px] font-medium text-text-muted uppercase tracking-[2px]">CRM Comercial</p>
+        <div className="flex items-center gap-2">
+          <p className="text-[11px] font-medium text-text-muted uppercase tracking-[2px]">CRM Comercial</p>
+          {/* Live indicator dot */}
+          <span className="relative flex items-center justify-center w-2 h-2">
+            <span className="absolute inset-0 rounded-full bg-accent-emerald/40 animate-live-pulse" />
+            <span className="relative w-1.5 h-1.5 rounded-full bg-accent-emerald" />
+          </span>
+        </div>
       </div>
       <div className="text-right hidden md:block">
-        <p className="text-[14px] font-medium text-text-primary">{getSaudacao()}, {nome}</p>
-        <p className="text-[12px] text-text-muted mt-0.5">{formatarData()}</p>
+        <p className="font-display text-[14px] font-semibold text-text-primary">{getSaudacao()}, {nome}</p>
+        <p className="text-[12px] font-light text-text-muted mt-0.5">{formatarData()}</p>
       </div>
     </div>
   );

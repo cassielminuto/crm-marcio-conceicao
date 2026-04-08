@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Search, ChevronLeft, ChevronRight, Phone, Mail, Instagram, Megaphone, Zap, Trash2, MessageCircle } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Phone, Mail, Instagram, Megaphone, Zap, Trash2, MessageCircle, Users } from 'lucide-react';
 
 function hexToRgba(hex, alpha) {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -11,16 +11,16 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
-const CLASSE_COR = {
-  A: 'bg-[rgba(225,112,85,0.12)] text-[#e17055]',
-  B: 'bg-[rgba(253,203,110,0.12)] text-[#fdcb6e]',
-  C: 'bg-[rgba(116,185,255,0.1)] text-[#74b9ff]',
+const CLASSE_CONFIG = {
+  A: { bg: 'rgba(239,68,68,0.08)', text: '#EF4444', ring: 'rgba(239,68,68,0.18)', glow: 'rgba(239,68,68,0.06)' },
+  B: { bg: 'rgba(245,158,11,0.08)', text: '#F59E0B', ring: 'rgba(245,158,11,0.18)', glow: 'rgba(245,158,11,0.06)' },
+  C: { bg: 'rgba(59,130,246,0.08)', text: '#3B82F6', ring: 'rgba(59,130,246,0.18)', glow: 'rgba(59,130,246,0.06)' },
 };
 
-function scoreCor(pontuacao) {
-  if (pontuacao >= 75) return 'text-[#e17055] font-bold';
-  if (pontuacao >= 45) return 'text-[#fdcb6e] font-semibold';
-  return 'text-[#74b9ff]';
+function scoreConfig(pontuacao) {
+  if (pontuacao >= 75) return { bg: 'rgba(16,185,129,0.10)', text: '#10B981', border: 'rgba(16,185,129,0.25)' };
+  if (pontuacao >= 45) return { bg: 'rgba(245,158,11,0.10)', text: '#F59E0B', border: 'rgba(245,158,11,0.25)' };
+  return { bg: 'rgba(239,68,68,0.08)', text: '#EF4444', border: 'rgba(239,68,68,0.20)' };
 }
 
 export default function MeusLeads() {
@@ -91,10 +91,33 @@ export default function MeusLeads() {
     }
   };
 
+  /* Pagination range helper */
+  const getPaginationRange = () => {
+    const total = paginacao.totalPaginas;
+    const current = pagina;
+    const delta = 2;
+    const range = [];
+    const rangeWithDots = [];
+
+    for (let i = Math.max(2, current - delta); i <= Math.min(total - 1, current + delta); i++) {
+      range.push(i);
+    }
+
+    if (current - delta > 2) rangeWithDots.push(1, '...');
+    else rangeWithDots.push(1);
+
+    rangeWithDots.push(...range);
+
+    if (current + delta < total - 1) rangeWithDots.push('...', total);
+    else if (total > 1) rangeWithDots.push(total);
+
+    return rangeWithDots;
+  };
+
   return (
-    <div className="space-y-4 animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       <div>
-        <h1 className="text-[22px] font-bold text-white">Meus Leads</h1>
+        <h1 className="font-display text-[22px] font-bold text-text-primary">Meus Leads</h1>
         <p className="text-[13px] text-text-secondary mt-1">{paginacao.total} leads encontrados</p>
       </div>
 
@@ -161,64 +184,92 @@ export default function MeusLeads() {
       {/* Tabela */}
       <div className="bg-bg-card border border-border-subtle rounded-[14px] overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-bg-card border-b border-border-subtle">
-                <th className="text-left text-[11px] font-semibold text-text-muted uppercase px-4 py-3">Lead</th>
-                <th className="text-left text-[11px] font-semibold text-text-muted uppercase px-4 py-3">Contato</th>
-                <th className="text-center text-[11px] font-semibold text-text-muted uppercase px-4 py-3">Score</th>
-                <th className="text-center text-[11px] font-semibold text-text-muted uppercase px-4 py-3">Classe</th>
-                <th className="text-center text-[11px] font-semibold text-text-muted uppercase px-4 py-3">Canal</th>
-                <th className="text-center text-[11px] font-semibold text-text-muted uppercase px-4 py-3">Etapa</th>
-                <th className="text-left text-[11px] font-semibold text-text-muted uppercase px-4 py-3">Vendedor</th>
-                <th className="text-center text-[11px] font-semibold text-text-muted uppercase px-4 py-3">Valor</th>
-                <th className="text-center text-[11px] font-semibold text-text-muted uppercase px-4 py-3">Prev. Fech.</th>
-                <th className="text-left text-[11px] font-semibold text-text-muted uppercase px-4 py-3">Entrada</th>
-                <th className="w-[50px]"></th>
+              <tr className="sticky top-0 z-10" style={{ backdropFilter: 'blur(12px) saturate(180%)', WebkitBackdropFilter: 'blur(12px) saturate(180%)', background: 'rgba(17,17,27,0.85)' }}>
+                <th className="text-left text-[10px] font-semibold text-text-muted uppercase tracking-wider px-4 py-3 border-b border-white/[0.06]">Lead</th>
+                <th className="text-left text-[10px] font-semibold text-text-muted uppercase tracking-wider px-4 py-3 border-b border-white/[0.06]">Contato</th>
+                <th className="text-center text-[10px] font-semibold text-text-muted uppercase tracking-wider px-4 py-3 border-b border-white/[0.06]">Score</th>
+                <th className="text-center text-[10px] font-semibold text-text-muted uppercase tracking-wider px-4 py-3 border-b border-white/[0.06]">Classe</th>
+                <th className="text-center text-[10px] font-semibold text-text-muted uppercase tracking-wider px-4 py-3 border-b border-white/[0.06]">Canal</th>
+                <th className="text-center text-[10px] font-semibold text-text-muted uppercase tracking-wider px-4 py-3 border-b border-white/[0.06]">Etapa</th>
+                <th className="text-left text-[10px] font-semibold text-text-muted uppercase tracking-wider px-4 py-3 border-b border-white/[0.06]">Vendedor</th>
+                <th className="text-center text-[10px] font-semibold text-text-muted uppercase tracking-wider px-4 py-3 border-b border-white/[0.06]">Valor</th>
+                <th className="text-center text-[10px] font-semibold text-text-muted uppercase tracking-wider px-4 py-3 border-b border-white/[0.06]">Prev. Fech.</th>
+                <th className="text-left text-[10px] font-semibold text-text-muted uppercase tracking-wider px-4 py-3 border-b border-white/[0.06]">Entrada</th>
+                <th className="w-[50px] border-b border-white/[0.06]"></th>
               </tr>
             </thead>
             <tbody>
               {carregando ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-12">
+                  <td colSpan={11} className="text-center py-16">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-accent-violet mx-auto" />
+                    <p className="text-[11px] text-text-muted mt-3">Carregando leads...</p>
                   </td>
                 </tr>
               ) : leads.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-12 text-text-muted">
-                    Nenhum lead encontrado
+                  <td colSpan={11} className="text-center py-20">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.06] flex items-center justify-center">
+                        <Users size={28} className="text-text-faint" />
+                      </div>
+                      <div>
+                        <p className="text-[14px] font-semibold text-text-secondary">Nenhum lead encontrado</p>
+                        <p className="text-[12px] text-text-muted mt-1.5 max-w-[280px] mx-auto leading-relaxed">Tente ajustar os filtros de busca ou aguarde a entrada de novos leads no sistema</p>
+                      </div>
+                    </div>
                   </td>
                 </tr>
               ) : (
-                leads.map((lead) => {
+                leads.map((lead, index) => {
                   const CanalIcone = lead.canal === 'bio' ? Instagram : Megaphone;
+                  const canalIsBio = lead.canal === 'bio';
+                  const sc = scoreConfig(lead.pontuacao);
+                  const cc = CLASSE_CONFIG[lead.classe] || CLASSE_CONFIG.C;
+
                   return (
-                    <tr key={lead.id} className="hover:bg-white/[0.02] border-b border-border-subtle last:border-b-0 transition-colors">
-                      <td className="px-4 py-3">
+                    <tr
+                      key={lead.id}
+                      className="animate-row-enter group transition-all duration-200 cursor-default"
+                      style={{
+                        animationDelay: `${index * 30}ms`,
+                        borderLeft: '2px solid transparent',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                        e.currentTarget.style.borderLeft = '2px solid rgba(124,58,237,0.5)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.borderLeft = '2px solid transparent';
+                      }}
+                    >
+                      <td className="px-4 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                         <p
-                          className="text-[12px] font-medium text-text-primary hover:text-accent-violet-light cursor-pointer"
+                          className="text-[12px] font-medium text-text-primary hover:text-accent-violet-light cursor-pointer transition-colors"
                           onClick={() => navigate(`/leads/${lead.id}`)}
                         >{lead.nome}</p>
                         {lead.proximaAcao && (
-                          <p className="text-[10px] text-accent-violet-light truncate max-w-[250px] flex items-center gap-1">
+                          <p className="text-[10px] text-accent-violet-light truncate max-w-[250px] flex items-center gap-1 mt-0.5">
                             <Zap size={9} />
                             {lead.proximaAcao}
                           </p>
                         )}
                         {!lead.proximaAcao && lead.dorPrincipal && (
-                          <p className="text-[10px] text-text-muted truncate max-w-[200px]">{lead.dorPrincipal}</p>
+                          <p className="text-[10px] text-text-muted truncate max-w-[200px] mt-0.5">{lead.dorPrincipal}</p>
                         )}
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1 text-[12px] text-text-secondary">
-                          <Phone size={12} />
+                      <td className="px-4 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <div className="flex items-center gap-1.5 text-[12px] text-text-secondary">
+                          <Phone size={11} className="text-text-muted shrink-0" />
                           <span>{lead.telefone}</span>
                           <a
                             href={`https://wa.me/${lead.telefone.replace(/\D/g, '')}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="p-1 rounded-md text-accent-emerald hover:bg-[rgba(0,184,148,0.08)] transition-all"
+                            className="p-1 rounded-md text-accent-emerald hover:bg-[rgba(0,184,148,0.08)] transition-all opacity-0 group-hover:opacity-100"
                             title="Abrir WhatsApp"
                             onClick={(e) => e.stopPropagation()}
                           >
@@ -232,61 +283,77 @@ export default function MeusLeads() {
                           </div>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className={`text-[12px] ${scoreCor(lead.pontuacao)}`}>
+                      <td className="px-4 py-3.5 text-center" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <span
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold tabular-nums"
+                          style={{ background: sc.bg, color: sc.text, border: `1px solid ${sc.border}` }}
+                        >
                           {lead.pontuacao}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${CLASSE_COR[lead.classe]}`}>
+                      <td className="px-4 py-3.5 text-center" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <span
+                          className="inline-flex items-center justify-center w-7 h-7 rounded-full text-[11px] font-bold"
+                          style={{ background: cc.bg, color: cc.text, boxShadow: `0 0 0 1.5px ${cc.ring}, 0 0 8px ${cc.glow}` }}
+                        >
                           {lead.classe}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="inline-flex items-center gap-1 text-[11px] text-text-muted">
-                          <CanalIcone size={12} />
-                          {lead.canal === 'bio' ? 'Bio' : 'Anuncio'}
+                      <td className="px-4 py-3.5 text-center" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium border ${
+                            canalIsBio
+                              ? 'bg-[rgba(168,85,247,0.08)] text-[#C084FC] border-[rgba(168,85,247,0.15)]'
+                              : 'bg-[rgba(59,130,246,0.08)] text-[#60A5FA] border-[rgba(59,130,246,0.15)]'
+                          }`}
+                        >
+                          <CanalIcone size={11} />
+                          {canalIsBio ? 'Bio' : 'Anuncio'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-4 py-3.5 text-center" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                         {(() => {
                           const et = etapasConfig.find(e => e.slug === lead.etapaFunil);
                           const cor = et?.cor || '#6c5ce7';
                           return (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium" style={{ background: hexToRgba(cor, 0.12), color: cor }}>
+                            <span
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium"
+                              style={{ background: hexToRgba(cor, 0.10), color: cor, border: `1px solid ${hexToRgba(cor, 0.18)}` }}
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: cor, boxShadow: `0 0 4px ${hexToRgba(cor, 0.4)}` }} />
                               {et?.label || lead.etapaFunil}
                             </span>
                           );
                         })()}
                       </td>
-                      <td className="px-4 py-3 text-[12px] text-text-secondary">
-                        {lead.vendedor?.nomeExibicao || '—'}
+                      <td className="px-4 py-3.5 text-[12px] text-text-secondary" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        {lead.vendedor?.nomeExibicao || <span className="text-text-faint">--</span>}
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-4 py-3.5 text-center" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                         {lead.valorVenda ? (
-                          <span className="text-[12px] font-semibold text-accent-amber">
+                          <span className="text-[12px] font-semibold text-accent-amber" style={{ fontVariantNumeric: 'tabular-nums' }}>
                             R$ {Number(lead.valorVenda).toLocaleString('pt-BR')}
                           </span>
                         ) : (
-                          <span className="text-[11px] text-text-muted">—</span>
+                          <span className="text-[11px] text-text-faint">--</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-4 py-3.5 text-center" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                         {lead.previsaoFechamento ? (
                           <span className="text-[11px] text-text-secondary">
                             {new Date(lead.previsaoFechamento).toLocaleDateString('pt-BR')}
                           </span>
                         ) : (
-                          <span className="text-[11px] text-text-muted">—</span>
+                          <span className="text-[11px] text-text-faint">--</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-[11px] text-text-muted">
+                      <td className="px-4 py-3.5 text-[11px] text-text-muted" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                         {new Date(lead.createdAt).toLocaleDateString('pt-BR')}
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-3.5 text-right" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                         <button
                           onClick={(e) => { e.stopPropagation(); setLeadParaExcluir(lead); }}
-                          className="p-1.5 rounded-lg text-text-muted hover:text-accent-danger hover:bg-[rgba(225,112,85,0.06)] transition-all"
+                          className="p-1.5 rounded-lg text-text-faint hover:text-accent-danger hover:bg-[rgba(239,68,68,0.08)] transition-all opacity-0 group-hover:opacity-100"
                           title="Excluir lead"
                         >
                           <Trash2 size={14} />
@@ -302,7 +369,7 @@ export default function MeusLeads() {
 
         {/* Paginacao */}
         {paginacao.totalPaginas > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-border-subtle">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-white/[0.04]">
             <p className="text-[11px] text-text-muted">
               Pagina {paginacao.pagina} de {paginacao.totalPaginas} ({paginacao.total} leads)
             </p>
@@ -310,30 +377,31 @@ export default function MeusLeads() {
               <button
                 onClick={() => setPagina((p) => Math.max(1, p - 1))}
                 disabled={pagina <= 1}
-                className="p-1 rounded text-text-muted hover:bg-white/[0.03] disabled:opacity-30 disabled:cursor-not-allowed"
+                className="p-1.5 rounded-full text-text-muted hover:bg-white/[0.06] hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-all"
               >
                 <ChevronLeft size={16} />
               </button>
-              {Array.from({ length: Math.min(5, paginacao.totalPaginas) }, (_, i) => {
-                const p = i + 1;
-                return (
+              {getPaginationRange().map((p, i) =>
+                p === '...' ? (
+                  <span key={`dots-${i}`} className="w-8 h-8 flex items-center justify-center text-[11px] text-text-faint select-none">...</span>
+                ) : (
                   <button
                     key={p}
                     onClick={() => setPagina(p)}
-                    className={`w-7 h-7 rounded text-[11px] font-medium ${
+                    className={`min-w-[32px] h-8 px-2 rounded-full text-[11px] font-semibold transition-all duration-200 ${
                       p === pagina
-                        ? 'bg-accent-violet text-white'
-                        : 'hover:bg-white/[0.03] text-text-secondary'
+                        ? 'bg-accent-violet text-white shadow-[0_0_16px_rgba(124,58,237,0.35),0_2px_8px_rgba(124,58,237,0.2)]'
+                        : 'hover:bg-white/[0.06] text-text-secondary hover:text-text-primary'
                     }`}
                   >
                     {p}
                   </button>
-                );
-              })}
+                )
+              )}
               <button
                 onClick={() => setPagina((p) => Math.min(paginacao.totalPaginas, p + 1))}
                 disabled={pagina >= paginacao.totalPaginas}
-                className="p-1 rounded text-text-muted hover:bg-white/[0.03] disabled:opacity-30 disabled:cursor-not-allowed"
+                className="p-1.5 rounded-full text-text-muted hover:bg-white/[0.06] hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-all"
               >
                 <ChevronRight size={16} />
               </button>
@@ -344,18 +412,18 @@ export default function MeusLeads() {
 
       {leadParaExcluir && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="bg-bg-card border border-border-default rounded-2xl p-6 max-w-[400px] w-full mx-4 animate-fade-in">
+          <div className="bg-bg-card border border-border-default rounded-2xl p-6 max-w-[400px] w-full mx-4 animate-scale-in">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-[rgba(225,112,85,0.1)] flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-[rgba(239,68,68,0.1)] flex items-center justify-center">
                 <Trash2 size={20} className="text-accent-danger" />
               </div>
               <div>
-                <h3 className="text-[14px] font-bold text-white">Excluir lead?</h3>
+                <h3 className="text-[14px] font-bold text-text-primary">Excluir lead?</h3>
                 <p className="text-[11px] text-text-muted">Esta acao nao pode ser desfeita</p>
               </div>
             </div>
             <p className="text-[12px] text-text-secondary mb-5">
-              O lead <strong className="text-white">{leadParaExcluir.nome}</strong> e todo o seu historico serao excluidos permanentemente.
+              O lead <strong className="text-text-primary">{leadParaExcluir.nome}</strong> e todo o seu historico serao excluidos permanentemente.
             </p>
             <div className="flex items-center justify-end gap-2">
               <button
@@ -368,7 +436,7 @@ export default function MeusLeads() {
               <button
                 onClick={confirmarExclusao}
                 disabled={excluindo}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12px] font-semibold text-white bg-accent-danger hover:bg-[#c0392b] transition-all disabled:opacity-50"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12px] font-semibold text-white bg-accent-danger hover:bg-[#DC2626] transition-all disabled:opacity-50"
               >
                 <Trash2 size={13} />
                 {excluindo ? 'Excluindo...' : 'Excluir permanentemente'}

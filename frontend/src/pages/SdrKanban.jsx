@@ -128,16 +128,31 @@ function NovoLeadModal({ onClose, onCreated }) {
 // ─────────────────────────────────────────────
 // SdrLeadDetailModal
 // ─────────────────────────────────────────────
+const CAMPOS_LABELS = {
+  respostaLead: 'Resposta do Lead',
+  temperaturaInicial: 'Temperatura Inicial',
+  tentouSolucaoAnterior: 'Tentou Solucao Anterior',
+  temperaturaFinal: 'Temperatura Final',
+  decisaoRota: 'Decisao de Rota',
+  aceitouDiagnostico: 'Aceitou Diagnostico',
+};
+
+const TRANSICOES = {
+  f1_abertura: { destino: 'F2', campos: ['respostaLead', 'temperaturaInicial'] },
+  f2_conexao: { destino: 'F3', campos: ['tentouSolucaoAnterior', 'temperaturaFinal', 'decisaoRota'] },
+  f3_qualificacao: { destino: 'F4', campos: ['aceitouDiagnostico'] },
+};
+
 function SdrLeadDetailModal({ lead, onClose, onSaved }) {
   const [form, setForm] = useState({
     respostaLead: lead.respostaLead || '',
     temperaturaInicial: lead.temperaturaInicial || '',
     dorAparente: lead.dorAparente || '',
-    tentouSolucaoAnterior: lead.tentouSolucaoAnterior ?? false,
+    tentouSolucaoAnterior: lead.tentouSolucaoAnterior || '',
     temperaturaFinal: lead.temperaturaFinal || '',
     decisaoRota: lead.decisaoRota || '',
     detalheSituacao: lead.detalheSituacao || '',
-    aceitouDiagnostico: lead.aceitouDiagnostico ?? false,
+    aceitouDiagnostico: lead.aceitouDiagnostico || '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -145,15 +160,38 @@ function SdrLeadDetailModal({ lead, onClose, onSaved }) {
   const etapa = lead.etapa || 'f1_abertura';
   const fase = parseInt(etapa.replace('f', '').split('_')[0]) || 1;
 
+  // Feedback visual: campos faltando para proxima fase
+  const transicao = TRANSICOES[etapa];
+  const camposFaltando = transicao
+    ? transicao.campos.filter(c => !form[c] || form[c] === '')
+    : [];
+  const prontoParaAvancar = transicao && camposFaltando.length === 0;
+
   async function handleSave() {
     setLoading(true);
     setError('');
     try {
-      const { data } = await api.patch(`/sdr/leads/${lead.id}`, form);
-      onSaved(data);
+      // Converter strings vazias para null (salvar parcial)
+      const dados = {};
+      for (const [k, v] of Object.entries(form)) {
+        if (v !== '' && v !== lead[k]) {
+          dados[k] = v;
+        } else if (v === '' && lead[k]) {
+          dados[k] = null;
+        }
+      }
+      if (Object.keys(dados).length === 0) { onClose(); return; }
+      const { data } = await api.patch(`/sdr/leads/${lead.id}`, dados);
+      onSaved(data.lead || data);
       onClose();
     } catch (err) {
-      setError(err.response?.data?.error || 'Erro ao salvar.');
+      const detalhes = err.response?.data?.detalhes;
+      if (detalhes?.length) {
+        const msgs = detalhes.map(d => `${d.campo}: ${d.mensagem}`).join('; ');
+        setError(msgs);
+      } else {
+        setError(err.response?.data?.error || 'Erro ao salvar.');
+      }
     } finally {
       setLoading(false);
     }
@@ -219,17 +257,18 @@ function SdrLeadDetailModal({ lead, onClose, onSaved }) {
                 <p className="text-[10px] font-semibold text-text-faint uppercase tracking-wider mb-3">F2 — Conexao</p>
               </div>
 
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="tentouSolucao"
-                  checked={form.tentouSolucaoAnterior}
-                  onChange={e => setForm(f => ({ ...f, tentouSolucaoAnterior: e.target.checked }))}
-                  className="w-4 h-4 rounded accent-accent-violet"
-                />
-                <label htmlFor="tentouSolucao" className="text-[13px] text-text-primary cursor-pointer">
-                  Tentou solucao anterior
-                </label>
+              <div>
+                <label className="block text-[11px] font-medium text-text-muted mb-1.5">Tentou Solucao Anterior</label>
+                <select
+                  value={form.tentouSolucaoAnterior}
+                  onChange={e => setForm(f => ({ ...f, tentouSolucaoAnterior: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg bg-bg-input border border-border-default text-[13px] text-text-primary focus:border-accent-violet/40 outline-none transition-colors"
+                >
+                  <option value="">Selecionar...</option>
+                  <option value="sim">Sim</option>
+                  <option value="nao">Nao</option>
+                  <option value="parcialmente">Parcialmente</option>
+                </select>
               </div>
 
               <div>
@@ -248,13 +287,15 @@ function SdrLeadDetailModal({ lead, onClose, onSaved }) {
 
               <div>
                 <label className="block text-[11px] font-medium text-text-muted mb-1.5">Decisao de Rota</label>
-                <input
-                  type="text"
+                <select
                   value={form.decisaoRota}
                   onChange={e => setForm(f => ({ ...f, decisaoRota: e.target.value }))}
-                  placeholder="Qual a decisao de rota..."
-                  className="w-full px-3 py-2 rounded-lg bg-bg-input border border-border-default text-[13px] text-text-primary placeholder:text-text-faint focus:border-accent-violet/40 outline-none transition-colors"
-                />
+                  className="w-full px-3 py-2 rounded-lg bg-bg-input border border-border-default text-[13px] text-text-primary focus:border-accent-violet/40 outline-none transition-colors"
+                >
+                  <option value="">Selecionar...</option>
+                  <option value="convidar">Convidar</option>
+                  <option value="lixeira">Lixeira</option>
+                </select>
               </div>
 
               <div>
@@ -276,21 +317,36 @@ function SdrLeadDetailModal({ lead, onClose, onSaved }) {
               <div className="border-t border-border-subtle pt-4">
                 <p className="text-[10px] font-semibold text-text-faint uppercase tracking-wider mb-3">F3 — Qualificacao</p>
               </div>
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="aceitouDiagnostico"
-                  checked={form.aceitouDiagnostico}
-                  onChange={e => setForm(f => ({ ...f, aceitouDiagnostico: e.target.checked }))}
-                  className="w-4 h-4 rounded accent-accent-violet"
-                />
-                <label htmlFor="aceitouDiagnostico" className="text-[13px] text-text-primary cursor-pointer">
-                  Aceitou diagnostico
-                </label>
+              <div>
+                <label className="block text-[11px] font-medium text-text-muted mb-1.5">Aceitou Diagnostico</label>
+                <select
+                  value={form.aceitouDiagnostico}
+                  onChange={e => setForm(f => ({ ...f, aceitouDiagnostico: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg bg-bg-input border border-border-default text-[13px] text-text-primary focus:border-accent-violet/40 outline-none transition-colors"
+                >
+                  <option value="">Selecionar...</option>
+                  <option value="sim">Sim</option>
+                  <option value="nao">Nao</option>
+                  <option value="pendente">Pendente</option>
+                </select>
               </div>
             </>
           )}
         </div>
+
+        {/* Feedback de progresso */}
+        {transicao && (
+          <div className={`mt-4 px-3 py-2 rounded-lg text-[12px] ${
+            prontoParaAvancar
+              ? 'bg-[rgba(0,184,148,0.08)] text-[#00b894] border border-[rgba(0,184,148,0.2)]'
+              : 'bg-[rgba(253,203,110,0.08)] text-[#fdcb6e] border border-[rgba(253,203,110,0.2)]'
+          }`}>
+            {prontoParaAvancar
+              ? `✓ Pronto para avancar para ${transicao.destino}`
+              : `Para avancar para ${transicao.destino}, faltam: ${camposFaltando.map(c => CAMPOS_LABELS[c] || c).join(', ')}`
+            }
+          </div>
+        )}
 
         {error && (
           <p className="mt-4 text-[12px] text-accent-danger flex items-center gap-1.5">
@@ -463,11 +519,11 @@ function HandoffModalInline({ lead, onClose, onHandoffDone }) {
                 className="w-full px-3 py-2 rounded-lg bg-bg-input border border-border-default text-[13px] text-text-primary focus:border-accent-violet/40 outline-none transition-colors"
               >
                 <option value="">Selecionar...</option>
-                <option value="ansioso">Ansioso</option>
-                <option value="esperancoso">Esperancoso</option>
+                <option value="desesperado">Desesperado</option>
+                <option value="racional">Racional</option>
                 <option value="resistente">Resistente</option>
-                <option value="animado">Animado</option>
-                <option value="neutro">Neutro</option>
+                <option value="aberto">Aberto</option>
+                <option value="fragil">Fragil</option>
               </select>
             </div>
           </div>
@@ -721,7 +777,23 @@ export default function SdrKanban() {
   }
 
   function handleDeleteLead(lead) {
-    if (!window.confirm(`Mover "${lead.nome}" para a lixeira?`)) return;
+    const naLixeira = lead.etapa === 'lixeira';
+    const msg = naLixeira
+      ? `Tem certeza? "${lead.nome}" será removido permanentemente em 30 dias.`
+      : `Mover "${lead.nome}" para a lixeira?`;
+    if (!window.confirm(msg)) return;
+
+    if (naLixeira) {
+      // Exclusao definitiva — remove do kanban
+      setKanban(k => ({
+        ...k,
+        lixeira: (k.lixeira || []).filter(l => l.id !== lead.id),
+      }));
+      api.delete(`/sdr/leads/${lead.id}`).catch(() => carregarDados());
+      return;
+    }
+
+    // Mover para lixeira
     const srcSlug = Object.keys(kanban).find(k => kanban[k].some(l => l.id === lead.id));
     if (!srcSlug) return;
 
@@ -786,12 +858,10 @@ export default function SdrKanban() {
             label="Conversas ativas"
             value={metricas?.conversasAtivas ?? 0}
           />
-          {metricas?.pipeline != null && (
-            <MetricaItem
-              label="Pipeline"
-              value={`R$${(metricas.pipeline / 1000).toFixed(0)}k`}
-            />
-          )}
+          <MetricaItem
+            label="Taxa de Resposta"
+            value={metricas?.taxaResposta != null ? `${metricas.taxaResposta}%` : '—'}
+          />
         </div>
 
         <button

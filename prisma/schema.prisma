@@ -476,6 +476,7 @@ model LeadSDR {
 
   createdAt             DateTime           @default(now()) @map("created_at")
   updatedAt             DateTime           @updatedAt @map("updated_at")
+  deletedAt             DateTime?          @map("deleted_at")
 
   closerDestino         Vendedor?          @relation("SdrCloserDestino", fields: [closerDestinoId], references: [id])
   leadCloser            Lead?              @relation(fields: [leadCloserId], references: [id])

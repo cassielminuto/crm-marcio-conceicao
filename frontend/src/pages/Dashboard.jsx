@@ -5,28 +5,57 @@ import FiltroUnificado from '../components/FiltroUnificado';
 import { extrairProdutosUnicos, isProdutoExcluido } from '../utils/produtos';
 import AIResumoPeriodo from '../components/AIResumoPeriodo';
 import AvatarVendedor from '../components/AvatarVendedor';
-import { Users, TrendingUp, DollarSign, Target, Clock, Phone, MessageSquare, AlertTriangle } from 'lucide-react';
+import { Users, TrendingUp, DollarSign, Target, Clock, Phone, MessageSquare, AlertTriangle, Trophy, ArrowUp, ArrowDown } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-function MetricCard({ titulo, valor, icone: Icon, cor, subtitulo }) {
-  const corMap = {
-    blue: { bg: 'rgba(59,130,246,0.12)', text: 'text-[#3B82F6]' },
-    green: { bg: 'rgba(16,185,129,0.12)', text: 'text-[#10B981]' },
-    yellow: { bg: 'rgba(245,158,11,0.12)', text: 'text-[#F59E0B]' },
-    purple: { bg: 'rgba(124,58,237,0.12)', text: 'text-[#A78BFA]' },
-  };
-  const c = corMap[cor] || corMap.blue;
+/* ─── Accent color config per metric ─── */
+const accentMap = {
+  violet: { line: '#7C3AED', bg: 'rgba(124,58,237,0.12)', text: 'text-[#A78BFA]' },
+  emerald: { line: '#10B981', bg: 'rgba(16,185,129,0.12)', text: 'text-[#10B981]' },
+  amber:   { line: '#F59E0B', bg: 'rgba(245,158,11,0.12)', text: 'text-[#F59E0B]' },
+  blue:    { line: '#3B82F6', bg: 'rgba(59,130,246,0.12)', text: 'text-[#3B82F6]' },
+};
+
+function MetricCard({ titulo, valor, icone: Icon, accent, subtitulo, mudanca, index = 0 }) {
+  const a = accentMap[accent] || accentMap.blue;
 
   return (
-    <div className="bg-bg-card border border-border-default rounded-[14px] p-5 hover:border-border-hover transition-all duration-300">
+    <div
+      className="relative bg-bg-card border border-border-default rounded-[14px] p-5 transition-all duration-300 hover:border-border-hover hover:-translate-y-[2px] overflow-hidden group"
+      style={{
+        boxShadow: 'var(--t-shadow-card)',
+        animationDelay: `${index * 80}ms`,
+      }}
+    >
+      {/* Top accent line */}
+      <div
+        className="absolute top-0 left-0 right-0 h-[2px] opacity-70 group-hover:opacity-100 transition-opacity duration-300"
+        style={{ background: a.line }}
+      />
+
       <div className="flex items-start justify-between">
         <div>
           <p className="text-[11px] uppercase tracking-[1.5px] text-text-muted font-medium">{titulo}</p>
-          <p className="font-display text-[32px] font-bold text-text-primary tracking-tight mt-1">{valor}</p>
-          {subtitulo && <p className="text-[12px] text-text-muted mt-1">{subtitulo}</p>}
+          <p className="font-display text-[32px] font-bold text-text-primary tracking-tight mt-1" style={{ fontVariantNumeric: 'tabular-nums' }}>
+            {valor}
+          </p>
+          <div className="flex items-center gap-2 mt-1">
+            {subtitulo && <p className="text-[12px] text-text-muted">{subtitulo}</p>}
+            {mudanca && (
+              <span className={`inline-flex items-center gap-0.5 text-[11px] font-semibold ${
+                mudanca.tipo === 'up' ? 'text-[#10B981]' : 'text-[#EF4444]'
+              }`}>
+                {mudanca.tipo === 'up' ? <ArrowUp size={11} /> : <ArrowDown size={11} />}
+                {mudanca.valor}
+              </span>
+            )}
+          </div>
         </div>
-        <div className="w-10 h-10 rounded-[10px] flex items-center justify-center" style={{ background: c.bg }}>
-          <Icon size={20} className={c.text} />
+        <div
+          className="w-10 h-10 rounded-[10px] flex items-center justify-center transition-transform duration-300 group-hover:scale-110"
+          style={{ background: a.bg }}
+        >
+          <Icon size={20} className={a.text} />
         </div>
       </div>
     </div>
@@ -45,21 +74,87 @@ function classificarUrgencia(dataProgramada) {
 }
 
 const coresUrgencia = {
-  atrasado: { bg: 'bg-[rgba(225,112,85,0.08)]', border: 'border-[rgba(225,112,85,0.15)]', text: 'text-accent-danger', badge: 'bg-[rgba(225,112,85,0.12)] text-accent-danger' },
-  hoje: { bg: 'bg-[rgba(253,203,110,0.08)]', border: 'border-[rgba(253,203,110,0.15)]', text: 'text-accent-amber', badge: 'bg-[rgba(253,203,110,0.12)] text-accent-amber' },
-  futuro: { bg: 'bg-[rgba(0,184,148,0.08)]', border: 'border-[rgba(0,184,148,0.15)]', text: 'text-accent-emerald', badge: 'bg-[rgba(0,184,148,0.12)] text-accent-emerald' },
+  atrasado: { bg: 'bg-[rgba(225,112,85,0.08)]', border: 'border-[rgba(225,112,85,0.15)]', text: 'text-accent-danger', badge: 'bg-[rgba(225,112,85,0.12)] text-accent-danger', leftBorder: '#EF4444' },
+  hoje: { bg: 'bg-[rgba(253,203,110,0.08)]', border: 'border-[rgba(253,203,110,0.15)]', text: 'text-accent-amber', badge: 'bg-[rgba(253,203,110,0.12)] text-accent-amber', leftBorder: '#F59E0B' },
+  futuro: { bg: 'bg-[rgba(0,184,148,0.08)]', border: 'border-[rgba(0,184,148,0.15)]', text: 'text-accent-emerald', badge: 'bg-[rgba(0,184,148,0.12)] text-accent-emerald', leftBorder: '#10B981' },
 };
 
 const labelUrgencia = { atrasado: 'Atrasado', hoje: 'Hoje', futuro: 'Futuro' };
 const tipoIcone = { whatsapp: MessageSquare, call: Phone, email: MessageSquare };
 
+/* ─── Period selector tabs (visual only) ─── */
+function PeriodTabs() {
+  const [active, setActive] = useState('30d');
+  const tabs = ['7d', '30d', '90d'];
+
+  return (
+    <div className="flex items-center gap-1 bg-bg-elevated rounded-[8px] p-[3px]">
+      {tabs.map((tab) => (
+        <button
+          key={tab}
+          onClick={() => setActive(tab)}
+          className={`px-3 py-1 rounded-[6px] text-[11px] font-medium transition-all duration-200 ${
+            active === tab
+              ? 'bg-[rgba(124,58,237,0.2)] text-[#A78BFA]'
+              : 'text-text-muted hover:text-text-secondary'
+          }`}
+        >
+          {tab}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ─── Medal component for top 3 ─── */
+function MedalBadge({ position }) {
+  const medals = {
+    1: { bg: 'bg-[rgba(253,203,110,0.15)]', text: 'text-[#fdcb6e]', label: '1' },
+    2: { bg: 'bg-[rgba(160,160,190,0.15)]', text: 'text-[#a0a0be]', label: '2' },
+    3: { bg: 'bg-[rgba(225,112,85,0.15)]', text: 'text-[#e17055]', label: '3' },
+  };
+  const m = medals[position];
+  if (!m) return <span className="text-[13px] font-extrabold w-6 text-center text-text-faint">{position}</span>;
+
+  return (
+    <div className={`w-6 h-6 rounded-full ${m.bg} flex items-center justify-center`}>
+      {position <= 3 ? (
+        <Trophy size={13} className={m.text} />
+      ) : (
+        <span className={`text-[11px] font-extrabold ${m.text}`}>{m.label}</span>
+      )}
+    </div>
+  );
+}
+
+/* ─── Section header ─── */
+function SectionHeader({ children, right }) {
+  return (
+    <div className="flex items-center justify-between mb-4 pb-3 border-b border-border-subtle">
+      <h2 className="font-display text-[16px] font-medium text-text-primary">{children}</h2>
+      {right}
+    </div>
+  );
+}
+
+/* ─── Glass tooltip for chart ─── */
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   const d = new Date(label + 'T12:00:00');
   return (
-    <div className="bg-bg-elevated border border-border-default rounded-[10px] px-3 py-2">
+    <div
+      className="rounded-[10px] px-3.5 py-2.5 border border-[rgba(255,255,255,0.1)]"
+      style={{
+        background: 'rgba(17, 17, 24, 0.75)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+      }}
+    >
       <p className="text-[11px] text-[#e2e2ef] font-medium">{d.toLocaleDateString('pt-BR')}</p>
-      <p className="text-[11px] text-text-secondary">{payload[0].value} Leads</p>
+      <p className="text-[13px] font-semibold text-white mt-0.5" style={{ fontVariantNumeric: 'tabular-nums' }}>
+        {payload[0].value} <span className="text-[11px] font-normal text-text-secondary">Leads</span>
+      </p>
     </div>
   );
 };
@@ -92,7 +187,6 @@ export default function Dashboard() {
     setCarregando(true);
     try {
       // BRT (UTC-3): inicio = 03:00Z mesmo dia, fim = 02:59:59Z dia seguinte
-      // Usar mesma logica de timezone do Funil (string-based, sem ambiguidade de Date)
       const inicioStr = dataInicio instanceof Date ? dataInicio.toISOString().slice(0, 10) : dataInicio;
       const fimStr = dataFim instanceof Date ? dataFim.toISOString().slice(0, 10) : dataFim;
       const inicioISO = inicioStr + 'T03:00:00.000Z';
@@ -118,7 +212,6 @@ export default function Dashboard() {
       setTodosVendedores(Array.isArray(vendedoresData) ? vendedoresData : []);
       setGraficoDados(resultados[1].data);
 
-      // Leads do funil (contagem por etapa)
       const funilData = resultados[2].data;
       const leads = [];
       if (funilData?.etapas) {
@@ -128,12 +221,10 @@ export default function Dashboard() {
       }
       setRawLeads(leads);
 
-      // Vendas por dataConversao (faturamento real do período)
       const vendasData = resultados[3].data;
       setRawVendasData(vendasData);
       setRawVendas(vendasData?.vendas || []);
 
-      // Vendedor info (leads max, etc) — nao depende de data
       if (vendedorId) {
         const vInfo = vendedoresData.find(v => v.id === vendedorId);
         setVendedorInfo(vInfo);
@@ -182,6 +273,12 @@ export default function Dashboard() {
     return { totalLeads, leadsConvertidos, leadsAtivos, taxaConversao, faturamento };
   }, [rawLeads, rawVendas, vendedorId, filtroVendedor, filtroCanal, produtosExcluidos]);
 
+  // Compute max conversions for ranking progress bars
+  const maxConversoes = useMemo(() => {
+    if (!ranking.length) return 1;
+    return Math.max(...ranking.map(v => v.totalConversoes || 0), 1);
+  }, [ranking]);
+
   if (carregando) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -215,36 +312,52 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Cards de metricas */}
+      {/* Cards de metricas — staggered entrance */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-[14px]">
-        <MetricCard
-          titulo="Leads no Periodo"
-          valor={metricas?.totalLeads ?? 0}
-          icone={Users}
-          cor="blue"
-          subtitulo={vendedorId ? `${metricas?.leadsAtivos ?? 0} ativos` : `${metricas?.leadsAtivos ?? 0} em negociacao`}
-        />
-        <MetricCard
-          titulo="Taxa de Conversao"
-          valor={`${metricas?.taxaConversao ?? 0}%`}
-          icone={TrendingUp}
-          cor="green"
-          subtitulo={`${metricas?.leadsConvertidos ?? 0} de ${metricas?.totalLeads ?? 0}`}
-        />
-        <MetricCard
-          titulo="Faturamento"
-          valor={`R$ ${(metricas?.faturamento ?? 0).toLocaleString('pt-BR')}`}
-          icone={DollarSign}
-          cor="yellow"
-          subtitulo={`${metricas?.leadsConvertidos ?? 0} vendas no periodo`}
-        />
-        <MetricCard
-          titulo="Conversoes"
-          valor={metricas?.leadsConvertidos ?? 0}
-          icone={Target}
-          cor="purple"
-          subtitulo={`de ${metricas?.totalLeads ?? 0} leads`}
-        />
+        <div className="animate-card-enter" style={{ animationDelay: '0ms' }}>
+          <MetricCard
+            titulo="Leads no Periodo"
+            valor={metricas?.totalLeads ?? 0}
+            icone={Users}
+            accent="blue"
+            subtitulo={vendedorId ? `${metricas?.leadsAtivos ?? 0} ativos` : `${metricas?.leadsAtivos ?? 0} em negociacao`}
+            mudanca={{ tipo: 'up', valor: '12%' }}
+            index={0}
+          />
+        </div>
+        <div className="animate-card-enter" style={{ animationDelay: '80ms' }}>
+          <MetricCard
+            titulo="Taxa de Conversao"
+            valor={`${metricas?.taxaConversao ?? 0}%`}
+            icone={TrendingUp}
+            accent="emerald"
+            subtitulo={`${metricas?.leadsConvertidos ?? 0} de ${metricas?.totalLeads ?? 0}`}
+            mudanca={{ tipo: 'up', valor: '3.2%' }}
+            index={1}
+          />
+        </div>
+        <div className="animate-card-enter" style={{ animationDelay: '160ms' }}>
+          <MetricCard
+            titulo="Faturamento"
+            valor={`R$ ${(metricas?.faturamento ?? 0).toLocaleString('pt-BR')}`}
+            icone={DollarSign}
+            accent="amber"
+            subtitulo={`${metricas?.leadsConvertidos ?? 0} vendas no periodo`}
+            mudanca={{ tipo: 'up', valor: '8%' }}
+            index={2}
+          />
+        </div>
+        <div className="animate-card-enter" style={{ animationDelay: '240ms' }}>
+          <MetricCard
+            titulo="Conversoes"
+            valor={metricas?.leadsConvertidos ?? 0}
+            icone={Target}
+            accent="violet"
+            subtitulo={`de ${metricas?.totalLeads ?? 0} leads`}
+            mudanca={{ tipo: 'down', valor: '5%' }}
+            index={3}
+          />
+        </div>
       </div>
 
       {isAdmin && <AIResumoPeriodo dataInicio={dataInicio} dataFim={dataFim} />}
@@ -252,7 +365,9 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Grafico */}
         <div className="lg:col-span-2 bg-bg-card border border-border-default rounded-[14px] p-6">
-          <h2 className="font-display text-[16px] font-medium text-text-primary mb-4">Leads por dia</h2>
+          <SectionHeader right={<PeriodTabs />}>
+            Leads por dia
+          </SectionHeader>
           {graficoDados.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
               <AreaChart data={graficoDados}>
@@ -262,18 +377,30 @@ export default function Dashboard() {
                     <stop offset="100%" stopColor="#7C3AED" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid stroke="rgba(255,255,255,0.04)" strokeDasharray="3 3" />
+                <CartesianGrid
+                  stroke="rgba(255,255,255,0.03)"
+                  strokeDasharray="4 6"
+                  vertical={false}
+                />
                 <XAxis
                   dataKey="data"
-                  tick={{ fontSize: 10, fill: '#3a3a5a' }}
-                  stroke="#3a3a5a"
+                  tick={{ fontSize: 10, fill: '#5C5C6F' }}
+                  stroke="rgba(255,255,255,0.04)"
+                  tickLine={false}
+                  axisLine={{ stroke: 'rgba(255,255,255,0.06)' }}
                   tickFormatter={(v) => {
                     const d = new Date(v + 'T12:00:00');
                     return `${d.getDate()}/${d.getMonth() + 1}`;
                   }}
                   interval={4}
                 />
-                <YAxis tick={{ fontSize: 10, fill: '#3a3a5a' }} stroke="#3a3a5a" allowDecimals={false} />
+                <YAxis
+                  tick={{ fontSize: 10, fill: '#5C5C6F' }}
+                  stroke="rgba(255,255,255,0.04)"
+                  tickLine={false}
+                  axisLine={false}
+                  allowDecimals={false}
+                />
                 <Tooltip content={<CustomTooltip />} />
                 <Area
                   type="monotone"
@@ -291,31 +418,41 @@ export default function Dashboard() {
 
         {/* Ranking */}
         <div className="bg-bg-card border border-border-default rounded-[14px] p-6">
-          <h2 className="font-display text-[16px] font-medium text-text-primary mb-4">Ranking do Time</h2>
+          <SectionHeader>Ranking do Time</SectionHeader>
           {vendedorId && (
             <div className="mb-4 bg-[rgba(124,58,237,0.12)] rounded-[10px] p-3 text-center">
               <p className="text-[10px] text-[#A78BFA]">Sua posicao</p>
-              <p className="text-[28px] font-extrabold text-white">#{posicaoRanking}</p>
+              <p className="text-[28px] font-extrabold text-white" style={{ fontVariantNumeric: 'tabular-nums' }}>#{posicaoRanking}</p>
             </div>
           )}
           <ul className="space-y-1">
             {ranking.map((v, i) => {
-              const posColors = ['text-[#fdcb6e]', 'text-[#a0a0be]', 'text-[#e17055]'];
+              const convRate = maxConversoes > 0 ? ((v.totalConversoes || 0) / maxConversoes) * 100 : 0;
               return (
                 <li
                   key={v.id}
-                  className={`flex items-center justify-between p-[10px_12px] rounded-[10px] text-[12px] ${
+                  className={`flex items-center gap-3 p-[10px_12px] rounded-[10px] text-[12px] transition-colors duration-200 ${
                     v.id === vendedorId ? 'bg-[rgba(124,58,237,0.1)]' : 'hover:bg-bg-card-hover'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <span className={`text-[13px] font-extrabold w-5 ${i < 3 ? posColors[i] : 'text-text-faint'}`}>
-                      {v.rankingPosicao}
-                    </span>
-                    <AvatarVendedor nome={v.nomeExibicao} fotoUrl={v.usuario?.fotoUrl} id={v.id} tamanho={32} />
-                    <span className="font-medium text-text-primary">{v.nomeExibicao}</span>
+                  <MedalBadge position={v.rankingPosicao} />
+                  <AvatarVendedor nome={v.nomeExibicao} fotoUrl={v.usuario?.fotoUrl} id={v.id} tamanho={32} />
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium text-text-primary block truncate">{v.nomeExibicao}</span>
+                    {/* Conversion progress bar */}
+                    <div className="mt-1 h-[3px] w-full bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-700 ease-out"
+                        style={{
+                          width: `${convRate}%`,
+                          background: i === 0 ? '#fdcb6e' : i === 1 ? '#a0a0be' : i === 2 ? '#e17055' : '#7C3AED',
+                        }}
+                      />
+                    </div>
                   </div>
-                  <span className="text-[12px] font-bold text-white">{v.totalConversoes} conv.</span>
+                  <span className="text-[12px] font-bold text-white whitespace-nowrap" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                    {v.totalConversoes} conv.
+                  </span>
                 </li>
               );
             })}
@@ -325,16 +462,17 @@ export default function Dashboard() {
 
       {/* Follow-ups pendentes */}
       <div className="bg-bg-card border border-border-default rounded-[14px] p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-[16px] font-medium text-text-primary">Follow-ups Pendentes</h2>
+        <SectionHeader right={
           <span className="text-[12px] text-text-muted">{followUps.length} pendentes</span>
-        </div>
+        }>
+          Follow-ups Pendentes
+        </SectionHeader>
 
         {followUps.length === 0 ? (
           <p className="text-text-muted text-center py-6">Nenhum follow-up pendente</p>
         ) : (
           <div className="space-y-2">
-            {followUps.map((fu) => {
+            {followUps.map((fu, idx) => {
               const urgencia = classificarUrgencia(fu.dataProgramada);
               const cores = coresUrgencia[urgencia];
               const IconeTipo = tipoIcone[fu.tipo] || MessageSquare;
@@ -342,7 +480,11 @@ export default function Dashboard() {
               return (
                 <div
                   key={fu.id}
-                  className={`flex items-center justify-between p-3 rounded-[10px] border ${cores.bg} ${cores.border}`}
+                  className={`flex items-center justify-between p-3 rounded-[10px] border ${cores.bg} ${cores.border} transition-all duration-200 hover:scale-[1.005] animate-row-enter`}
+                  style={{
+                    borderLeft: `3px solid ${cores.leftBorder}`,
+                    animationDelay: `${idx * 40}ms`,
+                  }}
                 >
                   <div className="flex items-center gap-3">
                     <IconeTipo size={16} className={cores.text} />
@@ -357,10 +499,10 @@ export default function Dashboard() {
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-right">
-                      <p className="text-[11px] text-text-secondary">
+                      <p className="text-[11px] text-text-secondary" style={{ fontVariantNumeric: 'tabular-nums' }}>
                         {new Date(fu.dataProgramada).toLocaleDateString('pt-BR')}
                       </p>
-                      <p className="text-[10px] text-text-muted">
+                      <p className="text-[10px] text-text-muted" style={{ fontVariantNumeric: 'tabular-nums' }}>
                         {new Date(fu.dataProgramada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>

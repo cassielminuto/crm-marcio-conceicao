@@ -1,5 +1,5 @@
 import { Draggable } from '@hello-pangea/dnd';
-import { Heart, MessageCircle, Eye, UserPlus, Trash2 } from 'lucide-react';
+import { Heart, MessageCircle, Eye, UserPlus, Trash2, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 const TIPO_ICONE = {
   curtiu: Heart,
@@ -7,6 +7,21 @@ const TIPO_ICONE = {
   story: Eye,
   seguiu: UserPlus,
 };
+
+const CAMPOS_POR_TRANSICAO = {
+  'f1_abertura->f2_conexao': ['respostaLead', 'temperaturaInicial'],
+  'f2_conexao->f3_qualificacao': ['tentouSolucaoAnterior', 'temperaturaFinal', 'decisaoRota'],
+  'f3_qualificacao->f4_convite': ['aceitouDiagnostico'],
+};
+
+function camposFaltandoProximaFase(lead) {
+  const etapas = ['f1_abertura', 'f2_conexao', 'f3_qualificacao', 'f4_convite', 'reuniao_marcada'];
+  const idx = etapas.indexOf(lead.etapa);
+  if (idx === -1 || idx >= 4) return [];
+  const chave = `${etapas[idx]}->${etapas[idx + 1]}`;
+  const campos = CAMPOS_POR_TRANSICAO[chave] || [];
+  return campos.filter(c => !lead[c] || lead[c] === '');
+}
 
 const TEMP_COR = {
   quente: { bg: 'bg-[rgba(225,112,85,0.12)]', text: 'text-[#e17055]', label: 'Quente' },
@@ -23,8 +38,10 @@ function diasNaFase(updatedAt) {
 export default function SdrLeadCard({ lead, index, onClick, onDelete }) {
   const TipoIcone = TIPO_ICONE[lead.tipoInteracao] || MessageCircle;
   const tempKey = lead.temperaturaFinal || lead.temperaturaInicial;
-  const temp = TEMP_COR[tempKey] || TEMP_COR.frio;
+  const temp = tempKey ? TEMP_COR[tempKey] : null;
   const dias = diasNaFase(lead.updatedAt);
+  const faltando = camposFaltandoProximaFase(lead);
+  const prontoParaAvancar = faltando.length === 0 && !['reuniao_marcada', 'lixeira'].includes(lead.etapa);
 
   return (
     <Draggable draggableId={String(lead.id)} index={index}>
@@ -80,9 +97,18 @@ export default function SdrLeadCard({ lead, index, onClick, onDelete }) {
             </span>
 
             {/* Temperature badge */}
-            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${temp.bg} ${temp.text}`}>
-              {temp.label}
-            </span>
+            {temp && (
+              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${temp.bg} ${temp.text}`}>
+                {temp.label}
+              </span>
+            )}
+
+            {/* Ready / blocked indicator */}
+            {lead.etapa !== 'lixeira' && lead.etapa !== 'reuniao_marcada' && (
+              prontoParaAvancar
+                ? <CheckCircle2 size={11} className="text-accent-emerald" title="Pronto para avancar" />
+                : <AlertTriangle size={11} className="text-[#fdcb6e]" title={`Faltam: ${faltando.join(', ')}`} />
+            )}
 
             {/* Days in phase */}
             <span className="inline-flex items-center gap-1 text-[10px] text-text-faint ml-auto">

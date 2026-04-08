@@ -31,9 +31,35 @@ function formatarMoeda(valor) {
   return `R$ ${Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
+function classeBadge(classe) {
+  if (classe === 'A') return { bg: 'bg-classe-a/15', text: 'text-classe-a', border: 'border-classe-a/30' };
+  if (classe === 'B') return { bg: 'bg-classe-b/15', text: 'text-classe-b', border: 'border-classe-b/30' };
+  return { bg: 'bg-classe-c/15', text: 'text-classe-c', border: 'border-classe-c/30' };
+}
+
+function slaExcedido(lead) {
+  if (!lead.dataAtribuicao && !lead.data_atribuicao) return false;
+  const atribuicao = new Date(lead.dataAtribuicao || lead.data_atribuicao).getTime();
+  const agora = Date.now();
+  const diffMin = (agora - atribuicao) / 60000;
+  if (lead.classe === 'A') return diffMin > 5;
+  if (lead.classe === 'B') return diffMin > 120;
+  return false;
+}
+
+function vendedorIniciais(vendedor) {
+  if (!vendedor?.nomeExibicao) return '?';
+  const partes = vendedor.nomeExibicao.trim().split(/\s+/);
+  if (partes.length >= 2) return (partes[0][0] + partes[1][0]).toUpperCase();
+  return partes[0].substring(0, 2).toUpperCase();
+}
+
 function LeadCard({ lead, index, onClickLead, onDeleteLead, onSalvarValor }) {
   const score = scoreCor(lead.pontuacao);
   const CanalIcone = lead.canal === 'bio' ? Instagram : Megaphone;
+  const classe = classeBadge(lead.classe);
+  const slaOver = slaExcedido(lead);
+  const etapaAtiva = lead.etapaFunil !== 'fechado_ganho' && lead.etapaFunil !== 'fechado_perdido';
 
   return (
     <Draggable draggableId={String(lead.id)} index={index}>
@@ -43,8 +69,14 @@ function LeadCard({ lead, index, onClickLead, onDeleteLead, onSalvarValor }) {
           {...provided.draggableProps}
           {...provided.dragHandleProps}
           onClick={() => onClickLead(lead.id)}
-          className={`group relative bg-bg-card border border-border-subtle rounded-[10px] p-3 mb-2 cursor-grab active:cursor-grabbing transition-all ${
-            snapshot.isDragging ? 'shadow-lg ring-1 ring-accent-violet/30 border-border-active' : 'hover:border-border-hover'
+          style={{
+            ...provided.draggableProps.style,
+            ...(snapshot.isDragging ? { transform: `${provided.draggableProps.style?.transform || ''} rotate(1.5deg)` } : {}),
+          }}
+          className={`group relative bg-bg-card border rounded-[10px] p-3 mb-2 cursor-grab active:cursor-grabbing transition-all duration-200 ${
+            snapshot.isDragging
+              ? 'shadow-[0_16px_40px_rgba(0,0,0,0.45),0_0_0_1px_rgba(124,58,237,0.3)] border-accent-violet/40 z-50'
+              : 'border-border-subtle hover:border-accent-violet/25 hover:shadow-[0_8px_24px_rgba(0,0,0,0.25)] hover:-translate-y-0.5'
           }`}
         >
           <button
@@ -53,8 +85,36 @@ function LeadCard({ lead, index, onClickLead, onDeleteLead, onSalvarValor }) {
           >
             <Trash2 size={12} />
           </button>
-          <div className="flex items-start justify-between gap-2 mb-2 pr-5">
-            <p className="text-[12px] font-medium text-text-primary truncate flex-1 hover:text-accent-violet-light">{lead.nome}</p>
+
+          {/* Name row with avatar, class badge, SLA indicator, and score */}
+          <div className="flex items-center gap-2 mb-2 pr-5">
+            {/* Vendor avatar or SLA dot */}
+            {lead.vendedor ? (
+              <div className="relative shrink-0">
+                <div className="w-6 h-6 rounded-full bg-accent-violet/15 flex items-center justify-center text-[9px] font-bold text-accent-violet-light">
+                  {vendedorIniciais(lead.vendedor)}
+                </div>
+                {etapaAtiva && (
+                  <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full border border-bg-card ${
+                    slaOver ? 'bg-accent-danger animate-sla-pulse' : 'bg-accent-emerald'
+                  }`} />
+                )}
+              </div>
+            ) : (
+              etapaAtiva && (
+                <span className={`shrink-0 w-2 h-2 rounded-full ${
+                  slaOver ? 'bg-accent-danger animate-sla-pulse' : 'bg-accent-emerald'
+                }`} />
+              )
+            )}
+            <p className="text-[12px] font-medium text-text-primary truncate flex-1 hover:text-accent-violet-light max-w-[140px]">{lead.nome}</p>
+            {/* Class badge */}
+            {lead.classe && (
+              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${classe.bg} ${classe.text} ${classe.border} shrink-0`}>
+                {lead.classe}
+              </span>
+            )}
+            {/* Score badge */}
             <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${score.bg} ${score.text} shrink-0`}>
               {lead.pontuacao}
             </span>
@@ -84,9 +144,9 @@ function LeadCard({ lead, index, onClickLead, onDeleteLead, onSalvarValor }) {
           )}
 
           {lead.vendedor && (
-            <div className="flex items-center gap-1 mt-1.5 text-[10px] text-text-muted">
-              <User size={10} />
-              {lead.vendedor.nomeExibicao}
+            <div className="flex items-center gap-1 mt-1.5 text-[10px] text-text-muted truncate">
+              <User size={10} className="shrink-0" />
+              <span className="truncate">{lead.vendedor.nomeExibicao}</span>
             </div>
           )}
 
@@ -133,9 +193,17 @@ function KanbanColuna({ etapa, leads, count, valorTotal, onClickLead, onDeleteLe
 
   return (
     <div className="flex flex-col w-72 shrink-0">
-      <div className="rounded-t-[10px] px-3 py-2.5 border-t-2 bg-bg-card" style={{ borderTopColor: etapa.cor }}>
+      <div
+        className="rounded-t-[10px] px-3 py-2.5 border-t-[3px] bg-bg-card relative overflow-hidden"
+        style={{ borderTopColor: etapa.cor }}
+      >
+        {/* Subtle gradient fade from column accent color */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: `linear-gradient(180deg, ${etapa.cor}0A 0%, transparent 60%)` }}
+        />
         {isAdmin ? (
-          <div className="flex items-center gap-2 group/header">
+          <div className="flex items-center gap-2 group/header relative">
             {/* Reorder arrows */}
             <button
               onClick={() => moverEtapa(etapa.id, 'left')}
@@ -203,9 +271,9 @@ function KanbanColuna({ etapa, leads, count, valorTotal, onClickLead, onDeleteLe
             </button>
           </div>
         ) : (
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between relative">
             <h3 className="text-[12px] font-semibold text-text-primary">{etapa.label}</h3>
-            <span className="text-[10px] font-bold text-text-muted bg-bg-elevated px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-bold text-text-muted bg-bg-elevated px-2 py-0.5 rounded-full" style={{ borderColor: `${etapa.cor}30`, borderWidth: '1px' }}>
               {count}
             </span>
           </div>
