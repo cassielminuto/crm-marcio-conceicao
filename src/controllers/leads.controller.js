@@ -782,7 +782,10 @@ async function listarFunil(req, res, next) {
       etapas[ec.slug] = { leads: [], count: 0, valorTotal: 0 };
     }
 
-    // Colunas fechadas: apenas contagem e valor (sem carregar leads individuais)
+    // Sem periodo = pagina Funil (visao de estado): retorna 30 leads mais recentes nas colunas fechadas
+    // Com periodo = Dashboard: retorna apenas contagem agregada
+    const semPeriodo = !data_inicio && !data_fim;
+
     const closedAggregations = await Promise.all(
       [...closedSlugs].map(async (slug) => {
         const closedWhere = { ...where, etapaFunil: slug };
@@ -795,7 +798,18 @@ async function listarFunil(req, res, next) {
     );
 
     for (const agg of closedAggregations) {
-      etapas[agg.slug] = { leads: [], count: agg.count, valorTotal: agg.valorTotal };
+      let recentLeads = [];
+      if (semPeriodo && agg.count > 0) {
+        recentLeads = await prisma.lead.findMany({
+          where: { ...where, etapaFunil: agg.slug },
+          orderBy: [{ dataConversao: 'desc' }, { updatedAt: 'desc' }],
+          take: 30,
+          include: {
+            vendedor: { select: { id: true, nomeExibicao: true } },
+          },
+        });
+      }
+      etapas[agg.slug] = { leads: recentLeads, count: agg.count, valorTotal: agg.valorTotal, totalReal: agg.count };
     }
 
     // Colunas ativas: carregar todos os leads (sem limite)
