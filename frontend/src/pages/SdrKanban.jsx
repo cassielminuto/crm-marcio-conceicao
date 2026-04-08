@@ -157,6 +157,29 @@ function SdrLeadDetailModal({ lead, onClose, onSaved }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Prints state
+  const [prints, setPrints] = useState([]);
+  const [loadingPrints, setLoadingPrints] = useState(false);
+  const [uploadingPrint, setUploadingPrint] = useState(false);
+  const [printsCollapsed, setPrintsCollapsed] = useState(false);
+
+  // IA analysis state
+  const [analiseAtual, setAnaliseAtual] = useState(null);
+  const [analiseAnterior, setAnaliseAnterior] = useState(null);
+  const [showDiff, setShowDiff] = useState(false);
+
+  // Track manually edited fields
+  const [editadoManualmente, setEditadoManualmente] = useState({});
+
+  // Lightbox
+  const [lightboxUrl, setLightboxUrl] = useState(null);
+
+  useEffect(() => {
+    api.get(`/sdr/leads/${lead.id}/prints`).then(({ data }) => {
+      setPrints(data.prints || []);
+    }).catch(() => {});
+  }, [lead.id]);
+
   const etapa = lead.etapa || 'f1_abertura';
   const fase = parseInt(etapa.replace('f', '').split('_')[0]) || 1;
 
@@ -166,6 +189,11 @@ function SdrLeadDetailModal({ lead, onClose, onSaved }) {
     ? transicao.campos.filter(c => !form[c] || form[c] === '')
     : [];
   const prontoParaAvancar = transicao && camposFaltando.length === 0;
+
+  function updateField(campo, valor) {
+    setForm(f => ({ ...f, [campo]: valor }));
+    setEditadoManualmente(prev => ({ ...prev, [campo]: true }));
+  }
 
   async function handleSave() {
     setLoading(true);
@@ -197,6 +225,105 @@ function SdrLeadDetailModal({ lead, onClose, onSaved }) {
     }
   }
 
+  async function handleUploadPrint(file) {
+    if (!file) return;
+    setUploadingPrint(true);
+    try {
+      const fd = new FormData();
+      fd.append('print', file);
+      const { data } = await api.post(`/sdr/leads/${lead.id}/prints/analisar`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      // Add print to list
+      setPrints(prev => [...prev, data.print]);
+
+      if (data.analise) {
+        setAnaliseAnterior(data.analise.analiseAnterior);
+        setAnaliseAtual(data.analise.analiseAtual);
+        setShowDiff(true);
+      } else if (data.erro) {
+        // Print saved but IA failed — show in the print with error state
+        alert(`⚠️ ${data.mensagem}`);
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || 'Erro ao subir print.');
+    } finally {
+      setUploadingPrint(false);
+    }
+  }
+
+  async function handleReanalisar(printId) {
+    try {
+      const { data } = await api.post(`/sdr/leads/${lead.id}/prints/${printId}/reanalisar`);
+      setPrints(prev => prev.map(p => p.id === printId ? { ...p, analiseIA: data.analise?.analiseAtual } : p));
+      if (data.analise) {
+        setAnaliseAtual(data.analise.analiseAtual);
+        setAnaliseAnterior(data.analise.analiseAnterior);
+        setShowDiff(true);
+      }
+    } catch (err) {
+      alert('Erro ao reanalisar: ' + (err.response?.data?.error || err.message));
+    }
+  }
+
+  async function handleRemovePrint(printId) {
+    if (!window.confirm('Remover este print?')) return;
+    try {
+      await api.delete(`/sdr/leads/${lead.id}/prints/${printId}`);
+      setPrints(prev => prev.filter(p => p.id !== printId));
+    } catch (err) {
+      alert('Erro ao remover print.');
+    }
+  }
+
+  function aceitarSugestao(campo, valor) {
+    setForm(f => ({ ...f, [campo]: valor }));
+    // Remove from diff but don't mark as manually edited
+    setAnaliseAtual(prev => {
+      if (!prev) return prev;
+      const next = { ...prev };
+      delete next[campo];
+      return next;
+    });
+  }
+
+  function rejeitarSugestao(campo) {
+    setAnaliseAtual(prev => {
+      if (!prev) return prev;
+      const next = { ...prev };
+      delete next[campo];
+      return next;
+    });
+  }
+
+  function aceitarTodas() {
+    if (!analiseAtual) return;
+    const camposAceitos = {};
+    for (const [campo, valor] of Object.entries(analiseAtual)) {
+      if (['confiancaAnalise', 'observacoesIA'].includes(campo)) continue;
+      if (valor === null || editadoManualmente[campo]) continue;
+      camposAceitos[campo] = valor;
+      setForm(f => ({ ...f, [campo]: valor }));
+    }
+    setShowDiff(false);
+    // Also apply on backend
+    api.post(`/sdr/leads/${lead.id}/aplicar-sugestoes`, { campos: camposAceitos }).catch(() => {});
+  }
+
+  function rejeitarTodas() {
+    setShowDiff(false);
+    setAnaliseAtual(null);
+  }
+
+  function permitirIANovamente(campo) {
+    setEditadoManualmente(prev => {
+      const next = { ...prev };
+      delete next[campo];
+      return next;
+    });
+  }
+
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-backdrop-fade">
       <div className="bg-bg-card border border-border-default rounded-2xl w-full max-w-lg p-6 animate-modal-scale-in shadow-[0_24px_64px_rgba(0,0,0,0.6)] max-h-[85vh] overflow-y-auto">
@@ -212,13 +339,165 @@ function SdrLeadDetailModal({ lead, onClose, onSaved }) {
           </button>
         </div>
 
+        {/* ── Prints da Conversa ── */}
+        <div className="mb-4 border border-border-subtle rounded-xl overflow-hidden">
+          <button
+            onClick={() => setPrintsCollapsed(p => !p)}
+            className="w-full flex items-center justify-between px-4 py-2.5 bg-bg-elevated/50 text-[12px] font-semibold text-text-primary hover:bg-bg-elevated transition-colors"
+          >
+            <span>📸 Prints da Conversa ({prints.length})</span>
+            <span className="text-text-muted">{printsCollapsed ? '▸' : '▾'}</span>
+          </button>
+
+          {!printsCollapsed && (
+            <div className="px-4 py-3 space-y-3">
+              {/* Thumbnails */}
+              {prints.length > 0 && (
+                <div className="flex gap-2 flex-wrap">
+                  {prints.map(p => (
+                    <div key={p.id} className="relative group/thumb">
+                      <img
+                        src={p.imagemUrl}
+                        alt=""
+                        className="w-16 h-16 rounded-lg object-cover border border-border-subtle cursor-pointer hover:border-accent-violet/40 transition-colors"
+                        onClick={() => setLightboxUrl(p.imagemUrl)}
+                      />
+                      {/* Error indicator */}
+                      {!p.analiseIA && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleReanalisar(p.id); }}
+                          title="Analise falhou, clique para reanalisar"
+                          className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#fdcb6e] text-[9px] flex items-center justify-center"
+                        >
+                          ⚠️
+                        </button>
+                      )}
+                      {/* Remove button */}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleRemovePrint(p.id); }}
+                        className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-accent-danger text-white text-[8px] flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Upload button */}
+              <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-bg-elevated border border-border-default text-text-primary hover:border-accent-violet/40 cursor-pointer transition-colors">
+                {uploadingPrint ? (
+                  <>
+                    <Loader2 size={12} className="animate-spin" />
+                    Analisando conversa com IA...
+                  </>
+                ) : (
+                  <>
+                    + Subir print
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  disabled={uploadingPrint}
+                  onChange={e => { if (e.target.files?.[0]) handleUploadPrint(e.target.files[0]); e.target.value = ''; }}
+                />
+              </label>
+            </div>
+          )}
+        </div>
+
+        {/* ── Sugestoes da IA ── */}
+        {showDiff && analiseAtual && (
+          <div className="mb-4 border border-accent-violet/20 rounded-xl bg-[rgba(124,58,237,0.03)] p-4">
+            <p className="text-[12px] font-semibold text-accent-violet-light mb-3 flex items-center gap-1.5">
+              ✨ Sugestoes da IA baseadas no print
+              {analiseAtual.confiancaAnalise != null && (
+                <span className="ml-auto text-[10px] text-text-muted font-normal">
+                  Confianca: {analiseAtual.confiancaAnalise}%
+                </span>
+              )}
+            </p>
+
+            <div className="space-y-2">
+              {Object.entries(analiseAtual)
+                .filter(([campo]) => !['confiancaAnalise', 'observacoesIA'].includes(campo))
+                .filter(([campo, valor]) => valor !== null && !editadoManualmente[campo])
+                .filter(([campo, valor]) => valor !== form[campo])
+                .map(([campo, valor]) => {
+                  const labelMap = {
+                    respostaLead: 'Resposta do Lead', temperaturaInicial: 'Temperatura Inicial',
+                    dorAparente: 'Dor Aparente', tentouSolucaoAnterior: 'Tentou Solucao Anterior',
+                    temperaturaFinal: 'Temperatura Final', decisaoRota: 'Decisao de Rota',
+                    detalheSituacao: 'Detalhe da Situacao', aceitouDiagnostico: 'Aceitou Diagnostico',
+                  };
+                  return (
+                    <div key={campo} className="flex items-center gap-2 text-[12px] bg-bg-card rounded-lg px-3 py-2 border border-border-subtle">
+                      <div className="flex-1 min-w-0">
+                        <span className="text-text-muted">{labelMap[campo] || campo}:</span>
+                        {form[campo] && (
+                          <span className="ml-1.5 text-text-faint line-through">{form[campo]}</span>
+                        )}
+                        <span className="ml-1.5 text-accent-violet-light font-medium">{String(valor)}</span>
+                      </div>
+                      <button
+                        onClick={() => aceitarSugestao(campo, valor)}
+                        className="shrink-0 px-2 py-0.5 rounded text-[10px] font-semibold bg-[rgba(0,184,148,0.1)] text-[#00b894] hover:bg-[rgba(0,184,148,0.2)] transition-colors"
+                      >
+                        ✓ Aceitar
+                      </button>
+                      <button
+                        onClick={() => rejeitarSugestao(campo)}
+                        className="shrink-0 px-2 py-0.5 rounded text-[10px] font-semibold bg-[rgba(225,112,85,0.1)] text-[#e17055] hover:bg-[rgba(225,112,85,0.2)] transition-colors"
+                      >
+                        ✕ Rejeitar
+                      </button>
+                    </div>
+                  );
+                })}
+            </div>
+
+            {analiseAtual.observacoesIA && (
+              <p className="mt-2 text-[11px] text-text-muted italic">{analiseAtual.observacoesIA}</p>
+            )}
+
+            <div className="flex gap-2 mt-3">
+              <button onClick={aceitarTodas} className="px-3 py-1 rounded-lg text-[11px] font-semibold bg-[rgba(0,184,148,0.1)] text-[#00b894] hover:bg-[rgba(0,184,148,0.2)] transition-colors">
+                Aceitar todas
+              </button>
+              <button onClick={rejeitarTodas} className="px-3 py-1 rounded-lg text-[11px] font-semibold bg-[rgba(225,112,85,0.1)] text-[#e17055] hover:bg-[rgba(225,112,85,0.2)] transition-colors">
+                Rejeitar todas
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Lightbox ── */}
+        {lightboxUrl && (
+          <div
+            className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] cursor-pointer"
+            onClick={() => setLightboxUrl(null)}
+          >
+            <img src={lightboxUrl} alt="" className="max-w-[90vw] max-h-[90vh] rounded-xl shadow-2xl" />
+          </div>
+        )}
+
         <div className="space-y-4">
           {/* F1+ */}
           <div>
-            <label className="block text-[11px] font-medium text-text-muted mb-1.5">Resposta do Lead</label>
+            <label className="block text-[11px] font-medium text-text-muted mb-1.5">
+              Resposta do Lead
+              {editadoManualmente.respostaLead && (
+                <span className="ml-1.5 text-[9px] text-text-faint inline-flex items-center gap-0.5">
+                  👤 editado
+                  <button onClick={() => permitirIANovamente('respostaLead')} className="ml-1 underline hover:text-accent-violet-light">permitir IA</button>
+                </span>
+              )}
+            </label>
             <textarea
               value={form.respostaLead}
-              onChange={e => setForm(f => ({ ...f, respostaLead: e.target.value }))}
+              onChange={e => updateField('respostaLead', e.target.value)}
               placeholder="O que o lead respondeu..."
               rows={2}
               className="w-full px-3 py-2 rounded-lg bg-bg-input border border-border-default text-[13px] text-text-primary placeholder:text-text-faint focus:border-accent-violet/40 outline-none transition-colors resize-none"
@@ -226,10 +505,18 @@ function SdrLeadDetailModal({ lead, onClose, onSaved }) {
           </div>
 
           <div>
-            <label className="block text-[11px] font-medium text-text-muted mb-1.5">Temperatura Inicial</label>
+            <label className="block text-[11px] font-medium text-text-muted mb-1.5">
+              Temperatura Inicial
+              {editadoManualmente.temperaturaInicial && (
+                <span className="ml-1.5 text-[9px] text-text-faint inline-flex items-center gap-0.5">
+                  👤 editado
+                  <button onClick={() => permitirIANovamente('temperaturaInicial')} className="ml-1 underline hover:text-accent-violet-light">permitir IA</button>
+                </span>
+              )}
+            </label>
             <select
               value={form.temperaturaInicial}
-              onChange={e => setForm(f => ({ ...f, temperaturaInicial: e.target.value }))}
+              onChange={e => updateField('temperaturaInicial', e.target.value)}
               className="w-full px-3 py-2 rounded-lg bg-bg-input border border-border-default text-[13px] text-text-primary focus:border-accent-violet/40 outline-none transition-colors"
             >
               <option value="">Selecionar...</option>
@@ -240,11 +527,19 @@ function SdrLeadDetailModal({ lead, onClose, onSaved }) {
           </div>
 
           <div>
-            <label className="block text-[11px] font-medium text-text-muted mb-1.5">Dor Aparente</label>
+            <label className="block text-[11px] font-medium text-text-muted mb-1.5">
+              Dor Aparente
+              {editadoManualmente.dorAparente && (
+                <span className="ml-1.5 text-[9px] text-text-faint inline-flex items-center gap-0.5">
+                  👤 editado
+                  <button onClick={() => permitirIANovamente('dorAparente')} className="ml-1 underline hover:text-accent-violet-light">permitir IA</button>
+                </span>
+              )}
+            </label>
             <input
               type="text"
               value={form.dorAparente}
-              onChange={e => setForm(f => ({ ...f, dorAparente: e.target.value }))}
+              onChange={e => updateField('dorAparente', e.target.value)}
               placeholder="Principal dor identificada..."
               className="w-full px-3 py-2 rounded-lg bg-bg-input border border-border-default text-[13px] text-text-primary placeholder:text-text-faint focus:border-accent-violet/40 outline-none transition-colors"
             />
@@ -258,10 +553,18 @@ function SdrLeadDetailModal({ lead, onClose, onSaved }) {
               </div>
 
               <div>
-                <label className="block text-[11px] font-medium text-text-muted mb-1.5">Tentou Solucao Anterior</label>
+                <label className="block text-[11px] font-medium text-text-muted mb-1.5">
+                  Tentou Solucao Anterior
+                  {editadoManualmente.tentouSolucaoAnterior && (
+                    <span className="ml-1.5 text-[9px] text-text-faint inline-flex items-center gap-0.5">
+                      👤 editado
+                      <button onClick={() => permitirIANovamente('tentouSolucaoAnterior')} className="ml-1 underline hover:text-accent-violet-light">permitir IA</button>
+                    </span>
+                  )}
+                </label>
                 <select
                   value={form.tentouSolucaoAnterior}
-                  onChange={e => setForm(f => ({ ...f, tentouSolucaoAnterior: e.target.value }))}
+                  onChange={e => updateField('tentouSolucaoAnterior', e.target.value)}
                   className="w-full px-3 py-2 rounded-lg bg-bg-input border border-border-default text-[13px] text-text-primary focus:border-accent-violet/40 outline-none transition-colors"
                 >
                   <option value="">Selecionar...</option>
@@ -272,10 +575,18 @@ function SdrLeadDetailModal({ lead, onClose, onSaved }) {
               </div>
 
               <div>
-                <label className="block text-[11px] font-medium text-text-muted mb-1.5">Temperatura Final</label>
+                <label className="block text-[11px] font-medium text-text-muted mb-1.5">
+                  Temperatura Final
+                  {editadoManualmente.temperaturaFinal && (
+                    <span className="ml-1.5 text-[9px] text-text-faint inline-flex items-center gap-0.5">
+                      👤 editado
+                      <button onClick={() => permitirIANovamente('temperaturaFinal')} className="ml-1 underline hover:text-accent-violet-light">permitir IA</button>
+                    </span>
+                  )}
+                </label>
                 <select
                   value={form.temperaturaFinal}
-                  onChange={e => setForm(f => ({ ...f, temperaturaFinal: e.target.value }))}
+                  onChange={e => updateField('temperaturaFinal', e.target.value)}
                   className="w-full px-3 py-2 rounded-lg bg-bg-input border border-border-default text-[13px] text-text-primary focus:border-accent-violet/40 outline-none transition-colors"
                 >
                   <option value="">Selecionar...</option>
@@ -286,10 +597,18 @@ function SdrLeadDetailModal({ lead, onClose, onSaved }) {
               </div>
 
               <div>
-                <label className="block text-[11px] font-medium text-text-muted mb-1.5">Decisao de Rota</label>
+                <label className="block text-[11px] font-medium text-text-muted mb-1.5">
+                  Decisao de Rota
+                  {editadoManualmente.decisaoRota && (
+                    <span className="ml-1.5 text-[9px] text-text-faint inline-flex items-center gap-0.5">
+                      👤 editado
+                      <button onClick={() => permitirIANovamente('decisaoRota')} className="ml-1 underline hover:text-accent-violet-light">permitir IA</button>
+                    </span>
+                  )}
+                </label>
                 <select
                   value={form.decisaoRota}
-                  onChange={e => setForm(f => ({ ...f, decisaoRota: e.target.value }))}
+                  onChange={e => updateField('decisaoRota', e.target.value)}
                   className="w-full px-3 py-2 rounded-lg bg-bg-input border border-border-default text-[13px] text-text-primary focus:border-accent-violet/40 outline-none transition-colors"
                 >
                   <option value="">Selecionar...</option>
@@ -299,10 +618,18 @@ function SdrLeadDetailModal({ lead, onClose, onSaved }) {
               </div>
 
               <div>
-                <label className="block text-[11px] font-medium text-text-muted mb-1.5">Detalhe da Situacao</label>
+                <label className="block text-[11px] font-medium text-text-muted mb-1.5">
+                  Detalhe da Situacao
+                  {editadoManualmente.detalheSituacao && (
+                    <span className="ml-1.5 text-[9px] text-text-faint inline-flex items-center gap-0.5">
+                      👤 editado
+                      <button onClick={() => permitirIANovamente('detalheSituacao')} className="ml-1 underline hover:text-accent-violet-light">permitir IA</button>
+                    </span>
+                  )}
+                </label>
                 <textarea
                   value={form.detalheSituacao}
-                  onChange={e => setForm(f => ({ ...f, detalheSituacao: e.target.value }))}
+                  onChange={e => updateField('detalheSituacao', e.target.value)}
                   rows={2}
                   placeholder="Contexto adicional..."
                   className="w-full px-3 py-2 rounded-lg bg-bg-input border border-border-default text-[13px] text-text-primary placeholder:text-text-faint focus:border-accent-violet/40 outline-none transition-colors resize-none"
@@ -318,10 +645,18 @@ function SdrLeadDetailModal({ lead, onClose, onSaved }) {
                 <p className="text-[10px] font-semibold text-text-faint uppercase tracking-wider mb-3">F3 — Qualificacao</p>
               </div>
               <div>
-                <label className="block text-[11px] font-medium text-text-muted mb-1.5">Aceitou Diagnostico</label>
+                <label className="block text-[11px] font-medium text-text-muted mb-1.5">
+                  Aceitou Diagnostico
+                  {editadoManualmente.aceitouDiagnostico && (
+                    <span className="ml-1.5 text-[9px] text-text-faint inline-flex items-center gap-0.5">
+                      👤 editado
+                      <button onClick={() => permitirIANovamente('aceitouDiagnostico')} className="ml-1 underline hover:text-accent-violet-light">permitir IA</button>
+                    </span>
+                  )}
+                </label>
                 <select
                   value={form.aceitouDiagnostico}
-                  onChange={e => setForm(f => ({ ...f, aceitouDiagnostico: e.target.value }))}
+                  onChange={e => updateField('aceitouDiagnostico', e.target.value)}
                   className="w-full px-3 py-2 rounded-lg bg-bg-input border border-border-default text-[13px] text-text-primary focus:border-accent-violet/40 outline-none transition-colors"
                 >
                   <option value="">Selecionar...</option>
