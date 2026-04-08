@@ -82,9 +82,8 @@ const coresUrgencia = {
 const labelUrgencia = { atrasado: 'Atrasado', hoje: 'Hoje', futuro: 'Futuro' };
 const tipoIcone = { whatsapp: MessageSquare, call: Phone, email: MessageSquare };
 
-/* ─── Period selector tabs (visual only) ─── */
-function PeriodTabs() {
-  const [active, setActive] = useState('30d');
+/* ─── Period selector tabs for chart ─── */
+function PeriodTabs({ active, onChange }) {
   const tabs = ['7d', '30d', '90d'];
 
   return (
@@ -92,7 +91,7 @@ function PeriodTabs() {
       {tabs.map((tab) => (
         <button
           key={tab}
-          onClick={() => setActive(tab)}
+          onClick={() => onChange(tab)}
           className={`px-3 py-1 rounded-[6px] text-[11px] font-medium transition-all duration-200 ${
             active === tab
               ? 'bg-[rgba(124,58,237,0.2)] text-[#A78BFA]'
@@ -178,6 +177,7 @@ export default function Dashboard() {
   const [filtroVendedor, setFiltroVendedor] = useState('');
   const [filtroCanal, setFiltroCanal] = useState('');
   const [produtosExcluidos, setProdutosExcluidos] = useState(new Set());
+  const [chartPeriod, setChartPeriod] = useState('30d');
   const [todosVendedores, setTodosVendedores] = useState([]);
 
   const vendedorId = usuario?.vendedorId;
@@ -196,7 +196,7 @@ export default function Dashboard() {
 
       const dp = `data_inicio=${inicioISO}&data_fim=${fimISO}`;
       const promises = [
-        api.get('/vendedores'),
+        api.get(`/vendedores?${dp}`),
         api.get(`/leads/por-dia?${dp}`),
         api.get(`/leads/funil?${dp}`),
         api.get(`/leads/vendas?${dp}`),
@@ -273,10 +273,22 @@ export default function Dashboard() {
     return { totalLeads, leadsConvertidos, leadsAtivos, taxaConversao, faturamento };
   }, [rawLeads, rawVendas, vendedorId, filtroVendedor, filtroCanal, produtosExcluidos]);
 
+  // Filter chart data by chartPeriod (7d/30d/90d)
+  const graficoDadosFiltrados = useMemo(() => {
+    if (!graficoDados.length) return [];
+    const dias = parseInt(chartPeriod) || 30;
+    const corte = new Date();
+    corte.setDate(corte.getDate() - dias);
+    return graficoDados.filter(item => {
+      if (!item.data) return false;
+      return new Date(item.data) >= corte;
+    });
+  }, [graficoDados, chartPeriod]);
+
   // Compute max conversions for ranking progress bars
   const maxConversoes = useMemo(() => {
     if (!ranking.length) return 1;
-    return Math.max(...ranking.map(v => v.totalConversoes || 0), 1);
+    return Math.max(...ranking.map(v => v.conversoesNoPeriodo ?? v.totalConversoes ?? 0), 1);
   }, [ranking]);
 
   if (carregando) {
@@ -365,12 +377,12 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Grafico */}
         <div className="lg:col-span-2 bg-bg-card border border-border-default rounded-[14px] p-6">
-          <SectionHeader right={<PeriodTabs />}>
+          <SectionHeader right={<PeriodTabs active={chartPeriod} onChange={setChartPeriod} />}>
             Leads por dia
           </SectionHeader>
-          {graficoDados.length > 0 ? (
+          {graficoDadosFiltrados.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
-              <AreaChart data={graficoDados}>
+              <AreaChart data={graficoDadosFiltrados}>
                 <defs>
                   <linearGradient id="gradViolet" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#7C3AED" stopOpacity={0.3} />
@@ -422,12 +434,13 @@ export default function Dashboard() {
           {vendedorId && (
             <div className="mb-4 bg-[rgba(124,58,237,0.12)] rounded-[10px] p-3 text-center">
               <p className="text-[10px] text-[#A78BFA]">Sua posicao</p>
-              <p className="text-[28px] font-extrabold text-white" style={{ fontVariantNumeric: 'tabular-nums' }}>#{posicaoRanking}</p>
+              <p className="text-[28px] font-extrabold text-text-primary" style={{ fontVariantNumeric: 'tabular-nums' }}>#{posicaoRanking}</p>
             </div>
           )}
           <ul className="space-y-1">
             {ranking.map((v, i) => {
-              const convRate = maxConversoes > 0 ? ((v.totalConversoes || 0) / maxConversoes) * 100 : 0;
+              const conv = v.conversoesNoPeriodo ?? v.totalConversoes ?? 0;
+              const convRate = maxConversoes > 0 ? (conv / maxConversoes) * 100 : 0;
               return (
                 <li
                   key={v.id}
@@ -440,7 +453,7 @@ export default function Dashboard() {
                   <div className="flex-1 min-w-0">
                     <span className="font-medium text-text-primary block truncate">{v.nomeExibicao}</span>
                     {/* Conversion progress bar */}
-                    <div className="mt-1 h-[3px] w-full bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden">
+                    <div className="mt-1 h-[3px] w-full bg-border-subtle rounded-full overflow-hidden">
                       <div
                         className="h-full rounded-full transition-all duration-700 ease-out"
                         style={{
@@ -450,8 +463,8 @@ export default function Dashboard() {
                       />
                     </div>
                   </div>
-                  <span className="text-[12px] font-bold text-white whitespace-nowrap" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                    {v.totalConversoes} conv.
+                  <span className="text-[12px] font-bold text-text-primary whitespace-nowrap" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                    {v.conversoesNoPeriodo ?? v.totalConversoes} conv.
                   </span>
                 </li>
               );

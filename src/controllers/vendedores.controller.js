@@ -2,19 +2,58 @@ const prisma = require('../config/database');
 
 async function listar(req, res, next) {
   try {
+    const { data_inicio, data_fim } = req.query;
+
+    // Fallback: mes atual se nao vier periodo
+    let inicioDate, fimDate;
+    if (data_inicio && data_fim) {
+      inicioDate = new Date(data_inicio);
+      fimDate = new Date(data_fim);
+    } else {
+      const now = new Date();
+      inicioDate = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1, 3, 0, 0));
+      const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      fimDate = new Date(nextMonth.toISOString().slice(0, 10) + 'T02:59:59.999Z');
+    }
+
+    // Buscar vendedores ativos que sao closers (nao SDR nem trainee)
     const vendedores = await prisma.vendedor.findMany({
-      where: { ativo: true },
-      orderBy: { totalConversoes: 'desc' },
+      where: {
+        ativo: true,
+        papel: { in: ['closer_lider', 'closer_independente'] },
+      },
       include: {
         usuario: { select: { nome: true, email: true, fotoUrl: true } },
       },
     });
 
-    // Calcular ranking
-    const comRanking = vendedores.map((v, idx) => ({
-      ...v,
-      rankingPosicao: idx + 1,
-    }));
+    // Contar conversoes por vendedor no periodo
+    const conversoes = await prisma.lead.groupBy({
+      by: ['vendedorId'],
+      where: {
+        vendaRealizada: true,
+        dataConversao: { gte: inicioDate, lte: fimDate },
+        vendedorId: { in: vendedores.map(v => v.id) },
+      },
+      _count: { id: true },
+    });
+
+    const conversoesMap = {};
+    for (const c of conversoes) {
+      conversoesMap[c.vendedorId] = c._count.id;
+    }
+
+    // Montar ranking ordenado por conversoes no periodo
+    const comRanking = vendedores
+      .map(v => ({
+        ...v,
+        conversoesNoPeriodo: conversoesMap[v.id] || 0,
+      }))
+      .sort((a, b) => b.conversoesNoPeriodo - a.conversoesNoPeriodo)
+      .map((v, idx) => ({
+        ...v,
+        rankingPosicao: idx + 1,
+      }));
 
     res.json(comRanking);
   } catch (err) {
