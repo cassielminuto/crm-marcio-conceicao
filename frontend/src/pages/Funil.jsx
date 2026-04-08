@@ -289,11 +289,11 @@ function KanbanColuna({ etapa, leads, count, valorTotal, onClickLead, onDeleteLe
           <div
             ref={provided.innerRef}
             {...provided.droppableProps}
-            className={`flex-1 p-2 rounded-b-[10px] border border-t-0 border-border-subtle min-h-[200px] ${isClosed ? '' : 'max-h-[70vh] overflow-y-auto'} transition-colors ${
+            className={`flex-1 p-2 rounded-b-[10px] border border-t-0 border-border-subtle min-h-[200px] max-h-[70vh] overflow-y-auto transition-colors ${
               snapshot.isDraggingOver ? 'bg-[rgba(108,92,231,0.04)]' : 'bg-bg-secondary'
             }`}
           >
-            {isClosed ? (
+            {isClosed && leads.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-24 text-text-muted">
                 <span className="text-[11px]">Arraste leads para cá</span>
               </div>
@@ -542,7 +542,7 @@ export default function Funil() {
     <div className="space-y-4 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[22px] font-bold text-white">Funil de Vendas</h1>
+          <h1 className="text-[22px] font-bold text-text-primary">Funil de Vendas</h1>
           <p className="text-[13px] text-text-secondary mt-1">
             {total} leads no funil
             {pipelineTotal > 0 && (
