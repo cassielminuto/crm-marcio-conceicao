@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -410,9 +411,9 @@ export default function MeusLeads() {
         )}
       </div>
 
-      {leadParaExcluir && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="bg-bg-card border border-border-default rounded-2xl p-6 max-w-[400px] w-full mx-4 animate-scale-in">
+      {leadParaExcluir && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-start justify-center p-4 overflow-y-auto bg-black/70 backdrop-blur-sm">
+          <div className="bg-bg-card border border-border-default rounded-2xl p-6 max-w-[400px] w-full mx-4 my-8 animate-scale-in">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-[rgba(239,68,68,0.1)] flex items-center justify-center">
                 <Trash2 size={20} className="text-accent-danger" />
@@ -444,7 +445,7 @@ export default function MeusLeads() {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   );
 }

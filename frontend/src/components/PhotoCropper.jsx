@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import Cropper from 'react-easy-crop';
 import { X, Check, ZoomIn, ZoomOut } from 'lucide-react';
 
@@ -56,9 +57,9 @@ export default function PhotoCropper({ imageUrl, onCropComplete, onCancel }) {
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="bg-bg-card border border-border-default rounded-2xl w-[440px] overflow-hidden">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-start justify-center p-4 overflow-y-auto bg-black/70 backdrop-blur-sm">
+      <div className="bg-bg-card border border-border-default rounded-2xl w-[440px] overflow-hidden my-8">
         <div className="flex items-center justify-between px-5 py-3 border-b border-border-subtle">
           <h3 className="text-[13px] font-bold text-white">Ajustar foto</h3>
           <button onClick={onCancel} className="p-1 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-text-primary transition-colors">
@@ -111,6 +112,7 @@ export default function PhotoCropper({ imageUrl, onCropComplete, onCancel }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

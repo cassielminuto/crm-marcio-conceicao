@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import api from '../services/api';
 import { AlertTriangle, X, GitMerge, Trash2, Phone, Mail, Instagram, Megaphone } from 'lucide-react';
 
@@ -135,9 +136,9 @@ export default function DuplicateAlert({ leadId, duplicatas, onResolvido }) {
       </div>
 
       {/* Modal */}
-      {modalAberto && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-bg-card border border-border-subtle rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6">
+      {modalAberto && createPortal(
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-start justify-center p-4 overflow-y-auto">
+          <div className="bg-bg-card border border-border-subtle rounded-2xl max-w-3xl w-full my-8 p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-[16px] font-bold text-white">Comparar e Unificar Leads</h2>
               <button onClick={() => setModalAberto(false)} className="p-1 hover:bg-white/[0.03] rounded text-text-muted">
@@ -195,7 +196,7 @@ export default function DuplicateAlert({ leadId, duplicatas, onResolvido }) {
             })}
           </div>
         </div>
-      )}
+      , document.body)}
     </>
   );
 }

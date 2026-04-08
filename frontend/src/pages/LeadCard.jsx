@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import ScriptChecklist from '../components/ScriptChecklist';
@@ -857,9 +858,9 @@ export default function LeadCard() {
         </div>
       </div>
 
-      {confirmandoExclusao && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="bg-bg-card border border-border-default rounded-2xl p-6 max-w-[400px] w-full mx-4 animate-fade-in">
+      {confirmandoExclusao && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-start justify-center p-4 overflow-y-auto bg-black/70 backdrop-blur-sm">
+          <div className="bg-bg-card border border-border-default rounded-2xl p-6 max-w-[400px] w-full mx-4 my-8 animate-fade-in">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-[rgba(225,112,85,0.1)] flex items-center justify-center">
                 <Trash2 size={20} className="text-accent-danger" />
@@ -891,7 +892,7 @@ export default function LeadCard() {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   );
 }

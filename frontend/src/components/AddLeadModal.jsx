@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -114,12 +115,12 @@ export default function AddLeadModal({ isOpen, onClose, onLeadCriado, vendedores
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-backdrop-fade"
+      className="fixed inset-0 z-[9999] flex items-start justify-center p-4 overflow-y-auto bg-black/70 backdrop-blur-sm animate-backdrop-fade"
       onClick={handleOverlayClick}
     >
-      <div ref={modalRef} className="bg-bg-card border border-border-default rounded-2xl w-full max-w-[520px] mx-4 overflow-hidden animate-modal-scale-in shadow-2xl">
+      <div ref={modalRef} className="bg-bg-card border border-border-default rounded-2xl w-full max-w-[520px] mx-4 overflow-hidden animate-modal-scale-in shadow-2xl my-8">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
           <div className="flex items-center gap-2">
@@ -373,6 +374,7 @@ export default function AddLeadModal({ isOpen, onClose, onLeadCriado, vendedores
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
