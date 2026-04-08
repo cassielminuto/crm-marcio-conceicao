@@ -193,3 +193,81 @@ NUNCA declarar pronto sem o checklist.
 4. **Hubla é a fonte da verdade.** CRM se ajusta à Hubla, nunca o contrário.
 
 5. **Operadora real é o melhor QA.** Mas só depois que VOCÊ rodou o checklist.
+
+---
+
+## LIÇÕES E REGRAS ADICIONAIS — 08/abr/2026
+
+### Regra: Modais
+- TODO modal DEVE usar createPortal(jsx, document.body)
+- NUNCA renderizar modal dentro da árvore de componentes
+- Padrão: items-start + overflow-y-auto no container externo, NÃO items-center
+- Z-index mínimo: z-[9999]
+- Lição aprendida: position:fixed quebra dentro de container com transform CSS
+- Ao mover modal pra portal, REMOVER max-h fixo, REMOVER flex flex-col, REMOVER flex-1 min-h-0 overflow-y-auto do body interno
+- Quando criar createPortal em JSX condicional `{cond && createPortal(...)}`, contar createPortal vs document.body — têm que bater 1:1
+
+### Regra: Distribuição de leads (cuidado especial)
+- Existem DOIS sistemas de distribuição no projeto (dívida técnica conhecida):
+  - `src/services/distribuicaoLeads.js` — IDs hardcoded [Lucas=1, Emilia=8], usado pelo webhook.controller.js
+  - `src/services/distribuidor.js` — Sistema dinâmico por classe + round-robin Redis
+- A operação atual roda 50/50 entre Lucas e Emília via Sistema A — isso é INTENCIONAL pelo CEO
+- NÃO consolidar os dois sistemas sem autorização explícita
+- A consolidação só faz sentido quando a operação tiver classes A/B/C reais (futuro)
+- Antes de tocar qualquer um dos dois arquivos, ler os comentários do CLAUDE.md e perguntar ao Cassiel
+
+### Regra: Limpeza de dados em produção
+- TODA limpeza de banco em produção DEVE seguir o padrão usado em 08/abr:
+  1. Script de investigação primeiro (read-only) — listar dependências
+  2. Script de validação prévia — abortar se algo não bater com o esperado
+  3. Execução em transação atômica (`prisma.$transaction`)
+  4. Validação final mostrando estado pós-mudança
+- ANTES de deletar qualquer registro com FK, verificar TODAS as tabelas que apontam pra ele:
+  - Para Vendedor: leads, interacoes, followUps, metas
+  - Para Usuario: notificacoes, auditLogs, vendedor (1:1)
+- Cobrir todas as FKs no script ou o banco vai abortar a transação
+- Lição aprendida: esquecemos `notificacao` na primeira tentativa, transação foi revertida, tivemos que fazer V2
+
+### Regra: Operadora real testa por último
+- Antes de liberar feature pra um operador real (Lucas, Emília, Taiana, etc):
+  1. Cassiel roda o checklist do CLAUDE.md em produção
+  2. Cassiel testa em janela anônima como se fosse o operador
+  3. Cassiel valida visualmente em pelo menos 1 viewport
+  4. SÓ ENTÃO manda a mensagem no WhatsApp pro operador
+- Operador descobrindo bug vira fricção e desgasta confiança na ferramenta
+
+---
+
+## TODO URGENTE — DESCOBERTO EM 08/abr/2026
+
+### 1. ENUM PapelVendedor SEM `sdr` (PRÓXIMO PASSO)
+- Adicionar valor `sdr` ao enum PapelVendedor via migration
+- Atualizar Taiana Godinho (Vendedor #10) de `trainee` → `sdr`
+- Pré-requisito pro filtro do ranking funcionar
+
+### 2. 4 BUGS DO DASHBOARD
+- Taiana duplicada no Ranking do Time (vai resolver com item 1)
+- Letras brancas no Ranking quando em modo claro (CSS — variáveis de tema, não hardcoded)
+- Ranking ignora filtro de período do dashboard (query não recebe data_inicio/data_fim)
+- Botões 7d/30d/90d do gráfico "Leads por dia" não atualizam
+
+### 3. 9 MODAIS PENDENTES PRA createPortal
+MeusLeads.jsx:414, LeadCard.jsx:861, PhotoCropper.jsx:60, AddLeadModal.jsx:119, 
+Funil.jsx:685, Funil.jsx:733, DuplicateAlert.jsx:139. Mesmo bug latente do 
+HandoffModal corrigido em 08/abr. Aplicar mesmo padrão:
+- import createPortal de react-dom
+- wrap return em createPortal(jsx, document.body)
+- container externo: items-start justify-center z-[9999] p-4 overflow-y-auto
+- modal box: my-8 + REMOVER max-h fixo + REMOVER flex flex-col
+
+### 4. INFRAESTRUTURA DE STAGING (PRÓXIMA SPRINT)
+- Continuar deployando direto em produção é insustentável
+- Plano: criar app duplicada no Easypanel apontando pra branch `staging`
+- Banco e Redis separados
+- Toda feature passa por staging antes de main
+
+### 5. TELA /admin/usuarios (PRÓXIMA SPRINT)
+- Hoje criar usuário é via script no console
+- Não escala, não tem auditoria
+- Tela simples: lista + botão "Adicionar usuário" + edit
+- Aproveitar pra adicionar `onDelete: Cascade` nas FKs de Notificacao→Usuario e AuditLog→Usuario
