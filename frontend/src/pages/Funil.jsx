@@ -339,15 +339,26 @@ export default function Funil() {
   const [filtroClasse, setFiltroClasse] = useState('');
   const [filtroCanal, setFiltroCanal] = useState('');
   const [produtosExcluidos, setProdutosExcluidos] = useState(new Set());
+  const [dataInicio, setDataInicio] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+  });
+  const [dataFim, setDataFim] = useState(() => new Date().toISOString().slice(0, 10));
 
   const carregarFunil = useCallback(async () => {
     setCarregando(true);
     try {
-      const params = {};
+      const params = { incluir_leads_fechados: 'true' };
       if (filtroVendedor) params.vendedor_id = filtroVendedor;
       if (filtroClasse) params.classe = filtroClasse;
       if (filtroCanal) params.canal = filtroCanal;
-      // Sem data_inicio/data_fim — Funil mostra visao de estado total
+      // BRT (UTC-3): inicio = 03:00Z mesmo dia, fim = 02:59:59Z dia seguinte
+      if (dataInicio) params.data_inicio = dataInicio + 'T03:00:00.000Z';
+      if (dataFim) {
+        const fimDate = new Date(dataFim + 'T12:00:00.000Z');
+        fimDate.setUTCDate(fimDate.getUTCDate() + 1);
+        params.data_fim = fimDate.toISOString().slice(0, 10) + 'T02:59:59.999Z';
+      }
 
       const [funilRes, vendedoresRes, etapasRes] = await Promise.all([
         api.get('/leads/funil', { params }),
@@ -363,7 +374,7 @@ export default function Funil() {
     } finally {
       setCarregando(false);
     }
-  }, [filtroVendedor, filtroClasse, filtroCanal]);
+  }, [filtroVendedor, filtroClasse, filtroCanal, dataInicio, dataFim]);
 
   useEffect(() => {
     carregarFunil();
@@ -574,13 +585,15 @@ export default function Funil() {
       <div className="flex items-center gap-3 flex-wrap">
         <FiltroUnificado
           align="left"
+          dataInicio={dataInicio} setDataInicio={(v) => setDataInicio(v instanceof Date ? v.toISOString().slice(0, 10) : v)}
+          dataFim={dataFim} setDataFim={(v) => setDataFim(v instanceof Date ? v.toISOString().slice(0, 10) : v)}
           vendedorId={filtroVendedor} setVendedorId={setFiltroVendedor}
           canal={filtroCanal} setCanal={setFiltroCanal}
           classe={filtroClasse} setClasse={setFiltroClasse}
           produtosExcluidos={produtosExcluidos} setProdutosExcluidos={setProdutosExcluidos}
           vendedores={vendedores}
           produtosDisponiveis={produtosDisponiveis}
-          onLimpar={() => { setFiltroVendedor(''); setFiltroClasse(''); setFiltroCanal(''); setProdutosExcluidos(new Set()); }}
+          onLimpar={() => { setFiltroVendedor(''); setFiltroClasse(''); setFiltroCanal(''); setProdutosExcluidos(new Set()); const n = new Date(); setDataInicio(new Date(n.getFullYear(), n.getMonth(), 1).toISOString().slice(0, 10)); setDataFim(n.toISOString().slice(0, 10)); }}
         />
       </div>
 

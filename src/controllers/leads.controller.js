@@ -748,7 +748,8 @@ async function excluir(req, res, next) {
 
 async function listarFunil(req, res, next) {
   try {
-    const { vendedor_id, classe, canal, data_inicio, data_fim } = req.query;
+    const { vendedor_id, classe, canal, data_inicio, data_fim, incluir_leads_fechados } = req.query;
+    const carregarLeadsFechados = incluir_leads_fechados === 'true';
 
     const where = {};
 
@@ -782,10 +783,9 @@ async function listarFunil(req, res, next) {
       etapas[ec.slug] = { leads: [], count: 0, valorTotal: 0 };
     }
 
-    // Sem periodo = pagina Funil (visao de estado): retorna 30 leads mais recentes nas colunas fechadas
-    // Com periodo = Dashboard: retorna apenas contagem agregada
-    const semPeriodo = !data_inicio && !data_fim;
-
+    // Colunas fechadas: contagem + valor agregado
+    // Se incluir_leads_fechados=true (pagina Funil): tambem retorna 30 leads mais recentes
+    // Se false/ausente (Dashboard): retorna leads: [] para nao poluir rawLeads
     const closedAggregations = await Promise.all(
       [...closedSlugs].map(async (slug) => {
         const closedWhere = { ...where, etapaFunil: slug };
@@ -799,7 +799,7 @@ async function listarFunil(req, res, next) {
 
     for (const agg of closedAggregations) {
       let recentLeads = [];
-      if (semPeriodo && agg.count > 0) {
+      if (carregarLeadsFechados && agg.count > 0) {
         recentLeads = await prisma.lead.findMany({
           where: { ...where, etapaFunil: agg.slug },
           orderBy: [{ dataConversao: 'desc' }, { updatedAt: 'desc' }],
