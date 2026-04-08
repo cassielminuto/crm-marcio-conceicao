@@ -145,6 +145,11 @@ enum TomEmocional {
   fragil
 }
 
+enum ContextoFasePrint {
+  detalhe
+  handoff
+}
+
 // ==========================================
 // TABELAS
 // ==========================================
@@ -471,6 +476,9 @@ model LeadSDR {
   leadCloserId          Int?               @map("lead_closer_id")
   handoffRealizadoEm    DateTime?          @map("handoff_realizado_em")
 
+  // Analise IA
+  analiseIaCache        Json?              @map("analise_ia_cache")
+
   // Operador
   operadorId            Int                @map("operador_id")
 
@@ -488,13 +496,15 @@ model LeadSDR {
 
 /// Tabela: prints_conversa_sdr
 model PrintConversaSDR {
-  id          Int      @id @default(autoincrement())
-  leadSdrId   Int      @map("lead_sdr_id")
-  imagemUrl   String   @map("imagem_url") @db.VarChar(500)
-  ordem       Int      @default(0)
-  createdAt   DateTime @default(now()) @map("created_at")
+  id            Int                 @id @default(autoincrement())
+  leadSdrId     Int                 @map("lead_sdr_id")
+  imagemUrl     String              @map("imagem_url") @db.VarChar(500)
+  ordem         Int                 @default(0)
+  contextoFase  ContextoFasePrint   @default(detalhe) @map("contexto_fase")
+  analiseIA     Json?               @map("analise_ia")
+  createdAt     DateTime            @default(now()) @map("created_at")
 
-  leadSdr     LeadSDR  @relation(fields: [leadSdrId], references: [id], onDelete: Cascade)
+  leadSdr       LeadSDR             @relation(fields: [leadSdrId], references: [id], onDelete: Cascade)
 
   @@map("prints_conversa_sdr")
 }
