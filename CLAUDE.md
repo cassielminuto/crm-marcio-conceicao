@@ -146,6 +146,13 @@ Para modais especificamente, garanta que:
 - `data_inicio: "YYYY-MM-DDT03:00:00.000Z"`
 - `data_fim: dia_seguinte + "T02:59:59.999Z"`
 
+### Modais
+- TODO modal DEVE usar createPortal(jsx, document.body)
+- NUNCA renderizar modal dentro da árvore de componentes
+- Padrão: items-start + overflow-y-auto no container externo, NÃO items-center
+- Z-index mínimo: z-[9999]
+- Lição aprendida: modal dentro de container com transform quebra position:fixed
+
 ### Dockerfile
 - Só copia `src/`, `prisma/`, `uploads/`
 - Scripts utilitários DEVEM ficar em `src/`
