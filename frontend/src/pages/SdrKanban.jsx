@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { DragDropContext, Droppable } from '@hello-pangea/dnd';
 import { Plus, Upload, X, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import api from '../services/api';
@@ -46,9 +45,9 @@ function NovoLeadModal({ onClose, onCreated }) {
     }
   }
 
-  return createPortal(
-    <div className="fixed inset-0 bg-black/60 flex items-start justify-center z-[9999] p-4 overflow-y-auto animate-backdrop-fade">
-      <div className="bg-bg-card border border-border-default rounded-2xl w-full max-w-md my-8 p-6 animate-modal-scale-in shadow-[0_24px_64px_rgba(0,0,0,0.6)]">
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-backdrop-fade">
+      <div className="bg-bg-card border border-border-default rounded-2xl w-full max-w-md p-6 animate-modal-scale-in shadow-[0_24px_64px_rgba(0,0,0,0.6)]">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-[15px] font-semibold text-text-primary">Novo Lead SDR</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-elevated transition-colors">
@@ -122,8 +121,7 @@ function NovoLeadModal({ onClose, onCreated }) {
           </div>
         </form>
       </div>
-    </div>,
-    document.body
+    </div>
   );
 }
 
@@ -326,9 +324,9 @@ function SdrLeadDetailModal({ lead, onClose, onSaved }) {
     });
   }
 
-  return createPortal(
-    <div className="fixed inset-0 bg-black/60 flex items-start justify-center z-[9999] p-4 overflow-y-auto animate-backdrop-fade">
-      <div className="bg-bg-card border border-border-default rounded-2xl w-full max-w-lg my-8 p-6 animate-modal-scale-in shadow-[0_24px_64px_rgba(0,0,0,0.6)]">
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-backdrop-fade">
+      <div className="bg-bg-card border border-border-default rounded-2xl w-full max-w-lg p-6 animate-modal-scale-in shadow-[0_24px_64px_rgba(0,0,0,0.6)] max-h-[85vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-5">
           <div>
             <h2 className="text-[15px] font-semibold text-text-primary">{lead.nome}</h2>
@@ -476,14 +474,13 @@ function SdrLeadDetailModal({ lead, onClose, onSaved }) {
         )}
 
         {/* ── Lightbox ── */}
-        {lightboxUrl && createPortal(
+        {lightboxUrl && (
           <div
-            className="fixed inset-0 bg-black/80 flex items-center justify-center z-[10000] cursor-pointer"
+            className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] cursor-pointer"
             onClick={() => setLightboxUrl(null)}
           >
             <img src={lightboxUrl} alt="" className="max-w-[90vw] max-h-[90vh] rounded-xl shadow-2xl" />
-          </div>,
-          document.body
+          </div>
         )}
 
         <div className="space-y-4">
@@ -702,8 +699,7 @@ function SdrLeadDetailModal({ lead, onClose, onSaved }) {
           </button>
         </div>
       </div>
-    </div>,
-    document.body
+    </div>
   );
 }
 
@@ -810,10 +806,10 @@ function HandoffModalInline({ lead, onClose, onHandoffDone }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-start justify-center z-[9999] p-4 overflow-y-auto animate-backdrop-fade">
-      <div className="bg-bg-card border border-border-default rounded-2xl w-full max-w-2xl my-8 animate-modal-scale-in shadow-[0_24px_64px_rgba(0,0,0,0.6)]">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 animate-backdrop-fade">
+      <div className="bg-bg-card border border-border-default rounded-2xl w-full max-w-2xl animate-modal-scale-in shadow-[0_24px_64px_rgba(0,0,0,0.6)] max-h-[calc(100vh-2rem)] flex flex-col">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-border-subtle flex items-center justify-between">
+        <div className="shrink-0 px-6 py-4 border-b border-border-subtle flex items-center justify-between">
           <div>
             <h2 className="text-[15px] font-semibold text-text-primary">Passagem de Bastao para Closer</h2>
             <p className="text-[11px] text-text-muted mt-0.5">{lead.nome} · @{(lead.instagram || '').replace('@', '')}</p>
@@ -823,8 +819,8 @@ function HandoffModalInline({ lead, onClose, onHandoffDone }) {
           </button>
         </div>
 
-        {/* Body */}
-        <div className="px-6 py-4 space-y-4">
+        {/* Body — min-h-0 is critical for flex overflow to work */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-[11px] font-medium text-text-muted mb-1.5">WhatsApp</label>
@@ -992,7 +988,7 @@ function HandoffModalInline({ lead, onClose, onHandoffDone }) {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-border-subtle flex gap-2">
+        <div className="shrink-0 px-6 py-4 border-t border-border-subtle flex gap-2">
           <button onClick={onClose} className="flex-1 px-4 py-2 rounded-lg text-[13px] font-medium text-text-muted border border-border-default hover:border-border-hover hover:text-text-primary transition-colors">
             Cancelar
           </button>
@@ -1006,8 +1002,7 @@ function HandoffModalInline({ lead, onClose, onHandoffDone }) {
           </button>
         </div>
       </div>
-    </div>,
-    document.body
+    </div>
   );
 }
 
