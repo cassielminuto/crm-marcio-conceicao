@@ -21,6 +21,7 @@ enum PapelVendedor {
   closer_lider
   closer_independente
   trainee
+  sdr
 }
 
 enum CanalLead {
