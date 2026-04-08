@@ -38,7 +38,7 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  limits: { fileSize: 8 * 1024 * 1024 }, // 8MB
 });
 
 // --- Zod schemas ---
@@ -85,6 +85,10 @@ const handoffSchema = z.object({
   fraseChaveLead: z.string().optional().nullable(),
 });
 
+const aplicarSugestoesSchema = z.object({
+  campos: z.record(z.any()),
+});
+
 // --- Routes ---
 // Kanban + listagem
 router.get('/leads', autenticar, sdrController.listarKanban);
@@ -100,6 +104,14 @@ router.patch('/leads/:id/mover', autenticar, validar(moverSchema), sdrController
 router.post('/leads/:id/handoff', autenticar, validar(handoffSchema), sdrController.handoff);
 router.post('/leads/:id/prints', autenticar, upload.array('prints', 10), sdrController.uploadPrints);
 router.post('/leads/:id/resumo-ia', autenticar, sdrController.gerarResumoIa);
+
+// Print analysis routes
+router.get('/leads/:id/prints', autenticar, sdrController.listarPrints);
+router.post('/leads/:id/prints/analisar', autenticar, upload.single('print'), sdrController.analisarPrint);
+router.post('/leads/:id/prints/:printId/reanalisar', autenticar, sdrController.reanalisarPrint);
+router.delete('/leads/:id/prints/:printId', autenticar, sdrController.removerPrint);
+router.post('/leads/:id/aplicar-sugestoes', autenticar, validar(aplicarSugestoesSchema), sdrController.aplicarSugestoes);
+
 router.delete('/leads/:id', autenticar, sdrController.excluir);
 
 module.exports = router;

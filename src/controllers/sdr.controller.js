@@ -425,6 +425,156 @@ async function excluir(req, res, next) {
   }
 }
 
+// --- Print Analysis handlers ---
+
+async function listarPrints(req, res, next) {
+  try {
+    const { id } = req.params;
+    const prints = await prisma.printConversaSDR.findMany({
+      where: { leadSdrId: Number(id) },
+      orderBy: { ordem: 'asc' },
+    });
+    res.json({ prints });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function analisarPrint(req, res, next) {
+  try {
+    const { id } = req.params;
+    const leadSdrId = Number(id);
+
+    // Check print limit
+    const countPrints = await prisma.printConversaSDR.count({ where: { leadSdrId } });
+    if (countPrints >= 10) {
+      return res.status(400).json({ error: 'Limite de 10 prints por lead atingido' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'Nenhuma imagem enviada' });
+    }
+
+    const imagemUrl = `/uploads/sdr-prints/${req.file.filename}`;
+
+    // Save print to DB first (even if IA fails)
+    const print = await prisma.printConversaSDR.create({
+      data: {
+        leadSdrId,
+        imagemUrl,
+        ordem: countPrints,
+        contextoFase: 'detalhe',
+      },
+    });
+
+    // Try IA analysis
+    let resultado = null;
+    let erroIA = null;
+    try {
+      const { analisarPrintIncremental } = require('../services/sdrAnaliseService');
+      resultado = await analisarPrintIncremental(leadSdrId, imagemUrl);
+
+      // Save analysis on the print
+      await prisma.printConversaSDR.update({
+        where: { id: print.id },
+        data: { analiseIA: resultado.analiseAtual },
+      });
+    } catch (iaErr) {
+      erroIA = iaErr.message;
+      logger.error(`Falha na analise IA do print #${print.id} para LeadSDR #${leadSdrId}: ${iaErr.message}`, {
+        printId: print.id,
+        leadSdrId,
+        imagemUrl,
+        stack: iaErr.stack,
+      });
+    }
+
+    if (erroIA) {
+      return res.status(201).json({
+        print,
+        analise: null,
+        erro: erroIA,
+        mensagem: 'Print salvo, mas a analise falhou. Voce pode reanalisar depois.',
+      });
+    }
+
+    res.status(201).json({
+      print: { ...print, analiseIA: resultado.analiseAtual },
+      analise: resultado,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function reanalisarPrint(req, res, next) {
+  try {
+    const { id, printId } = req.params;
+    const leadSdrId = Number(id);
+
+    const print = await prisma.printConversaSDR.findUnique({
+      where: { id: Number(printId) },
+    });
+    if (!print || print.leadSdrId !== leadSdrId) {
+      return res.status(404).json({ error: 'Print nao encontrado' });
+    }
+
+    const { analisarPrintIncremental } = require('../services/sdrAnaliseService');
+    const resultado = await analisarPrintIncremental(leadSdrId, print.imagemUrl);
+
+    await prisma.printConversaSDR.update({
+      where: { id: print.id },
+      data: { analiseIA: resultado.analiseAtual },
+    });
+
+    res.json({ print: { ...print, analiseIA: resultado.analiseAtual }, analise: resultado });
+  } catch (err) {
+    logger.error(`Falha ao reanalisar print #${req.params.printId}: ${err.message}`);
+    next(err);
+  }
+}
+
+async function removerPrint(req, res, next) {
+  try {
+    const { id, printId } = req.params;
+    const print = await prisma.printConversaSDR.findUnique({
+      where: { id: Number(printId) },
+    });
+    if (!print || print.leadSdrId !== Number(id)) {
+      return res.status(404).json({ error: 'Print nao encontrado' });
+    }
+
+    await prisma.printConversaSDR.delete({ where: { id: Number(printId) } });
+
+    // Try to delete file
+    try {
+      const filePath = require('path').join(__dirname, '..', '..', print.imagemUrl);
+      require('fs').unlinkSync(filePath);
+    } catch {}
+
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function aplicarSugestoes(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { campos } = req.body;
+
+    if (!campos || typeof campos !== 'object') {
+      return res.status(400).json({ error: 'Campo "campos" e obrigatorio' });
+    }
+
+    const { aplicarSugestoesIA } = require('../services/sdrAnaliseService');
+    const lead = await aplicarSugestoesIA(Number(id), campos);
+    res.json({ lead });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   listarKanban,
   criar,
@@ -436,4 +586,9 @@ module.exports = {
   gerarResumoIa,
   metricasDiarias,
   excluir,
+  listarPrints,
+  analisarPrint,
+  reanalisarPrint,
+  removerPrint,
+  aplicarSugestoes,
 };
