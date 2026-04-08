@@ -806,10 +806,10 @@ function HandoffModalInline({ lead, onClose, onHandoffDone }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-backdrop-fade">
-      <div className="bg-bg-card border border-border-default rounded-2xl w-full max-w-2xl m-4 animate-modal-scale-in shadow-[0_24px_64px_rgba(0,0,0,0.6)] max-h-[calc(100vh-2rem)] flex flex-col">
-        {/* Header — sticky */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle shrink-0">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 animate-backdrop-fade">
+      <div className="bg-bg-card border border-border-default rounded-2xl w-full max-w-2xl animate-modal-scale-in shadow-[0_24px_64px_rgba(0,0,0,0.6)] max-h-[calc(100vh-2rem)] flex flex-col">
+        {/* Header */}
+        <div className="shrink-0 px-6 py-4 border-b border-border-subtle flex items-center justify-between">
           <div>
             <h2 className="text-[15px] font-semibold text-text-primary">Passagem de Bastao para Closer</h2>
             <p className="text-[11px] text-text-muted mt-0.5">{lead.nome} · @{(lead.instagram || '').replace('@', '')}</p>
@@ -819,8 +819,8 @@ function HandoffModalInline({ lead, onClose, onHandoffDone }) {
           </button>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+        {/* Body — min-h-0 is critical for flex overflow to work */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-[11px] font-medium text-text-muted mb-1.5">WhatsApp</label>
@@ -988,7 +988,7 @@ function HandoffModalInline({ lead, onClose, onHandoffDone }) {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-border-subtle shrink-0 flex gap-2">
+        <div className="shrink-0 px-6 py-4 border-t border-border-subtle flex gap-2">
           <button onClick={onClose} className="flex-1 px-4 py-2 rounded-lg text-[13px] font-medium text-text-muted border border-border-default hover:border-border-hover hover:text-text-primary transition-colors">
             Cancelar
           </button>
