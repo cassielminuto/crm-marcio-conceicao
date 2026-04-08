@@ -20,7 +20,7 @@ export default function HeaderBranding() {
     <div className="flex items-center justify-between py-4 mb-2 border-b border-border-default">
       <div>
         <p className="font-display text-[24px] tracking-[1px]">
-          <span className="font-bold text-gradient" style={{ WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent', background: 'linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%)' }}>HL</span>
+          <span className="font-bold" style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent', color: 'transparent' }}>HL</span>
           <span className="font-normal text-text-primary">PIPE</span>
         </p>
         <div className="flex items-center gap-2">

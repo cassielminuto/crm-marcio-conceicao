@@ -773,22 +773,33 @@ function HandoffModalInline({ lead, onClose, onHandoffDone }) {
     }
   }
 
-  const canConfirm = form.whatsapp && form.dataReuniao && form.closerDestinoId && form.tomEmocional && form.resumoSituacao;
+  const canConfirm = form.whatsapp && form.dataReuniao && form.closerDestinoId && form.tomEmocional && form.resumoSituacao && form.oqueFuncionou;
 
   async function handleConfirm() {
     if (!canConfirm) return;
     setConfirmando(true);
     setError('');
     try {
-      await api.post(`/sdr/leads/${lead.id}/handoff`, {
-        ...form,
-        resumoIA,
+      const payload = {
+        whatsapp: form.whatsapp,
+        dataReuniao: form.dataReuniao,
         closerDestinoId: parseInt(form.closerDestinoId),
-      });
+        resumoSituacao: form.resumoSituacao,
+        tomEmocional: form.tomEmocional,
+        oqueFuncionou: form.oqueFuncionou,
+        oqueEvitar: form.oqueEvitar || null,
+        fraseChaveLead: form.fraseChaveLead || null,
+      };
+      await api.post(`/sdr/leads/${lead.id}/handoff`, payload);
       onHandoffDone(lead.id);
       onClose();
     } catch (err) {
-      setError(err.response?.data?.error || 'Erro ao executar handoff.');
+      const detalhes = err.response?.data?.detalhes;
+      if (detalhes?.length) {
+        setError(detalhes.map(d => `${d.campo}: ${d.mensagem}`).join('; '));
+      } else {
+        setError(err.response?.data?.error || 'Erro ao executar handoff.');
+      }
     } finally {
       setConfirmando(false);
     }
@@ -796,11 +807,11 @@ function HandoffModalInline({ lead, onClose, onHandoffDone }) {
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-backdrop-fade">
-      <div className="bg-bg-card border border-border-default rounded-2xl w-full max-w-2xl animate-modal-scale-in shadow-[0_24px_64px_rgba(0,0,0,0.6)] max-h-[90vh] flex flex-col">
-        {/* Header */}
+      <div className="bg-bg-card border border-border-default rounded-2xl w-full max-w-2xl m-4 animate-modal-scale-in shadow-[0_24px_64px_rgba(0,0,0,0.6)] max-h-[calc(100vh-2rem)] flex flex-col">
+        {/* Header — sticky */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle shrink-0">
           <div>
-            <h2 className="text-[15px] font-semibold text-text-primary">Handoff — Reuniao Marcada</h2>
+            <h2 className="text-[15px] font-semibold text-text-primary">Passagem de Bastao para Closer</h2>
             <p className="text-[11px] text-text-muted mt-0.5">{lead.nome} · @{(lead.instagram || '').replace('@', '')}</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-elevated transition-colors">
@@ -876,7 +887,7 @@ function HandoffModalInline({ lead, onClose, onHandoffDone }) {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-[11px] font-medium text-text-muted mb-1.5">O que Funcionou</label>
+              <label className="block text-[11px] font-medium text-text-muted mb-1.5">O que Funcionou <span className="text-accent-danger">*</span></label>
               <textarea
                 value={form.oqueFuncionou}
                 onChange={e => setForm(f => ({ ...f, oqueFuncionou: e.target.value }))}
