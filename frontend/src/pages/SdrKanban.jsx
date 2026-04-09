@@ -37,7 +37,7 @@ function NovoLeadModal({ onClose, onCreated }) {
     setError('');
     try {
       const { data } = await api.post('/sdr/leads', form);
-      onCreated(data);
+      onCreated(data.lead);
       onClose();
     } catch (err) {
       setError(err.response?.data?.error || 'Erro ao criar lead.');
@@ -177,10 +177,14 @@ function SdrLeadDetailModal({ lead, onClose, onSaved }) {
   const [lightboxUrl, setLightboxUrl] = useState(null);
 
   useEffect(() => {
+    if (!lead?.id) {
+      console.error('[SdrLeadDetailModal] lead.id is undefined', lead);
+      return;
+    }
     api.get(`/sdr/leads/${lead.id}/prints`).then(({ data }) => {
       setPrints(data.prints || []);
     }).catch(() => {});
-  }, [lead.id]);
+  }, [lead?.id]);
 
   const etapa = lead.etapa || 'f1_abertura';
   const fase = parseInt(etapa.replace('f', '').split('_')[0]) || 1;
@@ -198,6 +202,10 @@ function SdrLeadDetailModal({ lead, onClose, onSaved }) {
   }
 
   async function handleSave() {
+    if (!lead?.id) {
+      setError('Erro: lead inválido. Feche o modal e tente novamente.');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -1110,10 +1118,11 @@ export default function SdrKanban() {
   }
 
   function handleLeadCreated(newLead) {
-    const etapa = newLead.etapa || 'f1_abertura';
+    const lead = newLead.lead || newLead;
+    const etapa = lead.etapa || 'f1_abertura';
     setKanban(k => ({
       ...k,
-      [etapa]: [newLead, ...(k[etapa] || [])],
+      [etapa]: [lead, ...(k[etapa] || [])],
     }));
   }
 

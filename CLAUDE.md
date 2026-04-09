@@ -93,6 +93,10 @@ Execute o fluxo end-to-end completo:
 9. Verificar que a nota de briefing chegou no card do closer
 10. Voltar ao Kanban SDR e excluir um lead da Lixeira para confirmar exclusão definitiva
 
+Quando a feature envolve criar + editar, testar o fluxo
+CRIAR → EDITAR IMEDIATAMENTE (sem refresh) como um cenário único.
+Não é suficiente testar criar e editar em sessões separadas.
+
 Se QUALQUER etapa falhar, a feature NÃO está pronta.
 Reporte exatamente qual etapa falhou e por quê.
 
@@ -271,3 +275,21 @@ HandoffModal corrigido em 08/abr. Aplicar mesmo padrão:
 - Não escala, não tem auditoria
 - Tela simples: lista + botão "Adicionar usuário" + edit
 - Aproveitar pra adicionar `onDelete: Cascade` nas FKs de Notificacao→Usuario e AuditLog→Usuario
+
+---
+
+## DÍVIDA TÉCNICA — TESTES (documentado 09/abr/2026)
+
+### 1. BUG PRÉ-EXISTENTE NO SETUP DOS TESTES DE INTEGRAÇÃO SDR
+- `tests/integration/sdr.routes.test.js` usa `admin@compativeis.com` como usuário de teste
+- Esse usuário não tem `vendedorId` no banco
+- Resultado: 3 testes falham com `operadorId must not be null` (POST criar, GET kanban, GET metricas)
+- Fix: corrigir o fixture pra criar/usar um usuário com `vendedorId` antes de rodar os testes
+
+### 2. TESTE DE REGRESSÃO FALTANDO — CRIAR → EDITAR IMEDIATAMENTE
+- Adicionar teste que:
+  1. `POST /sdr/leads` → captura `res.body.lead.id` (note o unwrap — response é `{ lead: {...} }`)
+  2. `PATCH /sdr/leads/:id` com o id retornado
+  3. Expect status 200
+- Esse teste previne a regressão do bug que a Taiana encontrou em 09/abr/2026
+- Depende de resolver a Pendência 1 primeiro
