@@ -973,6 +973,52 @@ async function listarVendas(req, res, next) {
   }
 }
 
+async function metricasAnuncio(req, res, next) {
+  try {
+    const { data_inicio, data_fim } = req.query;
+    if (!data_inicio || !data_fim) {
+      return res.status(400).json({ error: 'data_inicio e data_fim são obrigatórios' });
+    }
+
+    const dateStart = new Date(data_inicio);
+    const dateEnd = new Date(data_fim);
+
+    const etapasReuniao = ['qualificado', 'proposta', 'negociacao', 'fechado_ganho', 'fechado_perdido'];
+
+    const [reunioes, vendasRows] = await Promise.all([
+      prisma.lead.count({
+        where: {
+          canal: 'anuncio',
+          etapaFunil: { in: etapasReuniao },
+          createdAt: { gte: dateStart, lt: dateEnd },
+        },
+      }),
+      prisma.lead.findMany({
+        where: {
+          canal: 'anuncio',
+          vendaRealizada: true,
+          etapaFunil: 'fechado_ganho',
+          createdAt: { gte: dateStart, lt: dateEnd },
+        },
+        select: { valorVenda: true },
+      }),
+    ]);
+
+    const vendas_fechadas = vendasRows.length;
+    const receita = vendasRows.reduce((sum, v) => sum + (v.valorVenda ? Number(v.valorVenda) : 0), 0);
+    const taxa_conversao = reunioes > 0 ? Math.round((vendas_fechadas / reunioes) * 1000) / 10 : 0;
+
+    res.json({
+      reunioes_agendadas: reunioes,
+      vendas_fechadas,
+      receita,
+      taxa_conversao,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   listar,
   listarVendas,
@@ -992,4 +1038,5 @@ module.exports = {
   excluir,
   listarFunil,
   buscar,
+  metricasAnuncio,
 };

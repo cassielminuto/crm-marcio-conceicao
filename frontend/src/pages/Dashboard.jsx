@@ -168,6 +168,7 @@ export default function Dashboard() {
   const [rawLeads, setRawLeads] = useState([]);
   const [rawVendas, setRawVendas] = useState([]);
   const [rawVendasData, setRawVendasData] = useState(null);
+  const [metricasAnuncio, setMetricasAnuncio] = useState(null);
 
   const [dataInicio, setDataInicio] = useState(() => {
     const now = new Date();
@@ -200,6 +201,7 @@ export default function Dashboard() {
         api.get(`/leads/por-dia?${dp}`),
         api.get(`/leads/funil?${dp}`),
         api.get(`/leads/vendas?${dp}`),
+        api.get(`/leads/metricas-anuncio?${dp}`),
       ];
 
       if (vendedorId) {
@@ -225,10 +227,12 @@ export default function Dashboard() {
       setRawVendasData(vendasData);
       setRawVendas(vendasData?.vendas || []);
 
+      setMetricasAnuncio(resultados[4]?.data || null);
+
       if (vendedorId) {
         const vInfo = vendedoresData.find(v => v.id === vendedorId);
         setVendedorInfo(vInfo);
-        setFollowUps(resultados[4]?.data || []);
+        setFollowUps(resultados[5]?.data || []);
       } else if (isAdmin) {
         setVendedorInfo(null);
         setFollowUps([]);
@@ -371,6 +375,39 @@ export default function Dashboard() {
           />
         </div>
       </div>
+
+      {/* Card Metricas Anuncio */}
+      {metricasAnuncio && (
+        <div className="bg-bg-card border border-border-default rounded-[14px] p-6">
+          <SectionHeader>Metricas — Anuncio</SectionHeader>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center">
+              <p className="text-[11px] uppercase tracking-[1.5px] text-text-muted font-medium">Reunioes Agendadas</p>
+              <p className="font-display text-[28px] font-bold text-text-primary mt-1" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                {metricasAnuncio.reunioes_agendadas ?? 0}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-[11px] uppercase tracking-[1.5px] text-text-muted font-medium">Vendas Fechadas</p>
+              <p className="font-display text-[28px] font-bold text-[#10B981] mt-1" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                {metricasAnuncio.vendas_fechadas ?? 0}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-[11px] uppercase tracking-[1.5px] text-text-muted font-medium">Receita</p>
+              <p className="font-display text-[28px] font-bold text-[#F59E0B] mt-1" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                R$ {(metricasAnuncio.receita ?? 0).toLocaleString('pt-BR')}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-[11px] uppercase tracking-[1.5px] text-text-muted font-medium">Taxa Conversao</p>
+              <p className="font-display text-[28px] font-bold text-[#A78BFA] mt-1" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                {metricasAnuncio.taxa_conversao ?? 0}%
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isAdmin && <AIResumoPeriodo dataInicio={dataInicio} dataFim={dataFim} />}
 

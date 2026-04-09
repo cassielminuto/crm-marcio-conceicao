@@ -5,9 +5,21 @@ const { verificarDuplicidade, registrarDuplicatas } = require('../services/dedup
 const logger = require('../utils/logger');
 const { obterProximoVendedor } = require('../services/distribuicaoLeads');
 
+const FORM_IGNORAR = '[Anúncios] [SDR] Diagonóstico Gratuito - Compatíveis';
+
 async function receberLeadRespondi(req, res, next) {
   try {
     const dados = req.body;
+
+    // Guard: ignorar form do SDR de anúncios (leads criados manualmente pelo Thomaz)
+    const formName = dados?.form?.form_name;
+    if (formName === FORM_IGNORAR) {
+      logger.info(`Webhook ignorado — form "${formName}" (leads do Anúncio SDR são criados manualmente pelo Thomaz)`);
+      return res.status(200).json({
+        message: 'Form ignorado intencionalmente',
+        motivo: 'Leads deste form são criados manualmente no módulo CRM Vendas pelo Thomaz (SDR)',
+      });
+    }
 
     // Suportar formato real do Respondi E formato antigo (campos diretos)
     let tituloFormulario, respondiId, nome, telefone, email, respostasRaw;

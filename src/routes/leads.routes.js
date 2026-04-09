@@ -86,6 +86,7 @@ router.get('/por-dia', autenticar, leadsController.leadsPorDia);
 router.get('/vendas', autenticar, leadsController.listarVendas);
 router.get('/funil', autenticar, leadsController.listarFunil);
 router.get('/busca', autenticar, leadsController.buscar);
+router.get('/metricas-anuncio', autenticar, leadsController.metricasAnuncio);
 router.get('/', autenticar, leadsController.listar);
 router.get('/:id', autenticar, leadsController.detalhe);
 router.post('/', autenticar, validar(criarLeadSchema), leadsController.criar);
