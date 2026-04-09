@@ -766,7 +766,13 @@ async function listarFunil(req, res, next) {
     }
 
     if (req.usuario.perfil === 'vendedor' && req.usuario.vendedorId) {
-      where.vendedorId = req.usuario.vendedorId;
+      const vendedor = await prisma.vendedor.findUnique({
+        where: { id: req.usuario.vendedorId },
+        select: { papel: true },
+      });
+      if (vendedor?.papel !== 'sdr') {
+        where.vendedorId = req.usuario.vendedorId;
+      }
     }
 
     // Buscar etapas configuradas para saber quais são ganho/perdido

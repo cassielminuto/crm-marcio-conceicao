@@ -314,6 +314,7 @@ export default function Funil() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
   const isAdmin = usuario?.perfil === 'admin' || usuario?.perfil === 'gestor';
+  const temVisaoCompleta = isAdmin || usuario?.vendedor?.papel === 'sdr';
   const [etapas, setEtapas] = useState([]);
   const [funilData, setFunilData] = useState(null);
   const [vendedores, setVendedores] = useState([]);
