@@ -23,6 +23,7 @@ export default function AppLayout() {
   const [totalNaoLidas, setTotalNaoLidas] = useState(0);
   const [modalLeadAberto, setModalLeadAberto] = useState(false);
   const [vendedores, setVendedores] = useState([]);
+  const [etapasFunil, setEtapasFunil] = useState([]);
   const [termoBusca, setTermoBusca] = useState('');
   const [resultadosBusca, setResultadosBusca] = useState([]);
   const [buscando, setBuscando] = useState(false);
@@ -32,6 +33,9 @@ export default function AppLayout() {
   useEffect(() => {
     api.get('/vendedores').then(res => {
       setVendedores(Array.isArray(res.data) ? res.data : []);
+    }).catch(() => {});
+    api.get('/etapas').then(res => {
+      setEtapasFunil(Array.isArray(res.data) ? res.data : []);
     }).catch(() => {});
   }, []);
 
@@ -220,6 +224,7 @@ export default function AppLayout() {
           adicionarToast(`Lead criado: ${lead.nome} (Classe ${lead.classe})`, 'sucesso');
         }}
         vendedores={vendedores}
+        etapas={etapasFunil}
       />
     </div>
   );

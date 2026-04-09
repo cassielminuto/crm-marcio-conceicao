@@ -12,7 +12,16 @@ function formatarTelefone(valor) {
   return `${digitos.slice(0, 2)} ${digitos.slice(2, 7)}-${digitos.slice(7)}`;
 }
 
-export default function AddLeadModal({ isOpen, onClose, onLeadCriado, vendedores }) {
+const CANAL_OPTIONS = [
+  { value: 'bio', label: 'Bio (Organico)', canal: 'bio' },
+  { value: 'anuncio_trafego', label: 'Anuncio Trafego Pago', canal: 'anuncio' },
+  { value: 'anuncio_sdr', label: 'Anuncio SDR', canal: 'anuncio', formulario: 'Anúncio SDR' },
+  { value: 'evento', label: 'Evento', canal: 'evento' },
+  { value: 'indicacao', label: 'Indicacao', canal: 'evento', formulario: 'Indicação' },
+  { value: 'outro', label: 'Outro', canal: 'evento', formulario: 'Outro', custom: true },
+];
+
+export default function AddLeadModal({ isOpen, onClose, onLeadCriado, vendedores, etapas = [] }) {
   const { usuario } = useAuth();
   const navigate = useNavigate();
   const modalRef = useRef(null);
@@ -20,11 +29,15 @@ export default function AddLeadModal({ isOpen, onClose, onLeadCriado, vendedores
   const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
   const [email, setEmail] = useState('');
-  const [canal, setCanal] = useState('bio');
+  const [canalKey, setCanalKey] = useState('bio');
   const [canalCustom, setCanalCustom] = useState('');
   const [classe, setClasse] = useState('B');
   const [vendedorSelecionado, setVendedorSelecionado] = useState('auto');
+
+  const etapasEfetivas = etapas.length > 0 ? etapas : [{ slug: 'novo', label: 'Novo', tipo: 'normal' }];
   const [etapa, setEtapa] = useState('novo');
+  const etapaSelecionada = etapasEfetivas.find(e => e.slug === etapa);
+  const isEtapaGanho = etapaSelecionada?.tipo === 'ganho';
   const [valorVenda, setValorVenda] = useState('');
   const [observacao, setObservacao] = useState('');
   const [criando, setCriando] = useState(false);
@@ -44,7 +57,7 @@ export default function AddLeadModal({ isOpen, onClose, onLeadCriado, vendedores
   }, [isOpen, onClose]);
 
   const limparForm = () => {
-    setNome(''); setTelefone(''); setEmail(''); setCanal('bio'); setCanalCustom(''); setClasse('B'); setEtapa('novo'); setValorVenda('');
+    setNome(''); setTelefone(''); setEmail(''); setCanalKey('bio'); setCanalCustom(''); setClasse('B'); setEtapa(etapasEfetivas[0]?.slug || 'novo'); setValorVenda('');
     setVendedorSelecionado(usuario?.vendedorId ? String(usuario.vendedorId) : 'auto');
     setObservacao(''); setErro('');
   };
@@ -67,27 +80,29 @@ export default function AddLeadModal({ isOpen, onClose, onLeadCriado, vendedores
     setErro('');
 
     try {
-      const isCustom = canal === '_custom';
+      const canalOpt = CANAL_OPTIONS.find(o => o.value === canalKey) || CANAL_OPTIONS[0];
       const payload = {
         nome: nome.trim(),
         telefone: telefoneLimpo,
         email: email.trim() || null,
-        canal: isCustom ? 'evento' : canal,
+        canal: canalOpt.canal,
         classe,
       };
-      if (isCustom) {
-        payload.formulario_titulo = canalCustom.trim() || 'Personalizado';
+      if (canalOpt.custom) {
+        payload.formulario_titulo = canalCustom.trim() || 'Outro';
+      } else if (canalOpt.formulario) {
+        payload.formulario_titulo = canalOpt.formulario;
       }
 
       if (vendedorSelecionado && vendedorSelecionado !== 'auto') {
         payload.vendedor_id = parseInt(vendedorSelecionado, 10);
       }
 
-      if (etapa !== 'novo') {
+      if (etapa !== etapasEfetivas[0]?.slug) {
         payload.etapa_funil = etapa;
       }
 
-      if (etapa === 'fechado_ganho') {
+      if (isEtapaGanho) {
         payload.venda_realizada = true;
         if (valorVenda) payload.valor_venda = parseFloat(valorVenda);
       }
@@ -231,21 +246,20 @@ export default function AddLeadModal({ isOpen, onClose, onLeadCriado, vendedores
                 Canal de origem
               </label>
               <select
-                value={canal}
-                onChange={(e) => setCanal(e.target.value)}
+                value={canalKey}
+                onChange={(e) => setCanalKey(e.target.value)}
                 className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)]"
               >
-                <option value="bio">Bio (organico)</option>
-                <option value="anuncio">Anuncio (pago)</option>
-                <option value="evento">Evento</option>
-                <option value="_custom">Personalizado</option>
+                {CANAL_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
               </select>
-              {canal === '_custom' && (
+              {CANAL_OPTIONS.find(o => o.value === canalKey)?.custom && (
                 <input
                   type="text"
                   value={canalCustom}
                   onChange={(e) => setCanalCustom(e.target.value)}
-                  placeholder="Ex: Instagram DM, Indicacao..."
+                  placeholder="Descreva a origem..."
                   className="w-full mt-2 bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)]"
                 />
               )}
@@ -304,18 +318,14 @@ export default function AddLeadModal({ isOpen, onClose, onLeadCriado, vendedores
                 onChange={(e) => setEtapa(e.target.value)}
                 className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)]"
               >
-                <option value="novo">Novo</option>
-                <option value="em_abordagem">Em Abordagem</option>
-                <option value="qualificado">Qualificado</option>
-                <option value="proposta">Proposta</option>
-                <option value="fechado_ganho">Fechado Ganho</option>
-                <option value="fechado_perdido">Fechado Perdido</option>
-                <option value="nurturing">Nurturing</option>
+                {etapasEfetivas.map(e => (
+                  <option key={e.slug} value={e.slug}>{e.label}</option>
+                ))}
               </select>
             </div>
 
-            {/* Valor da Venda — so aparece quando etapa = fechado_ganho */}
-            {etapa === 'fechado_ganho' && (
+            {/* Valor da Venda — so aparece quando etapa tipo ganho */}
+            {isEtapaGanho && (
               <div>
                 <label className="block text-[10px] font-semibold text-text-muted uppercase tracking-[0.5px] mb-1.5">
                   Valor da Venda (R$)
