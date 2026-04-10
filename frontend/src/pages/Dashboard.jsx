@@ -5,7 +5,8 @@ import FiltroUnificado from '../components/FiltroUnificado';
 import { extrairProdutosUnicos, isProdutoExcluido } from '../utils/produtos';
 import AIResumoPeriodo from '../components/AIResumoPeriodo';
 import AvatarVendedor from '../components/AvatarVendedor';
-import { Users, TrendingUp, DollarSign, Target, Clock, Phone, MessageSquare, AlertTriangle, Trophy, ArrowUp, ArrowDown } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Users, TrendingUp, DollarSign, Target, Clock, Phone, MessageSquare, AlertTriangle, Trophy, ArrowUp, ArrowDown, Building2, Plus } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 /* ─── Accent color config per metric ─── */
@@ -169,6 +170,7 @@ export default function Dashboard() {
   const [rawVendas, setRawVendas] = useState([]);
   const [rawVendasData, setRawVendasData] = useState(null);
   const [metricasAnuncio, setMetricasAnuncio] = useState(null);
+  const [metaEmpresaData, setMetaEmpresaData] = useState(null);
 
   const [dataInicio, setDataInicio] = useState(() => {
     const now = new Date();
@@ -181,6 +183,7 @@ export default function Dashboard() {
   const [chartPeriod, setChartPeriod] = useState('30d');
   const [todosVendedores, setTodosVendedores] = useState([]);
 
+  const navigate = useNavigate();
   const vendedorId = usuario?.vendedorId;
   const isAdmin = usuario?.perfil === 'admin' || usuario?.perfil === 'gestor';
 
@@ -228,6 +231,13 @@ export default function Dashboard() {
       setRawVendas(vendasData?.vendas || []);
 
       setMetricasAnuncio(resultados[4]?.data || null);
+
+      // Meta empresa (período atual, independente do filtro)
+      try {
+        const periodoMes = new Date().toISOString().slice(0, 7);
+        const metaEmpRes = await api.get(`/metas/empresa?periodo=${periodoMes}`);
+        setMetaEmpresaData(metaEmpRes.data);
+      } catch { setMetaEmpresaData(null); }
 
       if (vendedorId) {
         const vInfo = vendedoresData.find(v => v.id === vendedorId);
@@ -375,6 +385,60 @@ export default function Dashboard() {
           />
         </div>
       </div>
+
+      {/* Card Meta Empresa */}
+      {metaEmpresaData?.metaEmpresa ? (() => {
+        const me = metaEmpresaData;
+        const pct = me.percentualEmpresa || 0;
+        const falta = Math.max(0, Number(me.metaEmpresa.valorMeta) - me.realizadoEmpresa);
+        const status = pct >= 100 ? 'atingida' : 'em_andamento';
+        const gradients = { em_andamento: 'linear-gradient(90deg, #6c5ce7, #00cec9)', atingida: 'linear-gradient(90deg, #00b894, #55efc4)' };
+        return (
+          <div className="bg-bg-card border border-border-default rounded-[14px] p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Building2 size={16} className="text-accent-violet-light" />
+                <span className="text-[11px] uppercase tracking-[1.5px] text-text-muted font-semibold">Meta da Empresa — {me.metaEmpresa.periodo}</span>
+              </div>
+              <span className="text-[12px] font-bold text-text-primary tabular-nums">{pct.toFixed(1)}%</span>
+            </div>
+            <div className="w-full h-[10px] bg-bg-elevated rounded-full overflow-hidden mb-4">
+              <div className="h-full rounded-full transition-all duration-1000 ease-out" style={{ width: `${Math.min(pct, 100)}%`, background: gradients[status] }} />
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <p className="text-[11px] uppercase tracking-[1.5px] text-text-muted font-medium">Meta</p>
+                <p className="font-display text-[24px] font-bold text-text-secondary mt-1 tabular-nums">R$ {Number(me.metaEmpresa.valorMeta).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[11px] uppercase tracking-[1.5px] text-text-muted font-medium">Realizado</p>
+                <p className="font-display text-[24px] font-bold text-text-primary mt-1 tabular-nums">R$ {Number(me.realizadoEmpresa).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[11px] uppercase tracking-[1.5px] text-text-muted font-medium">Falta</p>
+                <p className="font-display text-[24px] font-bold text-accent-amber mt-1 tabular-nums">R$ {falta.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[11px] uppercase tracking-[1.5px] text-text-muted font-medium">Distribuído</p>
+                <p className="font-display text-[24px] font-bold text-text-secondary mt-1 tabular-nums">R$ {Number(me.somaDistribuida).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
+              </div>
+            </div>
+          </div>
+        );
+      })() : (
+        <div className="bg-bg-card border border-border-default rounded-[14px] p-6 text-center">
+          <Building2 size={20} className="text-text-muted mx-auto mb-2" />
+          <p className="text-[13px] text-text-muted">
+            {isAdmin ? 'Meta do mês ainda não definida' : 'Meta do mês ainda não definida'}
+          </p>
+          {isAdmin && (
+            <button onClick={() => navigate('/metas')} className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12px] font-semibold bg-accent-violet text-white hover:bg-accent-violet/90 transition-colors">
+              <Plus size={13} />
+              Definir Meta do Mês
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Card Metricas Anuncio */}
       {metricasAnuncio && (
