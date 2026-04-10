@@ -177,6 +177,8 @@ const UTM_LABELS = {
   utm_campaign: 'Campaign',
   utm_content: 'Content',
   utm_term: 'Term',
+  gclid: 'Google Click ID',
+  fbclid: 'Facebook Click ID',
 };
 
 function extrairUtms(dadosRespondi) {
@@ -184,6 +186,7 @@ function extrairUtms(dadosRespondi) {
 
   // Buscar UTMs em vários locais possíveis do payload Respondi
   const fontes = [
+    dadosRespondi.respondent?.respondent_utms,
     dadosRespondi.utm_params,
     dadosRespondi.respondent?.utm_params,
     dadosRespondi.respondent?.url_params,
