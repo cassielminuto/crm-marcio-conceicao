@@ -19,7 +19,7 @@ import VendedoresAdmin from './pages/VendedoresAdmin';
 import LeadCard from './pages/LeadCard';
 import Perfil from './pages/Perfil';
 import Vendas from './pages/Vendas';
-import SdrKanban from './pages/SdrKanban';
+import SdrPage from './pages/SdrPage';
 
 export default function App() {
   return (
@@ -39,7 +39,7 @@ export default function App() {
             <Route index element={<Dashboard />} />
             <Route path="funil" element={<Funil />} />
             <Route path="vendas" element={<Vendas />} />
-            <Route path="sdr" element={<SdrKanban />} />
+            <Route path="sdr" element={<SdrPage />} />
             <Route path="meus-leads" element={<MeusLeads />} />
             <Route path="follow-ups" element={<FollowUps />} />
             <Route path="ranking" element={<Ranking />} />

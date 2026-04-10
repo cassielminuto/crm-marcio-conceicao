@@ -10,7 +10,7 @@ const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/funil', label: 'Funil', icon: Kanban },
   { to: '/vendas', label: 'Vendas', icon: DollarSign },
-  { to: '/sdr', label: 'SDR Instagram', icon: Instagram },
+  { to: '/sdr', label: 'SDR', icon: Instagram },
   { to: '/meus-leads', label: 'Meus Leads', icon: Users },
   { to: '/follow-ups', label: 'Follow-ups', icon: CalendarCheck },
   { to: '/ranking', label: 'Ranking', icon: Trophy },
