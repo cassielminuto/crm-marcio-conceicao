@@ -326,6 +326,20 @@ model Meta {
   @@map("metas")
 }
 
+/// Tabela: metas_empresa
+model MetaEmpresa {
+  id         Int      @id @default(autoincrement())
+  periodo    String   @unique @db.VarChar(7)
+  valorMeta  Decimal  @map("valor_meta") @db.Decimal(12, 2)
+  leadsMeta  Int?     @map("leads_meta")
+  observacao String?  @db.Text
+  criadoPor  Int?     @map("criado_por")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("metas_empresa")
+}
+
 /// Tabela 8: funil_historico
 model FunilHistorico {
   id             Int       @id @default(autoincrement())
