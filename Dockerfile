@@ -41,4 +41,4 @@ RUN mkdir -p uploads/calls uploads/prints uploads/avatars
 
 EXPOSE 3001
 
-CMD ["node", "src/server.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node src/server.js"]
