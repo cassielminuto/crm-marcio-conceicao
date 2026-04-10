@@ -5,10 +5,14 @@ const logger = require('../utils/logger');
 
 async function listarKanban(req, res, next) {
   try {
-    const operadorId = req.usuario.vendedorId;
+    const isAdminGestor = req.usuario.perfil === 'admin' || req.usuario.perfil === 'gestor';
+    const where = { deletedAt: null };
+    if (!isAdminGestor) {
+      where.operadorId = req.usuario.vendedorId;
+    }
 
     const leads = await prisma.leadSDR.findMany({
-      where: { operadorId, deletedAt: null },
+      where,
       orderBy: [{ ordem: 'asc' }, { createdAt: 'desc' }],
       include: {
         closerDestino: { select: { id: true, nomeExibicao: true } },
@@ -311,7 +315,8 @@ async function gerarResumoIa(req, res, next) {
 
 async function metricasDiarias(req, res, next) {
   try {
-    const operadorId = req.usuario.vendedorId;
+    const isAdminGestor = req.usuario.perfil === 'admin' || req.usuario.perfil === 'gestor';
+    const filtroOperador = isAdminGestor ? {} : { operadorId: req.usuario.vendedorId };
 
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
@@ -328,7 +333,7 @@ async function metricasDiarias(req, res, next) {
       // Leads criados hoje (abordagens)
       prisma.leadSDR.count({
         where: {
-          operadorId,
+          ...filtroOperador,
           deletedAt: null,
           createdAt: { gte: hoje, lt: amanha },
         },
@@ -336,7 +341,7 @@ async function metricasDiarias(req, res, next) {
       // Leads com resposta (respostaLead preenchida), atualizados hoje
       prisma.leadSDR.count({
         where: {
-          operadorId,
+          ...filtroOperador,
           deletedAt: null,
           respostaLead: { not: null },
           updatedAt: { gte: hoje, lt: amanha },
@@ -345,7 +350,7 @@ async function metricasDiarias(req, res, next) {
       // Leads que chegaram a reuniao_marcada hoje
       prisma.leadSDR.count({
         where: {
-          operadorId,
+          ...filtroOperador,
           deletedAt: null,
           etapa: 'reuniao_marcada',
           updatedAt: { gte: hoje, lt: amanha },
@@ -354,7 +359,7 @@ async function metricasDiarias(req, res, next) {
       // Leads ativos (não em lixeira ou reuniao_marcada)
       prisma.leadSDR.count({
         where: {
-          operadorId,
+          ...filtroOperador,
           deletedAt: null,
           etapa: { notIn: ['lixeira', 'reuniao_marcada'] },
         },
@@ -362,7 +367,7 @@ async function metricasDiarias(req, res, next) {
       // Contagem por etapa (pipeline)
       prisma.leadSDR.groupBy({
         by: ['etapa'],
-        where: { operadorId, deletedAt: null },
+        where: { ...filtroOperador, deletedAt: null },
         _count: { id: true },
       }),
     ]);
