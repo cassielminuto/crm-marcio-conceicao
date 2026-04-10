@@ -5,21 +5,13 @@ const { verificarDuplicidade, registrarDuplicatas, buscarLeadPorTelefone } = req
 const logger = require('../utils/logger');
 const { obterProximoVendedor } = require('../services/distribuicaoLeads');
 
-const FORM_IGNORAR = '[Anúncios] [SDR] Diagonóstico Gratuito - Compatíveis';
+const FORM_SDR_INBOUND = '[Anúncios] [SDR] Diagonóstico Gratuito - Compatíveis';
+const OPERADOR_INBOUND_ID = 11; // Thomaz (Vendedor #11)
 
 async function receberLeadRespondi(req, res, next) {
   try {
     const dados = req.body;
-
-    // Guard: ignorar form do SDR de anúncios (leads criados manualmente pelo Thomaz)
     const formName = dados?.form?.form_name;
-    if (formName === FORM_IGNORAR) {
-      logger.info(`Webhook ignorado — form "${formName}" (leads do Anúncio SDR são criados manualmente pelo Thomaz)`);
-      return res.status(200).json({
-        message: 'Form ignorado intencionalmente',
-        motivo: 'Leads deste form são criados manualmente no módulo CRM Vendas pelo Thomaz (SDR)',
-      });
-    }
 
     // Suportar formato real do Respondi E formato antigo (campos diretos)
     let tituloFormulario, respondiId, nome, telefone, email, respostasRaw;
@@ -79,6 +71,108 @@ async function receberLeadRespondi(req, res, next) {
     }
 
     telefone = telefone.replace(/[^\d]/g, '');
+
+    // === SDR INBOUND: form do Thomaz cria LeadSDRInbound em vez de Lead normal ===
+    if (formName === FORM_SDR_INBOUND) {
+      // Extrair dor principal
+      let dorPrincipal = null;
+      if (dados.respondent?.answers) {
+        for (const [pergunta, resposta] of Object.entries(dados.respondent.answers)) {
+          const p = pergunta.toLowerCase();
+          if (p.includes('situação') || p.includes('situacao') || p.includes('relacionamento hoje') || p.includes('descreveria')) {
+            dorPrincipal = String(resposta);
+            break;
+          }
+        }
+      }
+
+      // Normalizar telefone pra busca de duplicata
+      const telNorm = telefone.replace(/\D/g, '');
+      const telBusca = telNorm.startsWith('55') && telNorm.length > 11 ? telNorm.slice(2) : telNorm;
+
+      // Verificar duplicata por telefone em LeadSDRInbound
+      const candidatos = await prisma.leadSDRInbound.findMany({
+        where: {
+          telefone: { contains: telBusca.slice(-8) },
+          etapa: { not: 'nao_qualificado' },
+          deletedAt: null,
+        },
+        include: {
+          operador: { select: { id: true, nomeExibicao: true, telefoneWhatsapp: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      const duplicata = candidatos.find(c => {
+        const cTel = c.telefone.replace(/\D/g, '');
+        const cNorm = cTel.startsWith('55') && cTel.length > 11 ? cTel.slice(2) : cTel;
+        return cNorm === telBusca;
+      });
+
+      if (duplicata) {
+        // Atualizar dadosRespondi do existente
+        await prisma.leadSDRInbound.update({
+          where: { id: duplicata.id },
+          data: { dadosRespondi: dados },
+        });
+
+        // Notificar operador (Thomaz) via WhatsApp
+        if (duplicata.operador?.telefoneWhatsapp) {
+          const { enviarMensagem } = require('../services/whatsappService');
+          const texto = `*Lead Retornou* 🔄\n\n*${nome}* preencheu o formulário de novo.\nTel: ${telefone}\nLead Inbound #${duplicata.id} — já no seu kanban.\n\nBom momento pra retomar o contato!`;
+          setImmediate(async () => {
+            try { await enviarMensagem(duplicata.operador.telefoneWhatsapp, texto); } catch (e) {
+              logger.error(`WhatsApp duplicata SDR Inbound falhou: ${e.message}`);
+            }
+          });
+        }
+
+        logger.info(`Duplicata SDR Inbound: lead #${duplicata.id} telefone ${telefone} operador ${duplicata.operador?.nomeExibicao}`);
+        return res.status(200).json({
+          message: 'Lead SDR Inbound já existe, operador notificado',
+          leadId: duplicata.id,
+        });
+      }
+
+      // Criar LeadSDRInbound
+      const leadInbound = await prisma.leadSDRInbound.create({
+        data: {
+          nome,
+          telefone,
+          email: email || null,
+          dorPrincipal,
+          formularioOrigem: formName,
+          dadosRespondi: dados,
+          operadorId: OPERADOR_INBOUND_ID,
+          etapa: 'novo_lead',
+        },
+      });
+
+      // Buscar telefone do operador do banco
+      const operador = await prisma.vendedor.findUnique({
+        where: { id: OPERADOR_INBOUND_ID },
+        select: { telefoneWhatsapp: true, nomeExibicao: true },
+      });
+
+      if (operador?.telefoneWhatsapp) {
+        const { enviarMensagem } = require('../services/whatsappService');
+        const texto = `🎯 Novo lead do anúncio SDR\nNome: ${nome}\nTel: ${telefone}\nDor: ${dorPrincipal || 'Não informada'}\nEntre no CRM pra trabalhar!`;
+        setImmediate(async () => {
+          try { await enviarMensagem(operador.telefoneWhatsapp, texto); } catch (e) {
+            logger.error(`WhatsApp novo lead SDR Inbound falhou: ${e.message}`);
+          }
+        });
+      }
+
+      logger.info(`Lead SDR Inbound criado: #${leadInbound.id} ${nome} | Tel: ${telefone} | Operador: ${operador?.nomeExibicao || 'ID ' + OPERADOR_INBOUND_ID}`);
+
+      return res.status(200).json({
+        message: 'Lead SDR Inbound criado',
+        leadId: leadInbound.id,
+        nome: leadInbound.nome,
+        operadorId: OPERADOR_INBOUND_ID,
+      });
+    }
 
     // 1. Identificar canal
     const canal = identificarCanal(tituloFormulario);

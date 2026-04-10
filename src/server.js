@@ -43,6 +43,7 @@ const perfilRoutes = require('./routes/perfil.routes');
 const etapasRoutes = require('./routes/etapas.routes');
 const hublaRoutes = require('./routes/hubla.routes');
 const sdrRoutes = require('./routes/sdr.routes');
+const sdrInboundRoutes = require('./routes/sdrInbound.routes');
 // const { iniciarSlaChecker } = require('./jobs/slaChecker.job');
 const { iniciarWhatsappDispatcher } = require('./jobs/whatsappDispatcher.job');
 
@@ -69,6 +70,7 @@ app.use('/api/perfil', perfilRoutes);
 app.use('/api/etapas', etapasRoutes);
 app.use('/api/webhook/hubla', hublaRoutes);
 app.use('/api/sdr', sdrRoutes);
+app.use('/api/sdr-inbound', sdrInboundRoutes);
 
 // Servir uploads (prints, calls) como arquivos estaticos
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
