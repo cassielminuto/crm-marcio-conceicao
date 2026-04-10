@@ -220,10 +220,42 @@ async function mergearLeads(leadPrincipalId, leadDuplicadoId, resolvidoPor) {
   });
 }
 
+/**
+ * Busca leads existentes por telefone normalizado.
+ * Ignora leads em etapas fechado_perdido e nurturing (reengajamento legítimo).
+ * Retorna o lead mais recente com vendedor atribuído, ou null.
+ */
+async function buscarLeadPorTelefone(telefone) {
+  const telNorm = normalizarTelefone(telefone);
+  if (!telNorm) return null;
+
+  // Buscar leads com telefone que contenha os últimos 8 dígitos (candidatos)
+  const candidatos = await prisma.lead.findMany({
+    where: {
+      telefone: { contains: telNorm.slice(-8) },
+      etapaFunil: { notIn: ['fechado_perdido', 'nurturing'] },
+    },
+    include: {
+      vendedor: { select: { id: true, nomeExibicao: true, usuarioId: true, telefoneWhatsapp: true } },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  // Filtrar por match exato de telefone normalizado
+  const matches = candidatos.filter(c => normalizarTelefone(c.telefone) === telNorm);
+
+  if (matches.length === 0) return null;
+
+  // REGRA 2: pegar o mais recente que tem vendedor atribuído
+  const comVendedor = matches.find(m => m.vendedorId != null);
+  return comVendedor || matches[0];
+}
+
 module.exports = {
   verificarDuplicidade,
   registrarDuplicatas,
   buscarDuplicatas,
   mergearLeads,
   normalizarTelefone,
+  buscarLeadPorTelefone,
 };

@@ -1,7 +1,7 @@
 const prisma = require('../config/database');
 const { identificarCanal, calcularScore } = require('../services/scoreEngine');
 const { distribuir, incrementarLeadsAtivos } = require('../services/distribuidor');
-const { verificarDuplicidade, registrarDuplicatas } = require('../services/deduplicador');
+const { verificarDuplicidade, registrarDuplicatas, buscarLeadPorTelefone } = require('../services/deduplicador');
 const logger = require('../utils/logger');
 const { obterProximoVendedor } = require('../services/distribuicaoLeads');
 
@@ -106,7 +106,97 @@ async function receberLeadRespondi(req, res, next) {
       }
     }
 
-    // 4. Verificar duplicidade por telefone/email
+    // 4. Verificar duplicata por telefone (antes de criar lead)
+    const leadExistente = await buscarLeadPorTelefone(telefone);
+    if (leadExistente && leadExistente.vendedorId) {
+      // Lead já existe com vendedor atribuído — notificar vendedor, NÃO criar novo
+      await prisma.lead.update({
+        where: { id: leadExistente.id },
+        data: { dadosRespondi: dados },
+      });
+
+      if (leadExistente.vendedor?.telefoneWhatsapp) {
+        const { enviarMensagem } = require('../services/whatsappService');
+        const texto = `*Lead Retornou* 🔄\n\n*${nome}* preencheu o formulário novamente.\nTel: ${telefone}\nLead #${leadExistente.id} — já atribuído a você.\n\nEsse lead já está no seu funil. Pode ser um bom momento pra retomar o contato!`;
+        setImmediate(async () => {
+          try { await enviarMensagem(leadExistente.vendedor.telefoneWhatsapp, texto); } catch (e) {
+            logger.error(`WhatsApp falhou para vendedor ${leadExistente.vendedor.nomeExibicao}: ${e.message}`);
+          }
+        });
+      }
+
+      logger.info(`Duplicata detectada: lead #${leadExistente.id} telefone ${telefone} vendedor ${leadExistente.vendedor?.nomeExibicao || 'ID ' + leadExistente.vendedorId}`);
+
+      return res.status(200).json({
+        message: 'Lead já existe, vendedor notificado',
+        leadId: leadExistente.id,
+        vendedorId: leadExistente.vendedorId,
+        vendedorNome: leadExistente.vendedor?.nomeExibicao,
+      });
+    }
+
+    if (leadExistente && !leadExistente.vendedorId) {
+      // Lead existe sem vendedor — distribuir o existente em vez de criar novo
+      await prisma.lead.update({
+        where: { id: leadExistente.id },
+        data: { dadosRespondi: dados, pontuacao, classe, canal },
+      });
+
+      const vendedorIdDistribuido = await obterProximoVendedor();
+      const vendedorFinal = await prisma.vendedor.findUnique({ where: { id: vendedorIdDistribuido }, select: { id: true, nomeExibicao: true, papel: true, usuarioId: true, telefoneWhatsapp: true } });
+      const agora = new Date();
+
+      await prisma.lead.update({
+        where: { id: leadExistente.id },
+        data: {
+          vendedorId: vendedorFinal?.id || null,
+          dataAtribuicao: vendedorFinal ? agora : null,
+        },
+      });
+
+      if (vendedorFinal) {
+        await incrementarLeadsAtivos(vendedorFinal.id);
+      }
+
+      // Notificação + WhatsApp (mesmo fluxo do lead novo)
+      if (vendedorFinal) {
+        try {
+          const { criarNotificacao } = require('../services/notificacaoService');
+          const vendedorCompleto = await prisma.vendedor.findUnique({
+            where: { id: vendedorFinal.id },
+            select: { usuarioId: true, telefoneWhatsapp: true, nomeExibicao: true },
+          });
+          if (vendedorCompleto) {
+            await criarNotificacao({
+              usuarioId: vendedorCompleto.usuarioId,
+              tipo: 'novo_lead',
+              titulo: `Novo lead: ${nome}`,
+              mensagem: `Classe ${classe} | Score: ${pontuacao} | Canal: ${canal === 'bio' ? 'Bio' : 'Anuncio'}`,
+              dados: { leadId: leadExistente.id, classe, pontuacao, canal, nome, telefone },
+            });
+            if (vendedorCompleto.telefoneWhatsapp) {
+              const { enviarMensagem } = require('../services/whatsappService');
+              const texto = classe === 'A'
+                ? `*LEAD URGENTE — CLASSE A*\n\n*${nome}*\nScore: ${pontuacao} | Canal: ${canal === 'bio' ? 'Bio' : 'Anuncio'}\nTel: ${telefone}\n\nSLA: 5 minutos!\nAcesse o CRM agora.`
+                : `*Novo Lead — Classe ${classe}*\n\n*${nome}*\nScore: ${pontuacao} | Canal: ${canal === 'bio' ? 'Bio' : 'Anuncio'}\nTel: ${telefone}\n\nAcesse o CRM.`;
+              setImmediate(async () => {
+                try { await enviarMensagem(vendedorCompleto.telefoneWhatsapp, texto); } catch (e) {}
+              });
+            }
+          }
+        } catch (e) {}
+      }
+
+      logger.info(`Lead existente sem vendedor redistribuído: lead #${leadExistente.id} telefone ${telefone} → ${vendedorFinal?.nomeExibicao || 'sem vendedor'}`);
+
+      return res.status(200).json({
+        leadId: leadExistente.id, nome: leadExistente.nome, canal, pontuacao, classe,
+        vendedor: vendedorFinal ? { id: vendedorFinal.id, nome: vendedorFinal.nomeExibicao } : null,
+        redistribuido: true,
+      });
+    }
+
+    // 4b. Verificar duplicidade parcial (email) para registro posterior
     const { exato, parciais } = await verificarDuplicidade(telefone, email);
     if (exato) {
       return res.status(409).json({
