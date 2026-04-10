@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Save, Loader2 } from 'lucide-react';
+import { X, Save, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import api from '../services/api';
 
 const ETAPAS = [
@@ -131,6 +131,9 @@ export default function SdrInboundLeadModal({ lead, onClose, onSaved }) {
               />
             </div>
           </div>
+
+          {/* Respostas do Formulário */}
+          <RespostasFormulario dadosRespondi={lead.dadosRespondi} />
         </div>
 
         {/* Footer */}
@@ -163,4 +166,69 @@ function Field({ label, value }) {
       <p className="text-[13px] text-text-secondary mt-0.5 truncate">{value}</p>
     </div>
   );
+}
+
+function RespostasFormulario({ dadosRespondi }) {
+  const [aberto, setAberto] = useState(true);
+
+  if (!dadosRespondi) return null;
+
+  // Extrair respostas do formato Respondi
+  const rawAnswers = dadosRespondi?.respondent?.raw_answers;
+  const answers = dadosRespondi?.respondent?.answers;
+
+  // Montar lista de perguntas/respostas
+  let itens = [];
+
+  if (rawAnswers && Array.isArray(rawAnswers)) {
+    itens = rawAnswers
+      .filter(a => a.question?.question_title && a.answer != null)
+      .map(a => ({
+        pergunta: a.question.question_title,
+        resposta: formatarResposta(a.answer),
+      }));
+  } else if (answers && typeof answers === 'object') {
+    itens = Object.entries(answers).map(([pergunta, resposta]) => ({
+      pergunta,
+      resposta: formatarResposta(resposta),
+    }));
+  }
+
+  if (itens.length === 0) return null;
+
+  return (
+    <div className="border-t border-border-subtle pt-4">
+      <button
+        onClick={() => setAberto(a => !a)}
+        className="flex items-center gap-2 w-full text-left mb-3"
+      >
+        {aberto ? <ChevronDown size={14} className="text-text-muted" /> : <ChevronRight size={14} className="text-text-muted" />}
+        <span className="text-[10px] font-semibold text-text-faint uppercase tracking-wider">
+          Respostas do Formulário ({itens.length})
+        </span>
+      </button>
+
+      {aberto && (
+        <div className="space-y-2.5">
+          {itens.map((item, i) => (
+            <div key={i} className="bg-bg-elevated rounded-lg px-3 py-2 border border-border-subtle">
+              <p className="text-[10px] font-medium text-text-muted mb-0.5">{item.pergunta}</p>
+              <p className="text-[13px] text-text-primary whitespace-pre-wrap">{item.resposta || '—'}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function formatarResposta(valor) {
+  if (valor == null) return '';
+  if (Array.isArray(valor)) return valor.join(', ');
+  if (typeof valor === 'object') {
+    // Phone format: { country: '55', phone: '21999...' }
+    if (valor.phone) return (valor.country || '') + valor.phone;
+    return JSON.stringify(valor);
+  }
+  return String(valor);
 }
