@@ -132,6 +132,9 @@ export default function SdrInboundLeadModal({ lead, onClose, onSaved }) {
             </div>
           </div>
 
+          {/* Origem do Anúncio (UTMs) */}
+          <OrigemAnuncio dadosRespondi={lead.dadosRespondi} />
+
           {/* Respostas do Formulário */}
           <RespostasFormulario dadosRespondi={lead.dadosRespondi} />
         </div>
@@ -164,6 +167,71 @@ function Field({ label, value }) {
     <div>
       <label className="text-[10px] font-semibold text-text-faint uppercase tracking-wider">{label}</label>
       <p className="text-[13px] text-text-secondary mt-0.5 truncate">{value}</p>
+    </div>
+  );
+}
+
+const UTM_LABELS = {
+  utm_source: 'Source',
+  utm_medium: 'Medium',
+  utm_campaign: 'Campaign',
+  utm_content: 'Content',
+  utm_term: 'Term',
+};
+
+function extrairUtms(dadosRespondi) {
+  if (!dadosRespondi || typeof dadosRespondi !== 'object') return {};
+
+  // Buscar UTMs em vários locais possíveis do payload Respondi
+  const fontes = [
+    dadosRespondi.utm_params,
+    dadosRespondi.respondent?.utm_params,
+    dadosRespondi.respondent?.url_params,
+    dadosRespondi,
+    dadosRespondi.respondent,
+  ];
+
+  const utms = {};
+  for (const fonte of fontes) {
+    if (!fonte || typeof fonte !== 'object') continue;
+    for (const key of Object.keys(UTM_LABELS)) {
+      if (!utms[key] && fonte[key]) {
+        utms[key] = String(fonte[key]);
+      }
+    }
+  }
+  return utms;
+}
+
+function OrigemAnuncio({ dadosRespondi }) {
+  const [aberto, setAberto] = useState(true);
+  const utms = extrairUtms(dadosRespondi);
+  const entries = Object.entries(utms).filter(([, v]) => v);
+
+  if (entries.length === 0) return null;
+
+  return (
+    <div className="border-t border-border-subtle pt-4">
+      <button
+        onClick={() => setAberto(a => !a)}
+        className="flex items-center gap-2 w-full text-left mb-3"
+      >
+        {aberto ? <ChevronDown size={14} className="text-text-muted" /> : <ChevronRight size={14} className="text-text-muted" />}
+        <span className="text-[10px] font-semibold text-text-faint uppercase tracking-wider">
+          Origem do Anúncio
+        </span>
+      </button>
+
+      {aberto && (
+        <div className="grid grid-cols-2 gap-2">
+          {entries.map(([key, value]) => (
+            <div key={key} className="bg-bg-elevated rounded-lg px-3 py-2 border border-border-subtle">
+              <p className="text-[10px] font-medium text-text-muted mb-0.5">{UTM_LABELS[key]}</p>
+              <p className="text-[13px] text-text-primary truncate" title={value}>{value}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
