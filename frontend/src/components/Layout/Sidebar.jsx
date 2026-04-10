@@ -3,14 +3,14 @@ import { useAuth } from '../../context/AuthContext';
 import AvatarVendedor from '../AvatarVendedor';
 import {
   LayoutDashboard, Kanban, DollarSign, Users, CalendarCheck,
-  Trophy, Target, BarChart3, Settings, LogOut, Instagram,
+  Trophy, Target, BarChart3, Settings, LogOut, UserSearch,
 } from 'lucide-react';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/funil', label: 'Funil', icon: Kanban },
   { to: '/vendas', label: 'Vendas', icon: DollarSign },
-  { to: '/sdr', label: 'SDR', icon: Instagram },
+  { to: '/sdr', label: 'SDR', icon: UserSearch },
   { to: '/meus-leads', label: 'Meus Leads', icon: Users },
   { to: '/follow-ups', label: 'Follow-ups', icon: CalendarCheck },
   { to: '/ranking', label: 'Ranking', icon: Trophy },
