@@ -20,6 +20,7 @@ import LeadCard from './pages/LeadCard';
 import Perfil from './pages/Perfil';
 import Vendas from './pages/Vendas';
 import SdrPage from './pages/SdrPage';
+import Agenda from './pages/Agenda';
 
 export default function App() {
   return (
@@ -44,6 +45,7 @@ export default function App() {
             <Route path="follow-ups" element={<FollowUps />} />
             <Route path="ranking" element={<Ranking />} />
             <Route path="metas" element={<Metas />} />
+            <Route path="agenda" element={<Agenda />} />
             <Route path="relatorios" element={<Relatorios />} />
             <Route path="templates" element={<Templates />} />
             <Route path="leads/:id" element={<LeadCard />} />

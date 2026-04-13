@@ -1,9 +1,11 @@
+import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import AvatarVendedor from '../AvatarVendedor';
+import api from '../../services/api';
 import {
   LayoutDashboard, Kanban, DollarSign, Users, CalendarCheck,
-  Trophy, Target, BarChart3, Settings, LogOut, UserSearch,
+  Trophy, Target, BarChart3, Settings, LogOut, UserSearch, Calendar,
 } from 'lucide-react';
 
 const navItems = [
@@ -15,6 +17,7 @@ const navItems = [
   { to: '/follow-ups', label: 'Follow-ups', icon: CalendarCheck },
   { to: '/ranking', label: 'Ranking', icon: Trophy },
   { to: '/metas', label: 'Metas', icon: Target },
+  { to: '/agenda', label: 'Agenda', icon: Calendar },
   { to: '/relatorios', label: 'Relatorios', icon: BarChart3, adminOnly: true },
 ];
 
@@ -22,7 +25,7 @@ const adminItems = [
   { to: '/admin', label: 'Admin', icon: Settings },
 ];
 
-function SidebarIcon({ to, label, icon: Icon }) {
+function SidebarIcon({ to, label, icon: Icon, badge }) {
   return (
     <NavLink
       to={to}
@@ -43,6 +46,12 @@ function SidebarIcon({ to, label, icon: Icon }) {
           <span className="transition-transform duration-200 group-hover:scale-110 flex items-center justify-center">
             <Icon size={20} />
           </span>
+          {/* Badge */}
+          {badge > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-accent-violet text-[9px] font-bold text-white px-1 leading-none">
+              {badge > 9 ? '9+' : badge}
+            </span>
+          )}
           {/* Tooltip — slides in from left */}
           <span className="absolute left-full ml-3 px-2.5 py-1 rounded-md bg-bg-elevated border border-border-hover text-[11px] font-medium text-text-primary whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 group-hover:animate-slide-in-left transition-opacity z-50 shadow-lg">
             {label}
@@ -56,6 +65,29 @@ function SidebarIcon({ to, label, icon: Icon }) {
 export default function Sidebar() {
   const { usuario, logout } = useAuth();
   const isAdmin = usuario?.perfil === 'admin' || usuario?.perfil === 'gestor';
+  const [reunioesHoje, setReunioesHoje] = useState(0);
+
+  useEffect(() => {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const amanha = new Date(hoje);
+    amanha.setDate(amanha.getDate() + 1);
+
+    const params = new URLSearchParams({
+      data_inicio: hoje.toISOString(),
+      data_fim: amanha.toISOString(),
+    });
+    // Closer comum: só seus eventos (backend filtra por vendedor_id)
+    if (usuario?.perfil === 'vendedor' && usuario?.vendedorId) {
+      params.set('vendedor_id', usuario.vendedorId);
+    }
+
+    api.get(`/agenda?${params.toString()}`).then(res => {
+      const eventos = res.data?.eventos || [];
+      const count = eventos.filter(ev => ev.tipo.startsWith('reuniao_')).length;
+      setReunioesHoje(count);
+    }).catch(() => {});
+  }, [usuario]);
 
   return (
     <aside className="w-16 shrink-0 bg-bg-secondary flex flex-col items-center min-h-screen border-r border-border-default py-4 relative z-[2]">
@@ -71,7 +103,7 @@ export default function Sidebar() {
       {/* Nav icons */}
       <nav className="flex-1 flex flex-col items-center gap-1">
         {navItems.filter(item => !item.adminOnly || isAdmin).map(item => (
-          <SidebarIcon key={item.to} {...item} />
+          <SidebarIcon key={item.to} {...item} badge={item.to === '/agenda' ? reunioesHoje : undefined} />
         ))}
         {isAdmin && (
           <>
