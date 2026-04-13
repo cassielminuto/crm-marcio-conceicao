@@ -49,6 +49,7 @@ const statusSchema = z.object({
 });
 
 // --- Routes ---
+router.get('/disponibilidade', autenticar, agendaController.disponibilidade);
 router.get('/', autenticar, agendaController.listar);
 router.post('/', autenticar, validar(criarEventoSchema), agendaController.criar);
 router.patch('/:id', autenticar, validar(editarEventoSchema), agendaController.editar);

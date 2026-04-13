@@ -341,4 +341,100 @@ async function atualizarStatus(req, res, next) {
   }
 }
 
-module.exports = { listar, criar, editar, excluir, atualizarStatus };
+async function disponibilidade(req, res, next) {
+  try {
+    const { vendedor_id, data_inicio, data_fim } = req.query;
+
+    if (!vendedor_id) return res.status(400).json({ error: 'vendedor_id é obrigatório' });
+
+    const vendedorId = Number(vendedor_id);
+    const vendedor = await prisma.vendedor.findUnique({
+      where: { id: vendedorId },
+      select: { id: true, nomeExibicao: true },
+    });
+    if (!vendedor) return res.status(404).json({ error: 'Vendedor não encontrado' });
+
+    // Range: próximos 7 dias a partir de data_inicio ou hoje
+    const inicioRange = data_inicio ? new Date(data_inicio) : new Date();
+    inicioRange.setHours(0, 0, 0, 0);
+
+    const fimRange = data_fim ? new Date(data_fim) : new Date(inicioRange);
+    if (!data_fim) fimRange.setDate(fimRange.getDate() + 7);
+    fimRange.setHours(23, 59, 59, 999);
+
+    // Buscar todos os eventos do vendedor no range
+    const eventos = await prisma.eventoAgenda.findMany({
+      where: {
+        vendedorId,
+        deletedAt: null,
+        inicio: { lt: fimRange },
+        fim: { gt: inicioRange },
+      },
+      select: {
+        id: true,
+        tipo: true,
+        titulo: true,
+        inicio: true,
+        fim: true,
+      },
+      orderBy: { inicio: 'asc' },
+    });
+
+    // Gerar grid de dias + slots
+    const diasDisponibilidade = [];
+    const cursor = new Date(inicioRange);
+
+    while (cursor < fimRange) {
+      const dia = cursor.toISOString().slice(0, 10); // YYYY-MM-DD
+      const slots = [];
+
+      for (let hora = 8; hora <= 21; hora++) {
+        const slotInicio = new Date(cursor);
+        slotInicio.setHours(hora, 0, 0, 0);
+        const slotFim = new Date(cursor);
+        slotFim.setHours(hora + 1, 0, 0, 0);
+
+        // Verificar sobreposição com eventos
+        let status = 'livre';
+        let eventoInfo = null;
+
+        for (const ev of eventos) {
+          const evInicio = new Date(ev.inicio);
+          const evFim = new Date(ev.fim);
+
+          // Sobreposição: slot começa antes do fim do evento E slot termina depois do início
+          if (slotInicio < evFim && slotFim > evInicio) {
+            if (ev.tipo === 'bloco_off') {
+              status = 'off';
+              eventoInfo = { titulo: ev.titulo, id: ev.id };
+            } else if (ev.tipo === 'bloco_on') {
+              // Explicitamente disponível — mantém 'livre'
+              status = 'livre';
+            } else {
+              // reuniao_* ou evento_personalizado
+              status = 'ocupado';
+              eventoInfo = { titulo: ev.titulo, id: ev.id };
+            }
+            break; // Primeiro match ganha
+          }
+        }
+
+        const horaStr = `${String(hora).padStart(2, '0')}:00`;
+        slots.push({ hora: horaStr, status, ...(eventoInfo ? { evento: eventoInfo } : {}) });
+      }
+
+      diasDisponibilidade.push({ data: dia, slots });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    res.json({
+      vendedorId,
+      vendedorNome: vendedor.nomeExibicao,
+      diasDisponibilidade,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { listar, criar, editar, excluir, atualizarStatus, disponibilidade };

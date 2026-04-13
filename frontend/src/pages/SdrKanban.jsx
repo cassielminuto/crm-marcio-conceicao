@@ -4,6 +4,7 @@ import { DragDropContext, Droppable } from '@hello-pangea/dnd';
 import { Plus, Upload, X, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import api from '../services/api';
 import SdrLeadCard from '../components/SdrLeadCard';
+import SeletorHorariosCloser from '../components/SeletorHorariosCloser';
 
 const COLUNAS = [
   { slug: 'f1_abertura', label: 'F1 - Abertura', cor: '#74b9ff' },
@@ -885,6 +886,15 @@ function HandoffModalInline({ lead, onClose, onHandoffDone }) {
               </select>
             </div>
           </div>
+
+          {/* Seletor visual de horários do closer */}
+          {form.closerDestinoId && (
+            <SeletorHorariosCloser
+              vendedorId={Number(form.closerDestinoId)}
+              valorAtual={form.dataReuniao}
+              onSelect={(valor) => setForm(f => ({ ...f, dataReuniao: valor }))}
+            />
+          )}
 
           <div>
             <label className="block text-[11px] font-medium text-text-muted mb-1.5">Resumo da Situacao <span className="text-accent-danger">*</span></label>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Loader2, Send } from 'lucide-react';
 import api from '../services/api';
+import SeletorHorariosCloser from './SeletorHorariosCloser';
 
 export default function SdrInboundHandoffModal({ lead, onClose, onHandoffDone }) {
   const [closers, setClosers] = useState([]);
@@ -96,6 +97,15 @@ export default function SdrInboundHandoffModal({ lead, onClose, onHandoffDone })
               ))}
             </select>
           </div>
+
+          {/* Seletor visual de horários do closer */}
+          {form.closerDestinoId && (
+            <SeletorHorariosCloser
+              vendedorId={Number(form.closerDestinoId)}
+              valorAtual={form.dataReuniao}
+              onSelect={(valor) => handleChange('dataReuniao', valor)}
+            />
+          )}
 
           {/* Observações */}
           <div>
