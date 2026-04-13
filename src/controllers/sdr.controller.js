@@ -183,13 +183,78 @@ async function handoff(req, res, next) {
         etapa: 'reuniao_marcada',
       },
       include: {
-        closerDestino: { select: { id: true, nomeExibicao: true } },
+        closerDestino: { select: { id: true, nomeExibicao: true, telefoneWhatsapp: true, usuarioId: true } },
         prints: true,
       },
     });
 
     // Executar handoff — cria lead no CRM do closer
     const novoLead = await executarHandoff(leadAtualizado);
+
+    // Criar EventoAgenda pra reunião
+    const eventoInicio = new Date(dataReuniao);
+    const eventoFim = new Date(eventoInicio.getTime() + 60 * 60 * 1000); // +1h
+
+    const blocoOff = await prisma.eventoAgenda.findFirst({
+      where: {
+        vendedorId: closerDestinoId,
+        tipo: 'bloco_off',
+        deletedAt: null,
+        inicio: { lt: eventoFim },
+        fim: { gt: eventoInicio },
+      },
+    });
+
+    const evento = await prisma.eventoAgenda.create({
+      data: {
+        tipo: 'reuniao_sdr_instagram',
+        titulo: `Reunião com ${lead.nome}`,
+        inicio: eventoInicio,
+        fim: eventoFim,
+        vendedorId: closerDestinoId,
+        criadoPorId: req.usuario.id,
+        leadSdrId: Number(id),
+        leadId: novoLead.id,
+        marcadoEmHorarioOff: !!blocoOff,
+      },
+    });
+
+    // WhatsApp pro closer
+    if (leadAtualizado.closerDestino?.telefoneWhatsapp) {
+      const { enviarMensagem } = require('../services/whatsappService');
+      const dataFormatada = eventoInicio.toLocaleDateString('pt-BR', {
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+      });
+      let texto = `🎯 Nova reunião agendada via Instagram (SDR)\nLead: ${lead.nome} (@${lead.instagram})\nTel: ${whatsapp}\nTom emocional: ${tomEmocional}\nO que funcionou: ${oqueFuncionou}`;
+      if (oqueEvitar) texto += `\nO que evitar: ${oqueEvitar}`;
+      if (fraseChaveLead) texto += `\nFrase-chave: "${fraseChaveLead}"`;
+      texto += `\nReunião: ${dataFormatada}`;
+      if (blocoOff) texto += `\n⚠️ ATENÇÃO: marcada em horário OFF`;
+
+      setImmediate(async () => {
+        try { await enviarMensagem(leadAtualizado.closerDestino.telefoneWhatsapp, texto); }
+        catch (e) { logger.error(`WhatsApp handoff Instagram falhou para closer ${leadAtualizado.closerDestino.nomeExibicao}: ${e.message}`); }
+      });
+    }
+
+    // Notificação in-app pro closer
+    if (leadAtualizado.closerDestino?.usuarioId) {
+      const { criarNotificacao } = require('../services/notificacaoService');
+      const dataFormatadaNotif = eventoInicio.toLocaleDateString('pt-BR', {
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+      });
+      setImmediate(async () => {
+        try {
+          await criarNotificacao({
+            usuarioId: leadAtualizado.closerDestino.usuarioId,
+            tipo: 'reuniao_agendada',
+            titulo: `Reunião agendada: ${lead.nome}`,
+            mensagem: `Via SDR Instagram | ${dataFormatadaNotif}${blocoOff ? ' ⚠️ Horário OFF' : ''}`,
+            dados: { leadId: novoLead.id, leadSdrId: Number(id), eventoId: evento.id, dataReuniao },
+          });
+        } catch (e) { logger.warn(`Notificação handoff Instagram falhou: ${e.message}`); }
+      });
+    }
 
     // Emitir evento WebSocket
     const io = req.app.get('io');
@@ -200,6 +265,13 @@ async function handoff(req, res, next) {
         closerDestinoId,
         instagram: lead.instagram,
         nome: lead.nome,
+      });
+      io.emit('reuniao_agendada', {
+        eventoId: evento.id,
+        closerDestinoId,
+        leadNome: lead.nome,
+        dataReuniao,
+        marcadoEmHorarioOff: !!blocoOff,
       });
     }
 

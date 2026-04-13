@@ -176,15 +176,63 @@ async function handoff(req, res, next) {
     // Executar handoff — cria Lead no CRM do closer
     const novoLead = await executarHandoff(leadAtualizado);
 
+    // Criar EventoAgenda pra reunião
+    const eventoInicio = new Date(dataReuniao);
+    const eventoFim = new Date(eventoInicio.getTime() + 60 * 60 * 1000); // +1h
+
+    const blocoOff = await prisma.eventoAgenda.findFirst({
+      where: {
+        vendedorId: closerDestinoId,
+        tipo: 'bloco_off',
+        deletedAt: null,
+        inicio: { lt: eventoFim },
+        fim: { gt: eventoInicio },
+      },
+    });
+
+    const evento = await prisma.eventoAgenda.create({
+      data: {
+        tipo: 'reuniao_sdr_inbound',
+        titulo: `Reunião com ${lead.nome}`,
+        inicio: eventoInicio,
+        fim: eventoFim,
+        vendedorId: closerDestinoId,
+        criadoPorId: req.usuario.id,
+        leadSdrInboundId: Number(id),
+        leadId: novoLead.id,
+        marcadoEmHorarioOff: !!blocoOff,
+      },
+    });
+
     // WhatsApp pro closer
     if (leadAtualizado.closerDestino?.telefoneWhatsapp) {
       const { enviarMensagem } = require('../services/whatsappService');
-      const dataFormatada = new Date(dataReuniao).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-      const texto = `🎯 Nova reunião agendada pelo Thomaz (SDR)\nLead: ${lead.nome}\nTel: ${lead.telefone}\nDor: ${lead.dorPrincipal || 'Não informada'}\nReunião: ${dataFormatada}\nObservações do SDR: ${leadAtualizado.observacoes || 'Nenhuma'}`;
+      const dataFormatada = eventoInicio.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      let texto = `🎯 Nova reunião agendada pelo Thomaz (SDR)\nLead: ${lead.nome}\nTel: ${lead.telefone}\nDor: ${lead.dorPrincipal || 'Não informada'}\nReunião: ${dataFormatada}\nObservações do SDR: ${leadAtualizado.observacoes || 'Nenhuma'}`;
+      if (blocoOff) texto += `\n⚠️ ATENÇÃO: marcada em horário OFF`;
       setImmediate(async () => {
         try { await enviarMensagem(leadAtualizado.closerDestino.telefoneWhatsapp, texto); } catch (e) {
           logger.error(`WhatsApp handoff falhou para closer ${leadAtualizado.closerDestino.nomeExibicao}: ${e.message}`);
         }
+      });
+    }
+
+    // Notificação in-app pro closer
+    if (leadAtualizado.closerDestino?.usuarioId) {
+      const { criarNotificacao } = require('../services/notificacaoService');
+      const dataFormatadaNotif = eventoInicio.toLocaleDateString('pt-BR', {
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+      });
+      setImmediate(async () => {
+        try {
+          await criarNotificacao({
+            usuarioId: leadAtualizado.closerDestino.usuarioId,
+            tipo: 'reuniao_agendada',
+            titulo: `Reunião agendada: ${lead.nome}`,
+            mensagem: `Via SDR Inbound | ${dataFormatadaNotif}${blocoOff ? ' ⚠️ Horário OFF' : ''}`,
+            dados: { leadId: novoLead.id, leadSdrInboundId: Number(id), eventoId: evento.id, dataReuniao },
+          });
+        } catch (e) { logger.warn(`Notificação handoff Inbound falhou: ${e.message}`); }
       });
     }
 
@@ -196,6 +244,13 @@ async function handoff(req, res, next) {
         leadCloserId: novoLead.id,
         closerDestinoId,
         nome: lead.nome,
+      });
+      io.emit('reuniao_agendada', {
+        eventoId: evento.id,
+        closerDestinoId,
+        leadNome: lead.nome,
+        dataReuniao,
+        marcadoEmHorarioOff: !!blocoOff,
       });
     }
 

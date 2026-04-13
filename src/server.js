@@ -44,8 +44,10 @@ const etapasRoutes = require('./routes/etapas.routes');
 const hublaRoutes = require('./routes/hubla.routes');
 const sdrRoutes = require('./routes/sdr.routes');
 const sdrInboundRoutes = require('./routes/sdrInbound.routes');
+const agendaRoutes = require('./routes/agenda.routes');
 // const { iniciarSlaChecker } = require('./jobs/slaChecker.job');
 const { iniciarWhatsappDispatcher } = require('./jobs/whatsappDispatcher.job');
+const { iniciarLembreteAgenda } = require('./jobs/lembreteAgenda.job');
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -71,6 +73,7 @@ app.use('/api/etapas', etapasRoutes);
 app.use('/api/webhook/hubla', hublaRoutes);
 app.use('/api/sdr', sdrRoutes);
 app.use('/api/sdr-inbound', sdrInboundRoutes);
+app.use('/api/agenda', agendaRoutes);
 
 // Servir uploads (prints, calls) como arquivos estaticos
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
@@ -124,6 +127,7 @@ server.listen(env.port, async () => {
   try {
     // await iniciarSlaChecker(io);
     await iniciarWhatsappDispatcher();
+    await iniciarLembreteAgenda();
   } catch (err) {
     logger.error(`Erro ao iniciar jobs: ${err.message}`);
   }

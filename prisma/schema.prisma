@@ -202,6 +202,7 @@ model Vendedor {
   sdrLeadsComoCloser    LeadSDR[] @relation("SdrCloserDestino")
   sdrInboundComoOperador LeadSDRInbound[] @relation("OperadorInbound")
   sdrInboundComoCloser   LeadSDRInbound[] @relation("CloserDestinoInbound")
+  eventosAgenda          EventoAgenda[]   @relation("EventosAgenda")
 
   @@map("vendedores")
 }
@@ -558,6 +559,57 @@ model LeadSDRInbound {
   @@index([operadorId, etapa])
   @@index([telefone])
   @@map("leads_sdr_inbound")
+}
+
+/// Tabela 15: eventos_agenda
+model EventoAgenda {
+  id                  Int       @id @default(autoincrement())
+
+  // Tipo: reuniao_sdr_instagram, reuniao_sdr_inbound, reuniao_manual, bloco_on, bloco_off, evento_personalizado
+  tipo                String    @db.VarChar(30)
+  titulo              String    @db.VarChar(255)
+  descricao           String?   @db.Text
+
+  // Quando
+  inicio              DateTime
+  fim                 DateTime
+
+  // Dono (closer)
+  vendedorId          Int       @map("vendedor_id")
+  vendedor            Vendedor  @relation("EventosAgenda", fields: [vendedorId], references: [id])
+
+  // Quem criou (pode ser admin, sdr, ou o próprio closer)
+  criadoPorId         Int?      @map("criado_por_id")
+
+  // Vínculos opcionais com leads
+  leadId              Int?      @map("lead_id")
+  leadSdrId           Int?      @map("lead_sdr_id")
+  leadSdrInboundId    Int?      @map("lead_sdr_inbound_id")
+
+  // Contato avulso (reunião sem lead vinculado)
+  contatoNome         String?   @map("contato_nome") @db.VarChar(255)
+  contatoTelefone     String?   @map("contato_telefone") @db.VarChar(20)
+
+  // Cor (eventos personalizados)
+  cor                 String?   @db.VarChar(20)
+
+  // Status pós-reunião (só pra tipos reuniao_*)
+  statusReuniao       String?   @map("status_reuniao") @db.VarChar(20)
+
+  // Lembretes
+  lembrete60Enviado   Boolean   @default(false) @map("lembrete_60_enviado")
+  lembrete30Enviado   Boolean   @default(false) @map("lembrete_30_enviado")
+
+  // Override de horário OFF
+  marcadoEmHorarioOff Boolean   @default(false) @map("marcado_em_horario_off")
+
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
+
+  @@index([vendedorId, inicio])
+  @@index([inicio])
+  @@map("eventos_agenda")
 }
 
 /// Tabela 14: notificacoes
