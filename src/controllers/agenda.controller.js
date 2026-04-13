@@ -179,9 +179,61 @@ async function criar(req, res, next) {
       }
     }
 
+    // WhatsApp + notificação pra eventos manuais/personalizados (não auto-criação)
+    if ((tipo === 'reuniao_manual' || tipo === 'evento_personalizado') && !marcadoEmHorarioOff) {
+      const vendedorEvt = await prisma.vendedor.findUnique({
+        where: { id: vendedorId },
+        select: { usuarioId: true, telefoneWhatsapp: true, nomeExibicao: true },
+      });
+
+      const isAutoCriacao = vendedorEvt?.usuarioId === req.usuario.id;
+
+      if (!isAutoCriacao) {
+        const dataFormatadaEvt = eventoInicio.toLocaleDateString('pt-BR', {
+          day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+        });
+
+        // WhatsApp
+        if (vendedorEvt?.telefoneWhatsapp) {
+          const { enviarMensagem } = require('../services/whatsappService');
+          let texto;
+          if (tipo === 'reuniao_manual') {
+            texto = `📅 Nova reunião agendada\nTítulo: ${titulo}\nQuando: ${dataFormatadaEvt}`;
+            if (contatoNome) texto += `\nContato: ${contatoNome}${contatoTelefone ? ` (${contatoTelefone})` : ''}`;
+            if (descricao) texto += `\nDetalhes: ${descricao}`;
+            if (marcadoEmHorarioOff) texto += `\n⚠️ Marcada em horário OFF`;
+          } else {
+            texto = `📌 Novo evento na sua agenda\n${titulo}\nQuando: ${dataFormatadaEvt}`;
+            if (descricao) texto += `\nDetalhes: ${descricao}`;
+          }
+          setImmediate(async () => {
+            try { await enviarMensagem(vendedorEvt.telefoneWhatsapp, texto); }
+            catch (e) { logger.error(`WhatsApp evento manual falhou: ${e.message}`); }
+          });
+        } else {
+          logger.warn(`Vendedor #${vendedorId} sem telefoneWhatsapp — WhatsApp de evento manual não enviado`);
+        }
+
+        // Notificação in-app
+        if (vendedorEvt?.usuarioId) {
+          setImmediate(async () => {
+            try {
+              await criarNotificacao({
+                usuarioId: vendedorEvt.usuarioId,
+                tipo: 'evento_agenda',
+                titulo: `Novo evento: ${titulo}`,
+                mensagem: dataFormatadaEvt,
+                dados: { eventoId: evento.id, tipo, inicio: eventoInicio },
+              });
+            } catch (e) { logger.warn(`Notificação evento manual falhou: ${e.message}`); }
+          });
+        }
+      }
+    }
+
     // Socket
     const io = req.app.get('io');
-    if (io && tipo.startsWith('reuniao_')) {
+    if (io && (tipo.startsWith('reuniao_') || tipo === 'evento_personalizado')) {
       io.emit('reuniao_agendada', {
         eventoId: evento.id,
         vendedorId,

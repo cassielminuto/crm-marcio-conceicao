@@ -5,7 +5,7 @@ const { enviarMensagem } = require('../services/whatsappService');
 const logger = require('../utils/logger');
 
 const QUEUE_NAME = 'lembrete-agenda';
-const TIPOS_REUNIAO = ['reuniao_sdr_instagram', 'reuniao_sdr_inbound', 'reuniao_manual'];
+const TIPOS_REUNIAO = ['reuniao_sdr_instagram', 'reuniao_sdr_inbound', 'reuniao_manual', 'evento_personalizado'];
 
 const lembreteQueue = new Queue(QUEUE_NAME, { connection: redis });
 
