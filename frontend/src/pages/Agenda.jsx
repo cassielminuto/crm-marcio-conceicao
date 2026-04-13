@@ -3,9 +3,11 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import { Calendar, ChevronDown } from 'lucide-react';
+import { Calendar, ChevronDown, Plus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import AgendaFormModal from '../components/AgendaFormModal';
+import AgendaEventoModal from '../components/AgendaEventoModal';
 
 const CORES_TIPO = {
   reuniao_sdr_instagram: '#3b82f6',
@@ -47,7 +49,14 @@ export default function Agenda() {
   const [carregando, setCarregando] = useState(true);
   const [reunioesHoje, setReunioesHoje] = useState(0);
 
+  // Modais
+  const [formModalOpen, setFormModalOpen] = useState(false);
+  const [eventoModalOpen, setEventoModalOpen] = useState(null); // evento selecionado
+  const [eventoEditar, setEventoEditar] = useState(null); // pra modo edição
+  const [defaultSlot, setDefaultSlot] = useState({ start: '', end: '' });
+
   const isAdminGestorSdr = usuario?.perfil === 'admin' || usuario?.perfil === 'gestor' || usuario?.perfil === 'sdr';
+  const isAdminGestor = usuario?.perfil === 'admin' || usuario?.perfil === 'gestor';
 
   // Carregar vendedores pra filtro
   useEffect(() => {
@@ -111,6 +120,9 @@ export default function Agenda() {
       textColor = '#ffffff';
     }
 
+    // Drag: dono ou admin/gestor
+    const podeMover = (usuario?.vendedorId === ev.vendedorId) || isAdminGestor;
+
     return {
       id: String(ev.id),
       title: ev.titulo,
@@ -120,6 +132,7 @@ export default function Agenda() {
       borderColor,
       textColor,
       display: 'auto',
+      editable: podeMover,
       classNames: [
         isPassado ? 'fc-evento-passado' : '',
         isOff ? 'fc-evento-off-override' : '',
@@ -132,18 +145,63 @@ export default function Agenda() {
 
   function handleEventClick(info) {
     const ev = info.event.extendedProps;
-    const tipo = LABELS_TIPO[ev.tipo] || ev.tipo;
-    const status = ev.statusReuniao ? ` | Status: ${ev.statusReuniao}` : '';
-    const vendedor = ev.vendedor?.nomeExibicao || '';
-    const offLabel = ev.marcadoEmHorarioOff ? '\n⚠️ Marcado em horário OFF' : '';
+    setEventoModalOpen(ev);
+  }
 
-    alert(
-      `${tipo}: ${ev.titulo}\n` +
-      `Closer: ${vendedor}\n` +
-      `Início: ${new Date(ev.inicio).toLocaleString('pt-BR')}\n` +
-      `Fim: ${new Date(ev.fim).toLocaleString('pt-BR')}` +
-      `${status}${offLabel}`
-    );
+  function handleSelect(info) {
+    const pad = n => String(n).padStart(2, '0');
+    const fmt = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    setDefaultSlot({ start: fmt(info.start), end: fmt(info.end) });
+    setEventoEditar(null);
+    setFormModalOpen(true);
+  }
+
+  async function handleEventDrop(info) {
+    const ev = info.event.extendedProps;
+    try {
+      await api.patch(`/agenda/${ev.id}`, {
+        inicio: info.event.start.toISOString(),
+        fim: info.event.end.toISOString(),
+      });
+      recarregarAtual();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Erro ao mover evento');
+      info.revert();
+    }
+  }
+
+  async function handleEventResize(info) {
+    const ev = info.event.extendedProps;
+    try {
+      await api.patch(`/agenda/${ev.id}`, {
+        inicio: info.event.start.toISOString(),
+        fim: info.event.end.toISOString(),
+      });
+      recarregarAtual();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Erro ao redimensionar evento');
+      info.revert();
+    }
+  }
+
+  function recarregarAtual() {
+    const calApi = calendarRef.current?.getApi();
+    if (calApi) {
+      const view = calApi.view;
+      carregarEventos({ startStr: view.activeStart.toISOString(), endStr: view.activeEnd.toISOString() });
+    }
+  }
+
+  function handleNovoEvento() {
+    setDefaultSlot({ start: '', end: '' });
+    setEventoEditar(null);
+    setFormModalOpen(true);
+  }
+
+  function handleEditarEvento(ev) {
+    setEventoEditar(ev);
+    setDefaultSlot({ start: '', end: '' });
+    setFormModalOpen(true);
   }
 
   return (
@@ -164,22 +222,33 @@ export default function Agenda() {
           </div>
         </div>
 
-        {/* Filtro por closer */}
-        {isAdminGestorSdr && (
-          <div className="relative">
-            <select
-              value={filtroVendedor}
-              onChange={(e) => setFiltroVendedor(e.target.value)}
-              className="appearance-none bg-bg-card border border-border-default rounded-lg px-4 py-2 pr-8 text-sm text-text-primary focus:outline-none focus:border-accent-violet transition-colors cursor-pointer"
-            >
-              <option value="todos">Todos os closers</option>
-              {vendedores.map(v => (
-                <option key={v.id} value={v.id}>{v.nomeExibicao || `Vendedor #${v.id}`}</option>
-              ))}
-            </select>
-            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {/* Filtro por closer */}
+          {isAdminGestorSdr && (
+            <div className="relative">
+              <select
+                value={filtroVendedor}
+                onChange={(e) => setFiltroVendedor(e.target.value)}
+                className="appearance-none bg-bg-card border border-border-default rounded-lg px-4 py-2 pr-8 text-sm text-text-primary focus:outline-none focus:border-accent-violet transition-colors cursor-pointer"
+              >
+                <option value="todos">Todos os closers</option>
+                {vendedores.map(v => (
+                  <option key={v.id} value={v.id}>{v.nomeExibicao || `Vendedor #${v.id}`}</option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+            </div>
+          )}
+
+          {/* Botão novo evento */}
+          <button
+            onClick={handleNovoEvento}
+            className="w-9 h-9 rounded-lg bg-accent-violet hover:bg-accent-violet-light text-white flex items-center justify-center transition-colors shadow-lg shadow-accent-violet/20"
+            title="Novo evento"
+          >
+            <Plus size={18} />
+          </button>
+        </div>
       </div>
 
       {/* Legenda */}
@@ -223,8 +292,12 @@ export default function Agenda() {
           events={eventosFC}
           datesSet={(info) => carregarEventos({ startStr: info.startStr, endStr: info.endStr })}
           eventClick={handleEventClick}
-          editable={false}
-          selectable={false}
+          editable
+          eventDrop={handleEventDrop}
+          eventResize={handleEventResize}
+          selectable
+          select={handleSelect}
+          selectMirror
         />
       </div>
 
@@ -403,6 +476,28 @@ export default function Agenda() {
           border-radius: 9999px;
         }
       `}</style>
+
+      {/* Modal: Criar / Editar evento */}
+      <AgendaFormModal
+        isOpen={formModalOpen}
+        onClose={() => { setFormModalOpen(false); setEventoEditar(null); }}
+        onSaved={recarregarAtual}
+        evento={eventoEditar}
+        vendedores={vendedores}
+        defaultStart={defaultSlot.start}
+        defaultEnd={defaultSlot.end}
+      />
+
+      {/* Modal: Detalhes do evento */}
+      {eventoModalOpen && (
+        <AgendaEventoModal
+          evento={eventoModalOpen}
+          onClose={() => setEventoModalOpen(null)}
+          onEditar={handleEditarEvento}
+          onDeleted={recarregarAtual}
+          onStatusUpdated={recarregarAtual}
+        />
+      )}
     </div>
   );
 }
