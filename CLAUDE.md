@@ -8,8 +8,8 @@ LEIA COMPLETO antes de qualquer tarefa.
 ## CONTEXTO DO PROJETO
 
 HLPIPE é um CRM em produção usado por uma equipe de vendas real (Lucas, 
-Letícia, Gabriel, Taiana, Cassiel) que atende o Programa Compatíveis 
-do Márcio Conceição. Bugs em produção afetam pessoas trabalhando agora.
+Gabriel, Taiana, Emília, Thomaz, Cassiel) que atende o Programa 
+Compatíveis do Márcio Conceição. Bugs em produção afetam pessoas trabalhando agora.
 
 Stack: Node.js/Express, Prisma ORM, PostgreSQL, Redis, React + Tailwind v4 
 + Vite, OpenAI, Evolution API. Hosted no Easypanel.
@@ -102,6 +102,41 @@ Reporte exatamente qual etapa falhou e por quê.
 
 ---
 
+## CHECKLIST ESPECÍFICO DO MÓDULO SDR INBOUND
+
+Sempre que mexer em qualquer arquivo dentro de:
+- src/services/sdrInboundService.js
+- src/controllers/sdrInbound.controller.js
+- src/routes/sdrInbound.routes.js
+- frontend/src/pages/SdrInboundKanban.jsx
+- frontend/src/pages/SdrPage.jsx (tabs que unificam Instagram + Inbound)
+- prisma/schema.prisma (modelo LeadSDRInbound)
+- src/controllers/webhook.controller.js (rota SDR Inbound do Respondi)
+
+Execute o fluxo end-to-end completo:
+
+1. Simular webhook Respondi com form SDR Inbound → lead aparece no kanban Inbound
+2. Verificar que dadosRespondi contém as respostas do formulário
+3. Verificar que UTMs aparecem no modal (respondent.respondent_utms)
+4. Mover lead entre etapas do kanban Inbound
+5. Preencher observações e próximo passo
+6. Fazer handoff para closer — verificar que lead aparece no funil dos closers
+7. Verificar que leads manuais (sem webhook) funcionam com dadosRespondi=null
+8. Verificar que admin/gestor vê TODOS os leads (sem filtro de operador)
+9. Verificar que operador normal vê SÓ seus leads
+10. Testar tab switching entre Instagram e Inbound no SdrPage
+
+Atenção especial:
+- Webhook Respondi tem 2 caminhos: SDR Inbound vs Lead normal.
+  Comparação de form_name é CASE-SENSITIVE. Testar com nome exato.
+- dadosRespondi é null em leads criados manualmente — isso é ESPERADO.
+- Telefones de deduplicação: verificar que duplicata por telefone é detectada.
+
+Se QUALQUER etapa falhar, a feature NÃO está pronta.
+Reporte exatamente qual etapa falhou e por quê.
+
+---
+
 ## TESTE VISUAL OBRIGATÓRIO PARA MUDANÇAS DE UI
 
 Bugs de CSS (especialmente flexbox, overflow, z-index, modais) NÃO 
@@ -154,6 +189,9 @@ Para modais especificamente, garanta que:
 - Só copia `src/`, `prisma/`, `uploads/`
 - Scripts utilitários DEVEM ficar em `src/`
 - Rodar como `cd /app && node src/script.js` no Easypanel Console
+- `prisma migrate deploy` roda automaticamente no start do container
+- NÃO remover essa linha — sem ela, deploy com migration nova quebra o app
+- Lição aprendida: container subia com schema antigo e queries falhavam
 
 ---
 
@@ -242,39 +280,143 @@ NUNCA declarar pronto sem o checklist.
 
 ---
 
-## TODO URGENTE — DESCOBERTO EM 08/abr/2026
+## TODO — PENDÊNCIAS CONHECIDAS
 
-### 1. ENUM PapelVendedor SEM `sdr` (PRÓXIMO PASSO)
-- Adicionar valor `sdr` ao enum PapelVendedor via migration
-- Atualizar Taiana Godinho (Vendedor #10) de `trainee` → `sdr`
-- Pré-requisito pro filtro do ranking funcionar
+> ~~#1 ENUM PapelVendedor sem `sdr`~~ — FEITO (migration aplicada, Taiana atualizada)
+> ~~#2 4 bugs do dashboard~~ — FEITO (ranking, filtros, gráfico corrigidos)
+> ~~#3 9 modais pra createPortal~~ — FEITO (todos os 7 migrados: MeusLeads, LeadCard, PhotoCropper, AddLeadModal, Funil x2, DuplicateAlert)
 
-### 2. 4 BUGS DO DASHBOARD
-- Taiana duplicada no Ranking do Time (vai resolver com item 1)
-- Letras brancas no Ranking quando em modo claro (CSS — variáveis de tema, não hardcoded)
-- Ranking ignora filtro de período do dashboard (query não recebe data_inicio/data_fim)
-- Botões 7d/30d/90d do gráfico "Leads por dia" não atualizam
-
-### 3. 9 MODAIS PENDENTES PRA createPortal
-MeusLeads.jsx:414, LeadCard.jsx:861, PhotoCropper.jsx:60, AddLeadModal.jsx:119, 
-Funil.jsx:685, Funil.jsx:733, DuplicateAlert.jsx:139. Mesmo bug latente do 
-HandoffModal corrigido em 08/abr. Aplicar mesmo padrão:
-- import createPortal de react-dom
-- wrap return em createPortal(jsx, document.body)
-- container externo: items-start justify-center z-[9999] p-4 overflow-y-auto
-- modal box: my-8 + REMOVER max-h fixo + REMOVER flex flex-col
-
-### 4. INFRAESTRUTURA DE STAGING (PRÓXIMA SPRINT)
+### 1. INFRAESTRUTURA DE STAGING
 - Continuar deployando direto em produção é insustentável
 - Plano: criar app duplicada no Easypanel apontando pra branch `staging`
 - Banco e Redis separados
 - Toda feature passa por staging antes de main
 
-### 5. TELA /admin/usuarios (PRÓXIMA SPRINT)
+### 2. TELA /admin/usuarios
 - Hoje criar usuário é via script no console
 - Não escala, não tem auditoria
 - Tela simples: lista + botão "Adicionar usuário" + edit
 - Aproveitar pra adicionar `onDelete: Cascade` nas FKs de Notificacao→Usuario e AuditLog→Usuario
+
+---
+
+## ARMADILHAS CONHECIDAS
+
+> Seção viva. Toda vez que algo quebrar de um jeito não-óbvio, registrar aqui pra IA não cair de novo.
+
+- **Comparação de form_name é case-sensitive.** Acentuação e caixa importam. O webhook Respondi compara form_name pra decidir o caminho (SDR Inbound vs Lead normal). Uma diferença de acento ou maiúscula manda o lead pro lugar errado silenciosamente.
+- **Banco local dessincroniza do schema.** Se o Prisma reclamar de colunas que não existem ou modelos desconhecidos, rode `npx prisma migrate reset` local. Acontece depois de trocar de branch ou puxar migrations novas.
+- **Telefones: 99.7% já vêm com prefixo 55.** Os 0.3% sem são ruído. Não criar lógica complexa de normalização — deduplicação por telefone direto funciona bem.
+- **Não confiar em comportamento "óbvio" sem testar.** Exemplo real: assumimos que form_id seria o slug do formulário, mas era um UUID interno do Respondi. Sempre investigar o payload real.
+- **Nunca assumir nome de campo no payload sem investigar o JSON.** Antes de acessar qualquer campo de webhook/API externa, logar o payload e conferir a estrutura. Campos mudam entre versões e entre forms.
+- **Antes de planejar feature de produto, investigar código primeiro.** Ler os arquivos relevantes ANTES de propor arquitetura. Suposições sobre como o código funciona já causaram retrabalho.
+
+---
+
+## MAPA DO PROJETO
+
+### Estrutura de pastas
+
+```
+├── prisma/
+│   └── schema.prisma              # Fonte da verdade do banco (19 models)
+├── src/
+│   ├── controllers/               # Handlers de rota (request → response)
+│   ├── routes/                    # Definição de rotas Express
+│   ├── services/                  # Lógica de negócio
+│   ├── middlewares/               # Auth, validação, etc.
+│   └── utils/                     # Helpers compartilhados
+├── frontend/
+│   └── src/
+│       ├── pages/                 # Páginas da aplicação (1 arquivo = 1 rota)
+│       ├── components/            # Componentes reutilizáveis
+│       └── services/              # Chamadas API (axios)
+├── Dockerfile                     # Build produção (inclui prisma migrate deploy no start)
+└── docker-compose.yml
+```
+
+### Módulos principais
+
+| Módulo | Backend | Frontend | O que faz |
+|--------|---------|----------|-----------|
+| Auth | auth.controller/routes | Login.jsx | Login, sessão, perfis |
+| Leads/Funil | leads.controller, etapas.controller | Funil.jsx, LeadCard.jsx | Kanban de leads dos closers |
+| SDR Instagram | sdr.controller, sdrService | SdrKanban.jsx | Prospecção ativa via Instagram |
+| SDR Inbound | sdrInbound.controller, sdrInboundService | SdrInboundKanban.jsx | Leads via formulário Respondi (Thomaz) |
+| SDR (unificado) | — | SdrPage.jsx | Tabs que agrupam Instagram + Inbound |
+| Dashboard | leads.controller (métricas) | Dashboard.jsx | KPIs, gráficos, ranking |
+| Metas | metas.controller | Metas.jsx | Metas individuais + MetaEmpresa |
+| Webhook | webhook.controller | — | Recebe leads do Respondi (2 caminhos) |
+| Hubla | hubla.controller | — | Pagamentos e reconciliação |
+| WhatsApp | whatsapp.controller | WhatsAppAdmin.jsx | Templates, envios |
+| Follow-ups | followups.controller | FollowUps.jsx | Cadência de follow-up |
+| Admin | admin.controller, vendedores.controller | Admin.jsx, VendedoresAdmin.jsx | Gestão de usuários e vendedores |
+
+### Tabelas principais (Prisma)
+
+| Model | Tabela | Relações-chave |
+|-------|--------|----------------|
+| Usuario | usuarios | 1:1 → Vendedor |
+| Vendedor | vendedores | 1:N → Lead, Meta, LeadSDR, LeadSDRInbound |
+| Lead | leads | N:1 → Vendedor, 1:N → Interacao, FollowUp, FunilHistorico |
+| LeadSDR | leads_sdr | N:1 → Vendedor (operador), N:1 → Vendedor (closer) |
+| LeadSDRInbound | leads_sdr_inbound | N:1 → Vendedor (operador), N:1 → Vendedor (closer). TABELA SEPARADA de LeadSDR — não misturar. |
+| Meta | metas | N:1 → Vendedor |
+| MetaEmpresa | metas_empresa | Independente — NÃO é soma das metas individuais |
+| EtapaFunil | etapas_funil | Slug no banco, label no frontend |
+| Interacao | interacoes | N:1 → Lead, N:1 → Vendedor |
+| FunilHistorico | funil_historico | N:1 → Lead |
+
+---
+
+## DECISÕES DE ARQUITETURA
+
+> Decisões não-óbvias que foram tomadas por boas razões.
+> Antes de mudar qualquer uma, entenda POR QUE está assim.
+
+### SDR: duas tabelas separadas (LeadSDR ≠ LeadSDRInbound)
+LeadSDR = prospecção ativa via Instagram (operador aborda).
+LeadSDRInbound = lead que veio via formulário Respondi.
+Campos, etapas e fluxos são diferentes. NÃO misturar em uma tabela só.
+
+### Webhook Respondi: dois caminhos
+O webhook do Respondi (`webhook.controller.js`) faz branch:
+- Se `form_name` contém indicador de SDR Inbound → cria LeadSDRInbound (operador: Thomaz, ID 11)
+- Senão → cria Lead normal no funil dos closers (distribuição Lucas/Emília)
+A comparação de form_name é **case-sensitive** — cuidado com acentos.
+
+### Etapas do funil: slug vs label
+Banco armazena `slug` (ex: "qualificado"). Frontend mostra `label` (ex: "Agendado").
+A tabela `EtapaFunil` mapeia slug↔label. Nunca hardcodar labels no backend.
+
+### Meta empresa ≠ soma das individuais
+`MetaEmpresa` é entidade independente com valor definido pelo gestor.
+Não é calculada a partir das metas individuais dos vendedores.
+
+### Admin/gestor/sdr: bypass de filtros
+Padrão de permissão usado em vários módulos (funil, sdr, sdr-inbound, dashboard):
+- Admin e gestor veem TUDO (sem filtro de vendedor)
+- Vendedor com papel='sdr' vê funil completo
+- Vendedor normal vê só seus próprios leads
+Replicar esse padrão em módulos futuros.
+
+### dadosRespondi é null em leads manuais
+Leads criados pelo AddLeadModal não passam pelo Respondi,
+então `dadosRespondi` é null. Isso é esperado — não tratar como erro.
+
+### UTMs ficam em respondent.respondent_utms
+No payload do Respondi, UTMs NÃO estão no nível raiz.
+Caminho correto: `respondent.respondent_utms.utm_source`, etc.
+
+### Docker: prisma migrate deploy no start
+O Dockerfile roda `prisma migrate deploy` ao iniciar o container.
+Isso garante que o banco está sempre em sync com o schema do código.
+NÃO remover essa linha — sem ela, deploy com migration nova quebra.
+
+### Telefones: deduplicação direta
+99.7% dos telefones já vêm com prefixo 55. Os 0.3% sem são ruído.
+Deduplicação por telefone funciona bem sem normalização complexa.
+O webhook detecta duplicatas por telefone e notifica o vendedor atribuído.
 
 ---
 
