@@ -2,6 +2,7 @@ const prisma = require('../config/database');
 const { validarMovimentacao, executarHandoff, ETAPAS_SDR } = require('../services/sdrService');
 const { analisarPrintWhatsApp } = require('../services/aiService');
 const logger = require('../utils/logger');
+const { parseDateBrasilia } = require('../utils/dateBrasilia');
 
 async function listarKanban(req, res, next) {
   try {
@@ -173,7 +174,7 @@ async function handoff(req, res, next) {
       where: { id: Number(id) },
       data: {
         whatsapp,
-        dataReuniao: new Date(dataReuniao),
+        dataReuniao: parseDateBrasilia(dataReuniao),
         closerDestinoId,
         resumoSituacao,
         tomEmocional,
@@ -192,7 +193,7 @@ async function handoff(req, res, next) {
     const novoLead = await executarHandoff(leadAtualizado);
 
     // Criar EventoAgenda pra reunião
-    const eventoInicio = new Date(dataReuniao);
+    const eventoInicio = parseDateBrasilia(dataReuniao);
     const eventoFim = new Date(eventoInicio.getTime() + 60 * 60 * 1000); // +1h
 
     const blocoOff = await prisma.eventoAgenda.findFirst({

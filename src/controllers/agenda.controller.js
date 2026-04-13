@@ -1,6 +1,7 @@
 const prisma = require('../config/database');
 const logger = require('../utils/logger');
 const { criarNotificacao } = require('../services/notificacaoService');
+const { parseDateBrasilia } = require('../utils/dateBrasilia');
 
 const TIPOS_REUNIAO = ['reuniao_sdr_instagram', 'reuniao_sdr_inbound', 'reuniao_manual'];
 
@@ -70,8 +71,8 @@ async function criar(req, res, next) {
       }
     }
 
-    const eventoInicio = new Date(inicio);
-    const eventoFim = new Date(fim);
+    const eventoInicio = parseDateBrasilia(inicio);
+    const eventoFim = parseDateBrasilia(fim);
 
     // Validação de override pra reuniões
     let marcadoEmHorarioOff = false;
@@ -212,8 +213,8 @@ async function editar(req, res, next) {
     }
 
     const data = { ...req.body };
-    if (data.inicio) data.inicio = new Date(data.inicio);
-    if (data.fim) data.fim = new Date(data.fim);
+    if (data.inicio) data.inicio = parseDateBrasilia(data.inicio);
+    if (data.fim) data.fim = parseDateBrasilia(data.fim);
 
     const eventoAtualizado = await prisma.eventoAgenda.update({
       where: { id: Number(id) },

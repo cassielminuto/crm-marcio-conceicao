@@ -12,7 +12,7 @@ const CORES_TIPO = {
   reuniao_sdr_inbound: '#10b981',
   reuniao_manual: '#8b5cf6',
   bloco_on: '#6b7280',
-  bloco_off: '#ef4444',
+  bloco_off: '#fca5a5',
   evento_personalizado: '#f59e0b',
 };
 
@@ -90,23 +90,41 @@ export default function Agenda() {
 
   // Mapear eventos pro FullCalendar
   const eventosFC = eventos.map(ev => {
-    const cor = ev.cor || CORES_TIPO[ev.tipo] || '#6b7280';
     const isOff = ev.marcadoEmHorarioOff;
     const isPassado = ev.statusReuniao != null;
-    const isBloco = ev.tipo === 'bloco_on' || ev.tipo === 'bloco_off';
+    const isBlocoOff = ev.tipo === 'bloco_off';
+    const isBlocoOn = ev.tipo === 'bloco_on';
+
+    // Cores por tipo
+    let backgroundColor, borderColor, textColor;
+    if (isBlocoOff) {
+      backgroundColor = 'rgba(239, 68, 68, 0.12)';
+      borderColor = '#fca5a5';
+      textColor = '#f87171';
+    } else if (isBlocoOn) {
+      backgroundColor = 'rgba(107, 114, 128, 0.12)';
+      borderColor = '#9ca3af';
+      textColor = '#9ca3af';
+    } else {
+      backgroundColor = ev.cor || CORES_TIPO[ev.tipo] || '#6b7280';
+      borderColor = isOff ? '#ef4444' : backgroundColor;
+      textColor = '#ffffff';
+    }
 
     return {
       id: String(ev.id),
       title: ev.titulo,
       start: ev.inicio,
       end: ev.fim,
-      backgroundColor: cor,
-      borderColor: isOff ? '#ef4444' : cor,
-      textColor: isBloco ? (ev.tipo === 'bloco_off' ? '#991b1b' : '#374151') : '#ffffff',
-      display: isBloco ? 'background' : 'auto',
+      backgroundColor,
+      borderColor,
+      textColor,
+      display: 'auto',
       classNames: [
         isPassado ? 'fc-evento-passado' : '',
         isOff ? 'fc-evento-off-override' : '',
+        isBlocoOff ? 'fc-bloco-off' : '',
+        isBlocoOn ? 'fc-bloco-on' : '',
       ].filter(Boolean),
       extendedProps: { ...ev },
     };
@@ -283,12 +301,26 @@ export default function Agenda() {
         /* Evento */
         .fc .fc-event {
           border-radius: 6px;
-          padding: 2px 4px;
-          font-size: 11px;
-          font-weight: 500;
+          padding: 3px 6px;
+          font-size: 13px;
+          font-weight: 600;
           border-width: 2px;
+          border-left-width: 3px;
           cursor: pointer;
           transition: opacity 0.15s;
+          line-height: 1.3;
+        }
+
+        .fc .fc-event .fc-event-title {
+          font-weight: 600;
+          white-space: normal;
+          overflow: visible;
+        }
+
+        .fc .fc-event .fc-event-time {
+          font-size: 11px;
+          font-weight: 500;
+          opacity: 0.85;
         }
 
         .fc .fc-event:hover {
@@ -304,6 +336,20 @@ export default function Agenda() {
         .fc .fc-evento-off-override {
           border-width: 2px !important;
           border-style: dashed !important;
+        }
+
+        /* Bloco OFF — soft rosado */
+        .fc .fc-bloco-off {
+          border-left-width: 3px !important;
+          border-left-style: solid !important;
+          border-left-color: #fca5a5 !important;
+        }
+
+        /* Bloco ON — soft cinza */
+        .fc .fc-bloco-on {
+          border-left-width: 3px !important;
+          border-left-style: solid !important;
+          border-left-color: #9ca3af !important;
         }
 
         /* Time grid slots */

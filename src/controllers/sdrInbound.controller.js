@@ -1,6 +1,7 @@
 const prisma = require('../config/database');
 const { ETAPAS_INBOUND, validarMovimentacao, executarHandoff } = require('../services/sdrInboundService');
 const logger = require('../utils/logger');
+const { parseDateBrasilia } = require('../utils/dateBrasilia');
 
 function verificarAcesso(req) {
   const { perfil } = req.usuario;
@@ -161,7 +162,7 @@ async function handoff(req, res, next) {
     const leadAtualizado = await prisma.leadSDRInbound.update({
       where: { id: Number(id) },
       data: {
-        dataReuniao: new Date(dataReuniao),
+        dataReuniao: parseDateBrasilia(dataReuniao),
         closerDestinoId,
         observacoes: observacoes || lead.observacoes,
         proximoPasso: proximoPasso || lead.proximoPasso,
@@ -177,7 +178,7 @@ async function handoff(req, res, next) {
     const novoLead = await executarHandoff(leadAtualizado);
 
     // Criar EventoAgenda pra reunião
-    const eventoInicio = new Date(dataReuniao);
+    const eventoInicio = parseDateBrasilia(dataReuniao);
     const eventoFim = new Date(eventoInicio.getTime() + 60 * 60 * 1000); // +1h
 
     const blocoOff = await prisma.eventoAgenda.findFirst({
