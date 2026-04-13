@@ -103,7 +103,7 @@ export default function AppLayout() {
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 relative z-[1]">
         {/* Topbar */}
-        <header className="h-[56px] shrink-0 flex items-center justify-between px-8 border-b border-border-default bg-bg-secondary/60 backdrop-blur-sm">
+        <header className="h-[56px] shrink-0 flex items-center justify-between px-8 border-b border-border-default bg-bg-secondary/60 backdrop-blur-sm relative z-20">
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted z-10" />
