@@ -16,7 +16,7 @@ function formatBRL(value) {
 }
 
 function formatPercent(value) {
-  return `${(value * 100).toFixed(1)}%`;
+  return `${Number(value).toFixed(1)}%`;
 }
 
 export default function RankingVendedores({ ranking }) {
