@@ -9,6 +9,7 @@ import { useToast } from '../context/ToastContext';
 import api from '../services/api';
 import AgendaFormModal from '../components/AgendaFormModal';
 import AgendaEventoModal from '../components/AgendaEventoModal';
+import { corDoVendedor } from '../utils/coresVendedor';
 
 const CORES_TIPO = {
   reuniao_sdr_instagram: '#3b82f6',
@@ -139,9 +140,16 @@ export default function Agenda() {
         isBlocoOff ? 'fc-bloco-off' : '',
         isBlocoOn ? 'fc-bloco-on' : '',
       ].filter(Boolean),
-      extendedProps: { ...ev },
+      extendedProps: { ...ev, _vendedorCor: corDoVendedor(ev.vendedorId) },
     };
   });
+
+  function handleEventDidMount(info) {
+    const cor = info.event.extendedProps._vendedorCor;
+    if (cor && info.el) {
+      info.el.style.borderLeft = `5px solid ${cor}`;
+    }
+  }
 
   function handleEventClick(info) {
     const ev = info.event.extendedProps;
@@ -251,14 +259,47 @@ export default function Agenda() {
         </div>
       </div>
 
-      {/* Legenda */}
-      <div className="flex flex-wrap gap-3 text-xs text-text-secondary">
-        {Object.entries(CORES_TIPO).map(([tipo, cor]) => (
-          <div key={tipo} className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cor }} />
-            <span>{LABELS_TIPO[tipo]}</span>
-          </div>
-        ))}
+      {/* Legendas */}
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+        {/* Legenda por tipo (fundo) */}
+        <div className="flex flex-wrap gap-3 text-xs text-text-secondary">
+          <span className="text-[10px] text-text-muted font-semibold uppercase tracking-wider">Tipo:</span>
+          {Object.entries(CORES_TIPO).map(([tipo, cor]) => (
+            <div key={tipo} className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cor }} />
+              <span>{LABELS_TIPO[tipo]}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Separador */}
+        <div className="w-px h-4 bg-border-default" />
+
+        {/* Legenda por vendedor (borda lateral) */}
+        <div className="flex flex-wrap gap-3 text-xs text-text-secondary">
+          <span className="text-[10px] text-text-muted font-semibold uppercase tracking-wider">Closer:</span>
+          {(() => {
+            // Vendedores únicos com eventos no range atual
+            const idsVistos = new Set();
+            const vendedoresVisiveis = [];
+            for (const ev of eventos) {
+              if (ev.vendedorId && !idsVistos.has(ev.vendedorId)) {
+                idsVistos.add(ev.vendedorId);
+                vendedoresVisiveis.push({
+                  id: ev.vendedorId,
+                  nome: ev.vendedor?.nomeExibicao || `#${ev.vendedorId}`,
+                  cor: corDoVendedor(ev.vendedorId),
+                });
+              }
+            }
+            return vendedoresVisiveis.map(v => (
+              <div key={v.id} className="flex items-center gap-1.5">
+                <span className="w-1 h-3.5 rounded-full" style={{ backgroundColor: v.cor }} />
+                <span>{v.nome}</span>
+              </div>
+            ));
+          })()}
+        </div>
       </div>
 
       {/* Calendário */}
@@ -292,6 +333,7 @@ export default function Agenda() {
           events={eventosFC}
           datesSet={(info) => carregarEventos({ startStr: info.startStr, endStr: info.endStr })}
           eventClick={handleEventClick}
+          eventDidMount={handleEventDidMount}
           editable
           eventDrop={handleEventDrop}
           eventResize={handleEventResize}
