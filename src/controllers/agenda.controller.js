@@ -99,26 +99,49 @@ async function criar(req, res, next) {
       }
     }
 
-    const evento = await prisma.eventoAgenda.create({
-      data: {
-        tipo,
-        titulo,
-        descricao: descricao || null,
-        inicio: eventoInicio,
-        fim: eventoFim,
-        vendedorId,
-        criadoPorId: req.usuario.id,
-        leadId: leadId || null,
-        leadSdrId: leadSdrId || null,
-        leadSdrInboundId: leadSdrInboundId || null,
-        contatoNome: contatoNome || null,
-        contatoTelefone: contatoTelefone || null,
-        cor: cor || null,
-        marcadoEmHorarioOff,
-      },
-      include: {
-        vendedor: { select: { id: true, nomeExibicao: true } },
-      },
+    // Criar evento + sincronizar lead em transaction
+    const evento = await prisma.$transaction(async (tx) => {
+      const ev = await tx.eventoAgenda.create({
+        data: {
+          tipo,
+          titulo,
+          descricao: descricao || null,
+          inicio: eventoInicio,
+          fim: eventoFim,
+          vendedorId,
+          criadoPorId: req.usuario.id,
+          leadId: leadId || null,
+          leadSdrId: leadSdrId || null,
+          leadSdrInboundId: leadSdrInboundId || null,
+          contatoNome: contatoNome || null,
+          contatoTelefone: contatoTelefone || null,
+          cor: cor || null,
+          marcadoEmHorarioOff,
+        },
+        include: {
+          vendedor: { select: { id: true, nomeExibicao: true } },
+        },
+      });
+
+      // Sincronizar: reunião manual com lead → mover pra qualificado
+      if (tipo === 'reuniao_manual' && leadId) {
+        const lead = await tx.lead.findUnique({ where: { id: leadId }, select: { id: true, etapaFunil: true } });
+        if (lead && lead.etapaFunil !== 'qualificado') {
+          await tx.lead.update({ where: { id: leadId }, data: { etapaFunil: 'qualificado' } });
+          await tx.funilHistorico.create({
+            data: {
+              leadId,
+              etapaAnterior: lead.etapaFunil,
+              etapaNova: 'qualificado',
+              vendedorId,
+              motivo: 'Reunião marcada via Agenda',
+            },
+          });
+          logger.info(`Lead #${leadId} movido pra qualificado (reunião manual via Agenda)`);
+        }
+      }
+
+      return ev;
     });
 
     // Notificação + WhatsApp especial se override
@@ -327,12 +350,50 @@ async function atualizarStatus(req, res, next) {
       return res.status(403).json({ error: 'Sem permissão para atualizar status deste evento' });
     }
 
-    const eventoAtualizado = await prisma.eventoAgenda.update({
-      where: { id: Number(id) },
-      data: { statusReuniao: status },
-      include: {
-        vendedor: { select: { id: true, nomeExibicao: true } },
-      },
+    // Atualizar status + sincronizar lead em transaction
+    const eventoAtualizado = await prisma.$transaction(async (tx) => {
+      const ev = await tx.eventoAgenda.update({
+        where: { id: Number(id) },
+        data: { statusReuniao: status },
+        include: {
+          vendedor: { select: { id: true, nomeExibicao: true, usuarioId: true } },
+        },
+      });
+
+      // No-show: mover lead pra etapa 'no_show' + notificar vendedor
+      if (status === 'no_show' && evento.leadId) {
+        const lead = await tx.lead.findUnique({ where: { id: evento.leadId }, select: { id: true, etapaFunil: true, nome: true } });
+        if (lead) {
+          await tx.lead.update({ where: { id: evento.leadId }, data: { etapaFunil: 'no_show' } });
+          await tx.funilHistorico.create({
+            data: {
+              leadId: evento.leadId,
+              etapaAnterior: lead.etapaFunil,
+              etapaNova: 'no_show',
+              vendedorId: evento.vendedorId,
+              motivo: 'No-show na reunião',
+            },
+          });
+          logger.info(`Lead #${evento.leadId} movido pra no_show (no-show no EventoAgenda #${id})`);
+
+          // Notificação in-app pro vendedor dono do lead
+          if (ev.vendedor?.usuarioId) {
+            setImmediate(async () => {
+              try {
+                await criarNotificacao({
+                  usuarioId: ev.vendedor.usuarioId,
+                  tipo: 'no_show',
+                  titulo: `No-show: ${lead.nome}`,
+                  mensagem: `Lead não compareceu à reunião "${evento.titulo}"`,
+                  dados: { leadId: evento.leadId, eventoId: evento.id },
+                });
+              } catch (e) { logger.warn(`Notificação no-show falhou: ${e.message}`); }
+            });
+          }
+        }
+      }
+
+      return ev;
     });
 
     logger.info(`EventoAgenda #${id} status atualizado para ${status}`);
