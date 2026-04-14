@@ -31,13 +31,22 @@ function setCache(key, data) {
 }
 
 // ─── Helpers de data ───
-function buildWhere(dataInicio, dataFim, vendedorId, canal) {
-  const where = {};
-  if (dataInicio) where.createdAt = { ...where.createdAt, gte: new Date(dataInicio) };
-  if (dataFim) where.createdAt = { ...where.createdAt, lte: new Date(dataFim) };
-  if (vendedorId) where.vendedorId = Number(vendedorId);
-  if (canal) where.canal = canal;
-  return where;
+// whereLeads: filtra por createdAt (quando lead entrou no sistema)
+// whereVendas: filtra por dataConversao (quando venda aconteceu)
+function buildWheres(dataInicio, dataFim, vendedorId, canal) {
+  const base = {};
+  if (vendedorId) base.vendedorId = Number(vendedorId);
+  if (canal) base.canal = canal;
+
+  const whereLeads = { ...base };
+  if (dataInicio) whereLeads.createdAt = { ...whereLeads.createdAt, gte: new Date(dataInicio) };
+  if (dataFim) whereLeads.createdAt = { ...whereLeads.createdAt, lte: new Date(dataFim) };
+
+  const whereVendas = { ...base, vendaRealizada: true };
+  if (dataInicio) whereVendas.dataConversao = { ...whereVendas.dataConversao, gte: new Date(dataInicio) };
+  if (dataFim) whereVendas.dataConversao = { ...whereVendas.dataConversao, lte: new Date(dataFim) };
+
+  return { whereLeads, whereVendas };
 }
 
 function periodoAnterior(dataInicio, dataFim) {
@@ -50,11 +59,11 @@ function periodoAnterior(dataInicio, dataFim) {
 }
 
 // ─── 1. KPIs principais ───
-async function calcularKpis(where) {
+async function calcularKpis(whereLeads, whereVendas) {
   const [totalLeads, vendas, faturamentoAgg] = await Promise.all([
-    prisma.lead.count({ where }),
-    prisma.lead.count({ where: { ...where, vendaRealizada: true, etapaFunil: 'fechado_ganho' } }),
-    prisma.lead.aggregate({ where: { ...where, vendaRealizada: true }, _sum: { valorVenda: true } }),
+    prisma.lead.count({ where: whereLeads }),
+    prisma.lead.count({ where: whereVendas }),
+    prisma.lead.aggregate({ where: whereVendas, _sum: { valorVenda: true } }),
   ]);
 
   const faturamento = Number(faturamentoAgg._sum.valorVenda || 0);
@@ -65,18 +74,18 @@ async function calcularKpis(where) {
 }
 
 // ─── 2. Ranking de vendedores ───
-async function calcularRanking(where) {
-  // Total de leads por vendedor (todos leads atribuídos, sem filtro extra)
+async function calcularRanking(whereLeads, whereVendas) {
+  // Total de leads por vendedor (createdAt no período)
   const totalPorVendedor = await prisma.lead.groupBy({
     by: ['vendedorId'],
-    where: { ...where, vendedorId: { not: null } },
+    where: { ...whereLeads, vendedorId: { not: null } },
     _count: { id: true },
   });
 
-  // Vendas por vendedor (apenas vendaRealizada=true)
+  // Vendas por vendedor (dataConversao no período + vendaRealizada)
   const vendasPorVendedor = await prisma.lead.groupBy({
     by: ['vendedorId'],
-    where: { ...where, vendaRealizada: true, vendedorId: { not: null } },
+    where: { ...whereVendas, vendedorId: { not: null } },
     _count: { id: true },
     _sum: { valorVenda: true },
   });
@@ -115,8 +124,9 @@ async function calcularRanking(where) {
     .sort((a, b) => b.faturamento - a.faturamento);
 }
 
-// ─── 3. Funil de conversão ───
-async function calcularFunil(where) {
+// ─── 3. Funil de conversão (conta leads por etapa, usa createdAt) ───
+async function calcularFunil(whereLeads) {
+  const where = whereLeads;
   const etapasConfig = await prisma.etapaFunil.findMany({
     where: { ativo: true },
     orderBy: { ordem: 'asc' },
@@ -146,9 +156,10 @@ async function calcularFunil(where) {
 }
 
 // ─── 4. Tempo médio de conversão ───
-async function calcularTempoMedio(where) {
+async function calcularTempoMedio(whereVendas) {
+  // whereVendas já filtra por dataConversao no range + vendaRealizada
   const convertidos = await prisma.lead.findMany({
-    where: { ...where, dataConversao: { not: null }, vendaRealizada: true },
+    where: whereVendas,
     select: { createdAt: true, dataConversao: true },
   });
 
@@ -229,16 +240,16 @@ async function calcularPerformanceSdr(dataInicio, dataFim) {
 }
 
 // ─── 6. Leads por canal ───
-async function calcularPorCanal(where) {
+async function calcularPorCanal(whereLeads, whereVendas) {
   const grupos = await prisma.lead.groupBy({
     by: ['canal'],
-    where,
+    where: whereLeads,
     _count: { id: true },
   });
 
   const vendasPorCanal = await prisma.lead.groupBy({
     by: ['canal'],
-    where: { ...where, vendaRealizada: true },
+    where: whereVendas,
     _count: { id: true },
   });
 
@@ -253,18 +264,29 @@ async function calcularPorCanal(where) {
 }
 
 // ─── 7. Top anúncios ───
-async function calcularTopAnuncios(where) {
-  const leads = await prisma.lead.findMany({
-    where: { ...where, canal: 'anuncio', formularioTitulo: { not: null } },
-    select: { formularioTitulo: true, vendaRealizada: true },
+async function calcularTopAnuncios(whereLeads, whereVendas) {
+  // Leads criados no período (pra contagem de leads por anúncio)
+  const leadsAnuncio = await prisma.lead.findMany({
+    where: { ...whereLeads, canal: 'anuncio', formularioTitulo: { not: null } },
+    select: { formularioTitulo: true },
+  });
+
+  // Vendas de anúncio no período (dataConversao no range)
+  const vendasAnuncio = await prisma.lead.findMany({
+    where: { ...whereVendas, canal: 'anuncio', formularioTitulo: { not: null } },
+    select: { formularioTitulo: true },
   });
 
   const porForm = {};
-  for (const l of leads) {
+  for (const l of leadsAnuncio) {
     const key = l.formularioTitulo || 'Desconhecido';
     if (!porForm[key]) porForm[key] = { nome: key, leads: 0, vendas: 0 };
     porForm[key].leads++;
-    if (l.vendaRealizada) porForm[key].vendas++;
+  }
+  for (const v of vendasAnuncio) {
+    const key = v.formularioTitulo || 'Desconhecido';
+    if (!porForm[key]) porForm[key] = { nome: key, leads: 0, vendas: 0 };
+    porForm[key].vendas++;
   }
 
   const lista = Object.values(porForm).map(f => ({
@@ -328,7 +350,8 @@ async function calcularReunioes(dataInicio, dataFim) {
 }
 
 // ─── 9. Pipeline + Forecast ───
-async function calcularPipeline(where) {
+async function calcularPipeline(whereLeads) {
+  const where = whereLeads;
   // Etapas ativas (não ganho/perdido)
   const etapasAtivas = await prisma.etapaFunil.findMany({
     where: { ativo: true, tipo: 'normal' },
@@ -373,9 +396,9 @@ async function calcularPipeline(where) {
 }
 
 // ─── 10. Heatmap de horário ───
-async function calcularHeatmap(where) {
+async function calcularHeatmap(whereLeads) {
   const leads = await prisma.lead.findMany({
-    where,
+    where: whereLeads,
     select: { createdAt: true },
   });
 
@@ -424,20 +447,20 @@ async function metricas(req, res, next) {
       return res.json(cached);
     }
 
-    const where = buildWhere(data_inicio, data_fim, vendedor_id, canal);
+    const { whereLeads, whereVendas } = buildWheres(data_inicio, data_fim, vendedor_id, canal);
 
     // Executar todas as métricas em paralelo
     const [kpis, ranking, funil, tempoMedio, sdr, porCanal, topAnuncios, reunioes, pipeline, heatmap, atividade] = await Promise.all([
-      calcularKpis(where),
-      calcularRanking(where),
-      calcularFunil(where),
-      calcularTempoMedio(where),
+      calcularKpis(whereLeads, whereVendas),
+      calcularRanking(whereLeads, whereVendas),
+      calcularFunil(whereLeads),
+      calcularTempoMedio(whereVendas),
       calcularPerformanceSdr(data_inicio, data_fim),
-      calcularPorCanal(where),
-      calcularTopAnuncios(where),
+      calcularPorCanal(whereLeads, whereVendas),
+      calcularTopAnuncios(whereLeads, whereVendas),
       calcularReunioes(data_inicio, data_fim),
-      calcularPipeline(where),
-      calcularHeatmap(where),
+      calcularPipeline(whereLeads),
+      calcularHeatmap(whereLeads),
       calcularAtividade(),
     ]);
 
@@ -458,8 +481,8 @@ async function metricas(req, res, next) {
     // Comparação com período anterior
     if (comparar === 'true' && data_inicio && data_fim) {
       const anterior = periodoAnterior(data_inicio, data_fim);
-      const whereAnterior = buildWhere(anterior.dataInicio, anterior.dataFim, vendedor_id, canal);
-      const kpisAnterior = await calcularKpis(whereAnterior);
+      const { whereLeads: wlAnt, whereVendas: wvAnt } = buildWheres(anterior.dataInicio, anterior.dataFim, vendedor_id, canal);
+      const kpisAnterior = await calcularKpis(wlAnt, wvAnt);
 
       resultado.comparacao = {
         periodo: anterior,
