@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import api from '../services/api';
+import { useToast } from '../context/ToastContext';
 import { AlertTriangle, X, GitMerge, Trash2, Phone, Mail, Instagram, Megaphone } from 'lucide-react';
 
 const CLASSE_COR = {
@@ -58,6 +59,7 @@ function LeadCompare({ lead, label, selecionado, onSelecionar }) {
 }
 
 export default function DuplicateAlert({ leadId, duplicatas, onResolvido }) {
+  const { toast } = useToast();
   const [modalAberto, setModalAberto] = useState(false);
   const [selecionadoPrincipal, setSelecionadoPrincipal] = useState(null);
   const [processando, setProcessando] = useState(false);
@@ -71,7 +73,7 @@ export default function DuplicateAlert({ leadId, duplicatas, onResolvido }) {
       setModalAberto(false);
       if (onResolvido) onResolvido();
     } catch (err) {
-      alert(err.response?.data?.error || 'Erro ao mergear');
+      toast(err.response?.data?.error || 'Erro ao mergear', 'urgente');
     } finally {
       setProcessando(false);
     }

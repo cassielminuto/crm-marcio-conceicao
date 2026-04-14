@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Loader2, RefreshCw } from 'lucide-react';
 import api from '../services/api';
+import ConfirmDialog from './ConfirmDialog';
 
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
@@ -30,6 +31,7 @@ export default function SeletorHorariosCloser({ vendedorId, valorAtual, onSelect
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
   const [selecionado, setSelecionado] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   useEffect(() => {
     if (!vendedorId) { setDados(null); return; }
@@ -67,15 +69,26 @@ export default function SeletorHorariosCloser({ vendedorId, valorAtual, onSelect
   function handleSlotClick(dia, slot) {
     if (slot.status === 'ocupado') return;
 
+    const valor = `${dia}T${slot.hora}`;
+
     if (slot.status === 'off') {
-      const ok = window.confirm('Horário marcado como OFF. Deseja escolher mesmo assim?');
-      if (!ok) return;
+      setConfirmDialog({
+        titulo: 'Horário OFF',
+        mensagem: 'Este horário está marcado como OFF. Deseja escolher mesmo assim?',
+        tipo: 'warning',
+        textoBotaoConfirmar: 'Sim, escolher',
+        onConfirm: () => {
+          setSelecionado(valor);
+          onSelect(valor, true);
+          setConfirmDialog(null);
+        },
+      });
+      return;
     }
 
     // Formato datetime-local: "2026-04-14T10:00"
-    const valor = `${dia}T${slot.hora}`;
     setSelecionado(valor);
-    onSelect(valor, slot.status === 'off');
+    onSelect(valor, false);
   }
 
   function formatDia(dataStr) {
@@ -181,6 +194,16 @@ export default function SeletorHorariosCloser({ vendedorId, valorAtual, onSelect
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#f87171]" /> OFF</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-accent-violet" /> Selecionado</span>
       </div>
+
+      <ConfirmDialog
+        isOpen={!!confirmDialog}
+        titulo={confirmDialog?.titulo}
+        mensagem={confirmDialog?.mensagem}
+        tipo={confirmDialog?.tipo || 'warning'}
+        textoBotaoConfirmar={confirmDialog?.textoBotaoConfirmar}
+        onConfirm={confirmDialog?.onConfirm}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </div>
   );
 }

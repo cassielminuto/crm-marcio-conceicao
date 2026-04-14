@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import FiltroUnificado from '../components/FiltroUnificado';
 import { extrairProduto, extrairProdutosUnicos, isProdutoExcluido } from '../utils/produtos';
 import { Filter, Clock, User, Instagram, Megaphone, Trash2, Calendar, X, Plus, ChevronLeft, ChevronRight, Settings, Package } from 'lucide-react';
@@ -312,6 +313,7 @@ function KanbanColuna({ etapa, leads, count, valorTotal, onClickLead, onDeleteLe
 
 export default function Funil() {
   const { usuario } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const isAdmin = usuario?.perfil === 'admin' || usuario?.perfil === 'gestor';
   const temVisaoCompleta = isAdmin || usuario?.vendedor?.papel === 'sdr';
@@ -393,7 +395,7 @@ export default function Funil() {
       carregarFunil();
     } catch (err) {
       if (err.response?.status === 403) {
-        alert('Apenas o vendedor responsável pode mover este lead');
+        toast('Apenas o vendedor responsável pode mover este lead', 'urgente');
       } else {
         console.error('Erro ao mover lead:', err);
       }
@@ -475,7 +477,7 @@ export default function Funil() {
       carregarFunil();
     } catch (err) {
       console.error('Erro ao excluir etapa:', err);
-      alert(err.response?.data?.error || 'Erro ao excluir');
+      toast(err.response?.data?.error || 'Erro ao excluir', 'urgente');
     } finally {
       setProcessandoExclusaoEtapa(false);
     }
@@ -492,7 +494,7 @@ export default function Funil() {
       carregarFunil();
     } catch (err) {
       console.error('Erro ao criar etapa:', err);
-      alert(err.response?.data?.error || 'Erro ao criar');
+      toast(err.response?.data?.error || 'Erro ao criar', 'urgente');
     } finally {
       setCriandoEtapa(false);
     }

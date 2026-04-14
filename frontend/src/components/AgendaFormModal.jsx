@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, Loader2, Calendar, Search } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import ConfirmDialog from './ConfirmDialog';
 
 const TIPOS = [
   { value: 'reuniao_manual', label: 'Reunião manual' },
@@ -47,6 +48,7 @@ export default function AgendaFormModal({ isOpen, onClose, onSaved, evento, vend
 
   const [saving, setSaving] = useState(false);
   const [erro, setErro] = useState('');
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   // Inicializar campos
   useEffect(() => {
@@ -172,13 +174,18 @@ export default function AgendaFormModal({ isOpen, onClose, onSaved, evento, vend
     } catch (err) {
       const resp = err.response?.data;
       if (resp?.error === 'horario_off' && !overrideOff) {
-        const confirmar = window.confirm(
-          'Vendedor está em horário OFF nesse período.\nDeseja agendar mesmo assim?'
-        );
-        if (confirmar) {
-          setSaving(false);
-          return handleSubmit(true);
-        }
+        setSaving(false);
+        setConfirmDialog({
+          titulo: 'Horário OFF',
+          mensagem: 'Vendedor está em horário OFF nesse período. Deseja agendar mesmo assim?',
+          tipo: 'warning',
+          textoBotaoConfirmar: 'Sim, agendar',
+          onConfirm: () => {
+            setConfirmDialog(null);
+            handleSubmit(true);
+          },
+        });
+        return;
       } else {
         setErro(resp?.error || resp?.message || 'Erro ao salvar evento');
       }
@@ -197,7 +204,7 @@ export default function AgendaFormModal({ isOpen, onClose, onSaved, evento, vend
   const isBloco = tipo === 'bloco_on' || tipo === 'bloco_off';
   const isPersonalizado = tipo === 'evento_personalizado';
 
-  return createPortal(
+  return <>{createPortal(
     <div
       className="fixed inset-0 z-[9999] flex items-start justify-center p-4 overflow-y-auto bg-black/70 backdrop-blur-sm animate-backdrop-fade"
       onClick={handleOverlayClick}
@@ -418,5 +425,15 @@ export default function AgendaFormModal({ isOpen, onClose, onSaved, evento, vend
       </div>
     </div>,
     document.body
-  );
+  )}
+  <ConfirmDialog
+    isOpen={!!confirmDialog}
+    titulo={confirmDialog?.titulo}
+    mensagem={confirmDialog?.mensagem}
+    tipo={confirmDialog?.tipo || 'warning'}
+    textoBotaoConfirmar={confirmDialog?.textoBotaoConfirmar}
+    onConfirm={confirmDialog?.onConfirm}
+    onCancel={() => setConfirmDialog(null)}
+  />
+  </>;
 }

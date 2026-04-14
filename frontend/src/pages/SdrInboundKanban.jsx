@@ -3,9 +3,11 @@ import { createPortal } from 'react-dom';
 import { DragDropContext, Droppable } from '@hello-pangea/dnd';
 import { Plus, X, Loader2, Search } from 'lucide-react';
 import api from '../services/api';
+import { useToast } from '../context/ToastContext';
 import SdrInboundLeadCard from '../components/SdrInboundLeadCard';
 import SdrInboundLeadModal from '../components/SdrInboundLeadModal';
 import SdrInboundHandoffModal from '../components/SdrInboundHandoffModal';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 const COLUNAS = [
   { slug: 'novo_lead', label: 'Novo Lead', cor: '#74b9ff' },
@@ -22,6 +24,7 @@ const ETAPA_SLUGS = COLUNAS.map(c => c.slug);
 // NovoLeadInboundModal
 // ─────────────────────────────────────────────
 function NovoLeadInboundModal({ onClose, onCreated }) {
+  const { toast } = useToast();
   const [form, setForm] = useState({ nome: '', telefone: '', email: '', dorPrincipal: '' });
   const [saving, setSaving] = useState(false);
 
@@ -34,7 +37,7 @@ function NovoLeadInboundModal({ onClose, onCreated }) {
       onCreated(res.data.lead);
       onClose();
     } catch (err) {
-      alert(err.response?.data?.error || 'Erro ao criar lead');
+      toast(err.response?.data?.error || 'Erro ao criar lead', 'urgente');
     } finally {
       setSaving(false);
     }
@@ -131,6 +134,7 @@ function MetricaItem({ label, value }) {
 // SdrInboundKanban (main)
 // ─────────────────────────────────────────────
 export default function SdrInboundKanban() {
+  const { toast } = useToast();
   const [kanban, setKanban] = useState(() => {
     const init = {};
     ETAPA_SLUGS.forEach(s => { init[s] = []; });
@@ -144,6 +148,9 @@ export default function SdrInboundKanban() {
   const [leadDetalhe, setLeadDetalhe] = useState(null);
   const [handoffLead, setHandoffLead] = useState(null);
   const [handoffPendingDrag, setHandoffPendingDrag] = useState(null);
+
+  // ConfirmDialog
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   // Filters
   const [busca, setBusca] = useState('');
@@ -224,7 +231,7 @@ export default function SdrInboundKanban() {
 
     // Bloquear drag direto pra passado_closer
     if (destSlug === 'passado_closer') {
-      alert('Use o handoff para passar lead ao closer');
+      toast('Use o handoff para passar lead ao closer', 'aviso');
       return;
     }
 
@@ -245,7 +252,7 @@ export default function SdrInboundKanban() {
       });
     } catch (err) {
       setKanban(prev);
-      alert(err.response?.data?.error || 'Erro ao mover lead.');
+      toast(err.response?.data?.error || 'Erro ao mover lead', 'urgente');
     }
   }
 
@@ -281,27 +288,36 @@ export default function SdrInboundKanban() {
     const msg = naoQualificado
       ? `Excluir "${lead.nome}" definitivamente?`
       : `Mover "${lead.nome}" para não qualificado?`;
-    if (!window.confirm(msg)) return;
 
-    if (naoQualificado) {
-      setKanban(k => ({
-        ...k,
-        nao_qualificado: (k.nao_qualificado || []).filter(l => l.id !== lead.id),
-      }));
-      api.delete(`/sdr-inbound/leads/${lead.id}`).catch(() => carregarDados());
-      return;
-    }
+    setConfirmDialog({
+      titulo: 'Excluir lead?',
+      mensagem: msg,
+      tipo: 'danger',
+      textoBotaoConfirmar: 'Excluir',
+      onConfirm: () => {
+        setConfirmDialog(null);
 
-    const srcSlug = Object.keys(kanban).find(k => kanban[k].some(l => l.id === lead.id));
-    if (!srcSlug) return;
+        if (naoQualificado) {
+          setKanban(k => ({
+            ...k,
+            nao_qualificado: (k.nao_qualificado || []).filter(l => l.id !== lead.id),
+          }));
+          api.delete(`/sdr-inbound/leads/${lead.id}`).catch(() => carregarDados());
+          return;
+        }
 
-    setKanban(k => {
-      const srcArr = (k[srcSlug] || []).filter(l => l.id !== lead.id);
-      const dest = [{ ...lead, etapa: 'nao_qualificado' }, ...(k.nao_qualificado || [])];
-      return { ...k, [srcSlug]: srcArr, nao_qualificado: dest };
+        const srcSlug = Object.keys(kanban).find(k => kanban[k].some(l => l.id === lead.id));
+        if (!srcSlug) return;
+
+        setKanban(k => {
+          const srcArr = (k[srcSlug] || []).filter(l => l.id !== lead.id);
+          const dest = [{ ...lead, etapa: 'nao_qualificado' }, ...(k.nao_qualificado || [])];
+          return { ...k, [srcSlug]: srcArr, nao_qualificado: dest };
+        });
+
+        api.delete(`/sdr-inbound/leads/${lead.id}`).catch(() => carregarDados());
+      },
     });
-
-    api.delete(`/sdr-inbound/leads/${lead.id}`).catch(() => carregarDados());
   }
 
   function handleHandoffDone(leadId) {
@@ -472,6 +488,16 @@ export default function SdrInboundKanban() {
           onHandoffDone={handleHandoffDone}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={!!confirmDialog}
+        titulo={confirmDialog?.titulo}
+        mensagem={confirmDialog?.mensagem}
+        tipo={confirmDialog?.tipo || 'danger'}
+        textoBotaoConfirmar={confirmDialog?.textoBotaoConfirmar}
+        onConfirm={confirmDialog?.onConfirm}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </div>
   );
 }

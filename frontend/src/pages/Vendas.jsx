@@ -5,6 +5,8 @@ import FiltroUnificado from '../components/FiltroUnificado';
 import { extrairProdutosUnicos, isProdutoExcluido } from '../utils/produtos';
 import { DollarSign, TrendingUp, Trophy, ArrowUpDown, Search, Phone, MessageCircle, Mail, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 function MetricCard({ titulo, valor, subtitulo, icone: Icon, cor }) {
   const corMap = {
@@ -56,6 +58,7 @@ function buildDateParams(dataInicio, dataFim) {
 export default function Vendas() {
   const navigate = useNavigate();
   const { usuario } = useAuth();
+  const { toast } = useToast();
   const isAdmin = usuario?.perfil === 'admin' || usuario?.perfil === 'gestor';
   const [vendas, setVendas] = useState([]);
   const [vendedores, setVendedores] = useState([]);
@@ -64,6 +67,7 @@ export default function Vendas() {
   const [ordenacao, setOrdenacao] = useState({ campo: 'dataConversao', dir: 'desc' });
   const [celulaSalva, setCelulaSalva] = useState(null); // { leadId, campo } - feedback visual
   const [editandoCelula, setEditandoCelula] = useState(null); // { leadId, campo, valor }
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   const [dataInicio, setDataInicio] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
   const [dataFim, setDataFim] = useState(() => new Date());
@@ -168,20 +172,28 @@ export default function Vendas() {
     } catch (err) { console.error('Erro ao redistribuir:', err); }
   };
 
-  const removerVenda = async (lead) => {
-    if (!window.confirm(`Tem certeza que deseja remover esta venda?\nO lead "${lead.nome}" será mantido mas os campos de venda serão zerados.`)) return;
-    try {
-      await api.patch(`/leads/${lead.id}`, {
-        vendaRealizada: false,
-        valorVenda: null,
-        dataConversao: null,
-        etapaFunil: 'em_abordagem',
-      });
-      setVendas(prev => prev.filter(l => l.id !== lead.id));
-    } catch (err) {
-      console.error('Erro ao remover venda:', err);
-      alert('Erro ao remover venda. Tente novamente.');
-    }
+  const removerVenda = (lead) => {
+    setConfirmDialog({
+      titulo: 'Remover venda?',
+      mensagem: 'O lead será mantido mas os campos de venda serão zerados.',
+      tipo: 'danger',
+      textoBotaoConfirmar: 'Remover',
+      onConfirm: async () => {
+        try {
+          await api.patch(`/leads/${lead.id}`, {
+            vendaRealizada: false,
+            valorVenda: null,
+            dataConversao: null,
+            etapaFunil: 'em_abordagem',
+          });
+          setVendas(prev => prev.filter(l => l.id !== lead.id));
+        } catch (err) {
+          console.error('Erro ao remover venda:', err);
+          toast('Erro ao remover venda. Tente novamente.', 'urgente');
+        }
+        setConfirmDialog(null);
+      },
+    });
   };
 
   const limparFiltros = () => {
@@ -362,6 +374,17 @@ export default function Vendas() {
           </div>
         )}
       </div>
+      {confirmDialog && (
+        <ConfirmDialog
+          isOpen
+          titulo={confirmDialog.titulo}
+          mensagem={confirmDialog.mensagem}
+          tipo={confirmDialog.tipo}
+          textoBotaoConfirmar={confirmDialog.textoBotaoConfirmar || 'Confirmar'}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+        />
+      )}
     </div>
   );
 }

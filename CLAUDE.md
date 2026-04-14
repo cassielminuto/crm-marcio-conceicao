@@ -175,6 +175,20 @@ Para modais especificamente, garanta que:
 - TODO erro do backend deve aparecer pro usuário com mensagem específica
 - NUNCA "Dados inválidos" genérico — sempre dizer QUAL campo e QUAL valor é esperado
 
+### Toast e mensagens pro usuário (frontend)
+- NUNCA usar `alert()` pra mensagens de UI — usar toast via `useToast()`
+- NUNCA usar `window.confirm()` — usar componente `<ConfirmDialog />`
+- Toast: importar `{ useToast } from '../context/ToastContext'`, chamar `toast(msg, tipo)`
+  - Tipos: `'info'` (azul), `'sucesso'` (verde), `'urgente'` (vermelho), `'aviso'` (amarelo)
+  - Erros de API: `toast(err.response?.data?.error || 'Mensagem fallback', 'urgente')`
+  - Validações: `toast('Mensagem de validação', 'aviso')`
+- Confirmações (sim/não): usar `<ConfirmDialog />` de `frontend/src/components/ConfirmDialog.jsx`
+  - Props: `isOpen, titulo, mensagem, tipo ('danger'|'warning'), textoBotaoConfirmar, onConfirm, onCancel`
+  - Padrão: state `const [confirmDialog, setConfirmDialog] = useState(null)` + render condicional
+  - Ação destrutiva (excluir, desativar): `tipo: 'danger'`
+  - Override (horário OFF, prosseguir mesmo assim): `tipo: 'warning'`
+- Lição aprendida: alert() bloqueia a UI, não tem identidade visual, não suporta tipos
+
 ### Filtros de produto
 - Filtros de produto são 100% FRONTEND
 - NÃO criar tabelas tipo ProdutoExcluido

@@ -3,8 +3,10 @@ import { createPortal } from 'react-dom';
 import { DragDropContext, Droppable } from '@hello-pangea/dnd';
 import { Plus, Upload, X, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import api from '../services/api';
+import { useToast } from '../context/ToastContext';
 import SdrLeadCard from '../components/SdrLeadCard';
 import SeletorHorariosCloser from '../components/SeletorHorariosCloser';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 const COLUNAS = [
   { slug: 'f1_abertura', label: 'F1 - Abertura', cor: '#74b9ff' },
@@ -147,6 +149,7 @@ const TRANSICOES = {
 };
 
 function SdrLeadDetailModal({ lead, onClose, onSaved }) {
+  const { toast } = useToast();
   const [form, setForm] = useState({
     respostaLead: lead.respostaLead || '',
     temperaturaInicial: lead.temperaturaInicial || '',
@@ -176,6 +179,9 @@ function SdrLeadDetailModal({ lead, onClose, onSaved }) {
 
   // Lightbox
   const [lightboxUrl, setLightboxUrl] = useState(null);
+
+  // ConfirmDialog
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   useEffect(() => {
     if (!lead?.id) {
@@ -255,10 +261,10 @@ function SdrLeadDetailModal({ lead, onClose, onSaved }) {
         setShowDiff(true);
       } else if (data.erro) {
         // Print saved but IA failed — show in the print with error state
-        alert(`⚠️ ${data.mensagem}`);
+        toast(data.mensagem, 'aviso');
       }
     } catch (err) {
-      alert(err.response?.data?.error || 'Erro ao subir print.');
+      toast(err.response?.data?.error || 'Erro ao subir print', 'urgente');
     } finally {
       setUploadingPrint(false);
     }
@@ -274,18 +280,27 @@ function SdrLeadDetailModal({ lead, onClose, onSaved }) {
         setShowDiff(true);
       }
     } catch (err) {
-      alert('Erro ao reanalisar: ' + (err.response?.data?.error || err.message));
+      toast('Erro ao reanalisar: ' + (err.response?.data?.error || err.message), 'urgente');
     }
   }
 
-  async function handleRemovePrint(printId) {
-    if (!window.confirm('Remover este print?')) return;
-    try {
-      await api.delete(`/sdr/leads/${lead.id}/prints/${printId}`);
-      setPrints(prev => prev.filter(p => p.id !== printId));
-    } catch (err) {
-      alert('Erro ao remover print.');
-    }
+  function handleRemovePrint(printId) {
+    setConfirmDialog({
+      titulo: 'Remover print?',
+      mensagem: 'O print será removido permanentemente.',
+      tipo: 'danger',
+      textoBotaoConfirmar: 'Remover',
+      onConfirm: async () => {
+        try {
+          await api.delete(`/sdr/leads/${lead.id}/prints/${printId}`);
+          setPrints(prev => prev.filter(p => p.id !== printId));
+        } catch (err) {
+          toast('Erro ao remover print', 'urgente');
+        } finally {
+          setConfirmDialog(null);
+        }
+      },
+    });
   }
 
   function aceitarSugestao(campo, valor) {
@@ -335,7 +350,7 @@ function SdrLeadDetailModal({ lead, onClose, onSaved }) {
     });
   }
 
-  return createPortal(
+  return <>{createPortal(
     <div className="fixed inset-0 bg-black/60 flex items-start justify-center z-[9999] p-4 overflow-y-auto animate-backdrop-fade">
       <div className="bg-bg-card border border-border-default rounded-2xl w-full max-w-lg my-8 p-6 animate-modal-scale-in shadow-[0_24px_64px_rgba(0,0,0,0.6)]">
         <div className="flex items-center justify-between mb-5">
@@ -713,7 +728,17 @@ function SdrLeadDetailModal({ lead, onClose, onSaved }) {
       </div>
     </div>,
     document.body
-  );
+  )}
+  <ConfirmDialog
+    isOpen={!!confirmDialog}
+    titulo={confirmDialog?.titulo}
+    mensagem={confirmDialog?.mensagem}
+    tipo={confirmDialog?.tipo || 'danger'}
+    textoBotaoConfirmar={confirmDialog?.textoBotaoConfirmar}
+    onConfirm={confirmDialog?.onConfirm}
+    onCancel={() => setConfirmDialog(null)}
+  />
+  </>;
 }
 
 // ─────────────────────────────────────────────
@@ -1052,6 +1077,7 @@ function MetricaItem({ label, value, meta, cor }) {
 // SdrKanban (main)
 // ─────────────────────────────────────────────
 export default function SdrKanban() {
+  const { toast } = useToast();
   const [kanban, setKanban] = useState({ f1_abertura: [], f2_conexao: [], f3_qualificacao: [], f4_convite: [], reuniao_marcada: [], lixeira: [] });
   const [metricas, setMetricas] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -1061,6 +1087,9 @@ export default function SdrKanban() {
   const [leadDetalhe, setLeadDetalhe] = useState(null);
   const [handoffLead, setHandoffLead] = useState(null);
   const [handoffPendingDrag, setHandoffPendingDrag] = useState(null);
+
+  // ConfirmDialog
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   const carregarDados = useCallback(async () => {
     try {
@@ -1119,10 +1148,10 @@ export default function SdrKanban() {
       setKanban(prev);
       const camposFaltando = err.response?.data?.camposFaltando;
       if (camposFaltando?.length) {
-        alert(`Campos obrigatorios faltando: ${camposFaltando.join(', ')}`);
+        toast(`Campos obrigatorios faltando: ${camposFaltando.join(', ')}`, 'aviso');
         setLeadDetalhe(lead);
       } else {
-        alert(err.response?.data?.error || 'Erro ao mover lead.');
+        toast(err.response?.data?.error || 'Erro ao mover lead', 'urgente');
       }
     }
   }
@@ -1151,29 +1180,36 @@ export default function SdrKanban() {
     const msg = naLixeira
       ? `Tem certeza? "${lead.nome}" será removido permanentemente em 30 dias.`
       : `Mover "${lead.nome}" para a lixeira?`;
-    if (!window.confirm(msg)) return;
 
-    if (naLixeira) {
-      // Exclusao definitiva — remove do kanban
-      setKanban(k => ({
-        ...k,
-        lixeira: (k.lixeira || []).filter(l => l.id !== lead.id),
-      }));
-      api.delete(`/sdr/leads/${lead.id}`).catch(() => carregarDados());
-      return;
-    }
+    setConfirmDialog({
+      titulo: 'Excluir lead?',
+      mensagem: msg,
+      tipo: 'danger',
+      textoBotaoConfirmar: 'Excluir',
+      onConfirm: () => {
+        setConfirmDialog(null);
 
-    // Mover para lixeira
-    const srcSlug = Object.keys(kanban).find(k => kanban[k].some(l => l.id === lead.id));
-    if (!srcSlug) return;
+        if (naLixeira) {
+          setKanban(k => ({
+            ...k,
+            lixeira: (k.lixeira || []).filter(l => l.id !== lead.id),
+          }));
+          api.delete(`/sdr/leads/${lead.id}`).catch(() => carregarDados());
+          return;
+        }
 
-    setKanban(k => {
-      const srcArr = (k[srcSlug] || []).filter(l => l.id !== lead.id);
-      const lixeira = [{ ...lead, etapa: 'lixeira' }, ...(k.lixeira || [])];
-      return { ...k, [srcSlug]: srcArr, lixeira };
+        const srcSlug = Object.keys(kanban).find(k => kanban[k].some(l => l.id === lead.id));
+        if (!srcSlug) return;
+
+        setKanban(k => {
+          const srcArr = (k[srcSlug] || []).filter(l => l.id !== lead.id);
+          const lixeira = [{ ...lead, etapa: 'lixeira' }, ...(k.lixeira || [])];
+          return { ...k, [srcSlug]: srcArr, lixeira };
+        });
+
+        api.delete(`/sdr/leads/${lead.id}`).catch(() => carregarDados());
+      },
     });
-
-    api.delete(`/sdr/leads/${lead.id}`).catch(() => carregarDados());
   }
 
   function handleHandoffDone(leadId) {
@@ -1328,6 +1364,16 @@ export default function SdrKanban() {
           onHandoffDone={handleHandoffDone}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={!!confirmDialog}
+        titulo={confirmDialog?.titulo}
+        mensagem={confirmDialog?.mensagem}
+        tipo={confirmDialog?.tipo || 'danger'}
+        textoBotaoConfirmar={confirmDialog?.textoBotaoConfirmar}
+        onConfirm={confirmDialog?.onConfirm}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import AvatarVendedor from '../components/AvatarVendedor';
 import { Target, Plus, X, CalendarDays, TrendingUp, Award, Flame, Loader2, Building2, Users, ArrowRight, AlertTriangle } from 'lucide-react';
 
@@ -74,6 +75,7 @@ function formatarReais(valor) {
 // Modal: Definir Meta Empresa
 // ─────────────────────────────────────────────
 function ModalMetaEmpresa({ periodoAtual, metaExistente, onClose, onSaved }) {
+  const { toast } = useToast();
   const [form, setForm] = useState({
     periodo: metaExistente?.periodo || periodoAtual,
     valor_meta: metaExistente ? Number(metaExistente.valorMeta) : '',
@@ -94,7 +96,7 @@ function ModalMetaEmpresa({ periodoAtual, metaExistente, onClose, onSaved }) {
       onSaved();
       onClose();
     } catch (err) {
-      alert(err.response?.data?.error || 'Erro ao salvar meta empresa');
+      toast(err.response?.data?.error || 'Erro ao salvar meta empresa', 'urgente');
     } finally {
       setSalvando(false);
     }
@@ -138,6 +140,7 @@ function ModalMetaEmpresa({ periodoAtual, metaExistente, onClose, onSaved }) {
 // Modal: Distribuir Meta entre Vendedores
 // ─────────────────────────────────────────────
 function ModalDistribuir({ periodo, metaEmpresaValor, vendedores, metasExistentes, onClose, onSaved }) {
+  const { toast } = useToast();
   // Inicializar com valores existentes
   const [dist, setDist] = useState(() => {
     return vendedores.map(v => {
@@ -156,9 +159,9 @@ function ModalDistribuir({ periodo, metaEmpresaValor, vendedores, metasExistente
   }
 
   async function handleSubmit() {
-    if (excede) { alert('Soma distribuída excede meta empresa'); return; }
+    if (excede) { toast('Soma distribuída excede meta empresa', 'aviso'); return; }
     const validos = dist.filter(d => d.valorMeta > 0);
-    if (validos.length === 0) { alert('Distribua valor para pelo menos 1 vendedor'); return; }
+    if (validos.length === 0) { toast('Distribua valor para pelo menos 1 vendedor', 'aviso'); return; }
     setSalvando(true);
     try {
       await api.post('/metas/distribuir', {
@@ -168,7 +171,7 @@ function ModalDistribuir({ periodo, metaEmpresaValor, vendedores, metasExistente
       onSaved();
       onClose();
     } catch (err) {
-      alert(err.response?.data?.error || 'Erro ao distribuir metas');
+      toast(err.response?.data?.error || 'Erro ao distribuir metas', 'urgente');
     } finally {
       setSalvando(false);
     }

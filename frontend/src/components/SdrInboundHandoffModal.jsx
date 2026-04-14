@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Loader2, Send } from 'lucide-react';
 import api from '../services/api';
+import { useToast } from '../context/ToastContext';
 import SeletorHorariosCloser from './SeletorHorariosCloser';
 
 export default function SdrInboundHandoffModal({ lead, onClose, onHandoffDone }) {
+  const { toast } = useToast();
   const [closers, setClosers] = useState([]);
   const [form, setForm] = useState({
     dataReuniao: '',
@@ -29,7 +31,7 @@ export default function SdrInboundHandoffModal({ lead, onClose, onHandoffDone })
 
   async function handleSubmit() {
     if (!form.dataReuniao || !form.closerDestinoId) {
-      alert('Preencha data da reunião e closer responsável');
+      toast('Preencha data da reunião e closer responsável', 'aviso');
       return;
     }
 
@@ -42,7 +44,7 @@ export default function SdrInboundHandoffModal({ lead, onClose, onHandoffDone })
       onHandoffDone(lead.id, res.data);
       onClose();
     } catch (err) {
-      alert(err.response?.data?.error || 'Erro ao realizar handoff');
+      toast(err.response?.data?.error || 'Erro ao realizar handoff', 'urgente');
     } finally {
       setSaving(false);
     }

@@ -5,6 +5,7 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { Calendar, ChevronDown, Plus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import api from '../services/api';
 import AgendaFormModal from '../components/AgendaFormModal';
 import AgendaEventoModal from '../components/AgendaEventoModal';
@@ -42,6 +43,7 @@ function badgeReunioesHoje(eventos) {
 
 export default function Agenda() {
   const { usuario } = useAuth();
+  const { toast } = useToast();
   const calendarRef = useRef(null);
   const [eventos, setEventos] = useState([]);
   const [vendedores, setVendedores] = useState([]);
@@ -165,7 +167,7 @@ export default function Agenda() {
       });
       recarregarAtual();
     } catch (err) {
-      alert(err.response?.data?.error || 'Erro ao mover evento');
+      toast(err.response?.data?.error || 'Erro ao mover evento', 'urgente');
       info.revert();
     }
   }
@@ -179,7 +181,7 @@ export default function Agenda() {
       });
       recarregarAtual();
     } catch (err) {
-      alert(err.response?.data?.error || 'Erro ao redimensionar evento');
+      toast(err.response?.data?.error || 'Erro ao redimensionar evento', 'urgente');
       info.revert();
     }
   }

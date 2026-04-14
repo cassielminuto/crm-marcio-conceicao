@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Save, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import api from '../services/api';
+import { useToast } from '../context/ToastContext';
 
 const ETAPAS = [
   { value: 'novo_lead', label: 'Novo Lead' },
@@ -13,6 +14,7 @@ const ETAPAS = [
 ];
 
 export default function SdrInboundLeadModal({ lead, onClose, onSaved }) {
+  const { toast } = useToast();
   const [form, setForm] = useState({
     observacoes: lead.observacoes || '',
     proximoPasso: lead.proximoPasso || '',
@@ -32,7 +34,7 @@ export default function SdrInboundLeadModal({ lead, onClose, onSaved }) {
       onSaved(res.data.lead);
       onClose();
     } catch (err) {
-      alert(err.response?.data?.error || 'Erro ao salvar');
+      toast(err.response?.data?.error || 'Erro ao salvar', 'urgente');
     } finally {
       setSaving(false);
     }

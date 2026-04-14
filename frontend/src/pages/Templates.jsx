@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { Plus, Edit2, Trash2, X, FileText, Eye } from 'lucide-react';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 const ETAPA_OPTIONS = [
   { value: '', label: 'Todas as etapas' },
@@ -25,6 +27,7 @@ const FORM_INICIAL = { nome: '', conteudo: '', etapa_funil: '', classe_lead: 'to
 
 export default function Templates() {
   const { usuario } = useAuth();
+  const { toast } = useToast();
   const [templates, setTemplates] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [mostrarForm, setMostrarForm] = useState(false);
@@ -32,6 +35,7 @@ export default function Templates() {
   const [form, setForm] = useState(FORM_INICIAL);
   const [salvando, setSalvando] = useState(false);
   const [preview, setPreview] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   const isAdmin = usuario?.perfil === 'admin' || usuario?.perfil === 'gestor';
 
@@ -81,20 +85,28 @@ export default function Templates() {
       setEditandoId(null);
       carregar();
     } catch (err) {
-      alert(err.response?.data?.error || 'Erro ao salvar');
+      toast(err.response?.data?.error || 'Erro ao salvar', 'urgente');
     } finally {
       setSalvando(false);
     }
   };
 
-  const excluir = async (id) => {
-    if (!confirm('Desativar este template?')) return;
-    try {
-      await api.delete(`/templates/${id}`);
-      carregar();
-    } catch (err) {
-      console.error('Erro ao excluir:', err);
-    }
+  const excluir = (id) => {
+    setConfirmDialog({
+      titulo: 'Desativar template?',
+      mensagem: 'O template será desativado e não poderá mais ser usado em follow-ups.',
+      tipo: 'danger',
+      textoBotaoConfirmar: 'Desativar',
+      onConfirm: async () => {
+        try {
+          await api.delete(`/templates/${id}`);
+          carregar();
+        } catch (err) {
+          console.error('Erro ao excluir:', err);
+        }
+        setConfirmDialog(null);
+      },
+    });
   };
 
   const inserirVariavel = (variavel) => {
@@ -292,6 +304,17 @@ export default function Templates() {
             </div>
           ))}
         </div>
+      )}
+      {confirmDialog && (
+        <ConfirmDialog
+          isOpen
+          titulo={confirmDialog.titulo}
+          mensagem={confirmDialog.mensagem}
+          tipo={confirmDialog.tipo}
+          textoBotaoConfirmar={confirmDialog.textoBotaoConfirmar || 'Confirmar'}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+        />
       )}
     </div>
   );

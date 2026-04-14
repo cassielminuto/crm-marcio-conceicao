@@ -1,24 +1,22 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { ToastContainer } from '../Toast';
 import NotificationPanel from '../NotificationPanel';
 import AddLeadModal from '../AddLeadModal';
 import useSocket from '../../hooks/useSocket';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useToast } from '../../context/ToastContext';
 import api from '../../services/api';
 import { Search, Bell, Plus, Loader, Sun, Moon } from 'lucide-react';
 import HeaderBranding from '../HeaderBranding';
 import AvatarVendedor from '../AvatarVendedor';
 
-let toastIdCounter = 0;
-
 export default function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { tema, toggleTema } = useTheme();
-  const [toasts, setToasts] = useState([]);
+  const { toast: adicionarToast } = useToast();
   const [notifAberto, setNotifAberto] = useState(false);
   const [totalNaoLidas, setTotalNaoLidas] = useState(0);
   const [modalLeadAberto, setModalLeadAberto] = useState(false);
@@ -64,15 +62,6 @@ export default function AppLayout() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  const adicionarToast = useCallback((mensagem, tipo = 'info') => {
-    const id = ++toastIdCounter;
-    setToasts((prev) => [...prev, { id, mensagem, tipo }]);
-  }, []);
-
-  const removerToast = useCallback((id) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
   const handleNovoLead = useCallback((data) => {
@@ -210,11 +199,6 @@ export default function AppLayout() {
             <Outlet />
           </div>
         </main>
-      </div>
-
-      {/* Toast container — bottom-right with safe spacing */}
-      <div className="fixed bottom-6 right-6 z-[9999]">
-        <ToastContainer toasts={toasts} removerToast={removerToast} />
       </div>
 
       <AddLeadModal

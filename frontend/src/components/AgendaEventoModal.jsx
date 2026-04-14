@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { X, Loader2, Pencil, Trash2, CheckCircle, XCircle, RotateCcw, AlertTriangle, ExternalLink } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import { useToast } from '../context/ToastContext';
+import ConfirmDialog from './ConfirmDialog';
 
 const LABELS_TIPO = {
   reuniao_sdr_instagram: 'SDR Instagram',
@@ -30,11 +32,13 @@ const LABELS_STATUS = {
 };
 
 export default function AgendaEventoModal({ evento, onClose, onEditar, onDeleted, onStatusUpdated }) {
+  const { toast } = useToast();
   const { usuario } = useAuth();
   const navigate = useNavigate();
   const modalRef = useRef(null);
   const [excluindo, setExcluindo] = useState(false);
   const [atualizandoStatus, setAtualizandoStatus] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   if (!evento) return null;
 
@@ -50,18 +54,26 @@ export default function AgendaEventoModal({ evento, onClose, onEditar, onDeleted
     });
   }
 
-  async function handleExcluir() {
-    if (!window.confirm('Tem certeza que deseja excluir este evento?')) return;
-    setExcluindo(true);
-    try {
-      await api.delete(`/agenda/${evento.id}`);
-      onDeleted();
-      onClose();
-    } catch (err) {
-      alert(err.response?.data?.error || 'Erro ao excluir evento');
-    } finally {
-      setExcluindo(false);
-    }
+  function handleExcluir() {
+    setConfirmDialog({
+      titulo: 'Excluir evento?',
+      mensagem: 'Esta ação não pode ser desfeita.',
+      tipo: 'danger',
+      textoBotaoConfirmar: 'Excluir',
+      onConfirm: async () => {
+        setExcluindo(true);
+        try {
+          await api.delete(`/agenda/${evento.id}`);
+          onDeleted();
+          onClose();
+        } catch (err) {
+          toast(err.response?.data?.error || 'Erro ao excluir evento', 'urgente');
+        } finally {
+          setExcluindo(false);
+        }
+        setConfirmDialog(null);
+      },
+    });
   }
 
   async function handleStatus(status) {
@@ -71,7 +83,7 @@ export default function AgendaEventoModal({ evento, onClose, onEditar, onDeleted
       onStatusUpdated();
       onClose();
     } catch (err) {
-      alert(err.response?.data?.error || 'Erro ao atualizar status');
+      toast(err.response?.data?.error || 'Erro ao atualizar status', 'urgente');
     } finally {
       setAtualizandoStatus(false);
     }
@@ -223,6 +235,18 @@ export default function AgendaEventoModal({ evento, onClose, onEditar, onDeleted
           </div>
         )}
       </div>
+      {confirmDialog && (
+        <ConfirmDialog
+          isOpen
+          titulo={confirmDialog.titulo}
+          mensagem={confirmDialog.mensagem}
+          tipo={confirmDialog.tipo}
+          textoBotaoConfirmar={confirmDialog.textoBotaoConfirmar || 'Confirmar'}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+          loading={excluindo}
+        />
+      )}
     </div>,
     document.body
   );
