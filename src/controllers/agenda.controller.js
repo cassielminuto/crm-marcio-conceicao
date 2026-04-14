@@ -416,13 +416,24 @@ async function disponibilidade(req, res, next) {
     });
     if (!vendedor) return res.status(404).json({ error: 'Vendedor não encontrado' });
 
-    // Range: próximos 7 dias a partir de data_inicio ou hoje
-    const inicioRange = data_inicio ? new Date(data_inicio) : new Date();
-    inicioRange.setHours(0, 0, 0, 0);
+    // Range em Brasília (UTC-3): calcular dias usando offset explícito
+    // Obter data de hoje em Brasília
+    const agoraBrasilia = new Date(Date.now() - 3 * 60 * 60 * 1000);
+    const hojeBrasilia = agoraBrasilia.toISOString().slice(0, 10);
 
-    const fimRange = data_fim ? new Date(data_fim) : new Date(inicioRange);
-    if (!data_fim) fimRange.setDate(fimRange.getDate() + 7);
-    fimRange.setHours(23, 59, 59, 999);
+    const diaInicio = data_inicio ? new Date(data_inicio).toISOString().slice(0, 10) : hojeBrasilia;
+    // Range de busca: 00:00 Brasília do primeiro dia até 23:59 Brasília do último dia
+    const inicioRange = new Date(`${diaInicio}T00:00:00-03:00`);
+
+    let diaFim;
+    if (data_fim) {
+      diaFim = new Date(data_fim).toISOString().slice(0, 10);
+    } else {
+      const d = new Date(inicioRange);
+      d.setDate(d.getDate() + 7);
+      diaFim = d.toISOString().slice(0, 10);
+    }
+    const fimRange = new Date(`${diaFim}T23:59:59-03:00`);
 
     // Buscar todos os eventos do vendedor no range
     const eventos = await prisma.eventoAgenda.findMany({
@@ -442,19 +453,22 @@ async function disponibilidade(req, res, next) {
       orderBy: { inicio: 'asc' },
     });
 
-    // Gerar grid de dias + slots
+    // Gerar grid de dias + slots (tudo em horário Brasília)
     const diasDisponibilidade = [];
     const cursor = new Date(inicioRange);
 
     while (cursor < fimRange) {
-      const dia = cursor.toISOString().slice(0, 10); // YYYY-MM-DD
+      // Dia em Brasília: converter cursor UTC pra Brasília pra pegar YYYY-MM-DD
+      const cursorBrasilia = new Date(cursor.getTime() - 3 * 60 * 60 * 1000);
+      const dia = cursorBrasilia.toISOString().slice(0, 10);
       const slots = [];
 
       for (let hora = 8; hora <= 21; hora++) {
-        const slotInicio = new Date(cursor);
-        slotInicio.setHours(hora, 0, 0, 0);
-        const slotFim = new Date(cursor);
-        slotFim.setHours(hora + 1, 0, 0, 0);
+        const horaStr = String(hora).padStart(2, '0');
+        const horaFimStr = String(hora + 1).padStart(2, '0');
+        // Slots em horário Brasília → convertidos pra UTC via offset
+        const slotInicio = new Date(`${dia}T${horaStr}:00:00-03:00`);
+        const slotFim = new Date(`${dia}T${horaFimStr}:00:00-03:00`);
 
         // Verificar sobreposição com eventos
         let status = 'livre';
@@ -464,29 +478,26 @@ async function disponibilidade(req, res, next) {
           const evInicio = new Date(ev.inicio);
           const evFim = new Date(ev.fim);
 
-          // Sobreposição: slot começa antes do fim do evento E slot termina depois do início
           if (slotInicio < evFim && slotFim > evInicio) {
             if (ev.tipo === 'bloco_off') {
               status = 'off';
               eventoInfo = { titulo: ev.titulo, id: ev.id };
             } else if (ev.tipo === 'bloco_on') {
-              // Explicitamente disponível — mantém 'livre'
               status = 'livre';
             } else {
-              // reuniao_* ou evento_personalizado
               status = 'ocupado';
               eventoInfo = { titulo: ev.titulo, id: ev.id };
             }
-            break; // Primeiro match ganha
+            break;
           }
         }
 
-        const horaStr = `${String(hora).padStart(2, '0')}:00`;
-        slots.push({ hora: horaStr, status, ...(eventoInfo ? { evento: eventoInfo } : {}) });
+        slots.push({ hora: `${horaStr}:00`, status, ...(eventoInfo ? { evento: eventoInfo } : {}) });
       }
 
       diasDisponibilidade.push({ data: dia, slots });
-      cursor.setDate(cursor.getDate() + 1);
+      // Avançar 24h
+      cursor.setTime(cursor.getTime() + 24 * 60 * 60 * 1000);
     }
 
     res.json({
