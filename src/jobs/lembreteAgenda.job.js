@@ -2,6 +2,7 @@ const { Queue, Worker } = require('bullmq');
 const prisma = require('../config/database');
 const redis = require('../config/redis');
 const { enviarMensagem } = require('../services/whatsappService');
+const { formatarBrasilia } = require('../utils/dateBrasilia');
 const logger = require('../utils/logger');
 
 const QUEUE_NAME = 'lembrete-agenda';
@@ -61,7 +62,7 @@ function criarLembreteWorker() {
           if (evento.vendedor?.telefoneWhatsapp) {
             await enviarMensagem(
               evento.vendedor.telefoneWhatsapp,
-              `⏰ Lembrete: ${evento.titulo} em ~1h\n${evento.marcadoEmHorarioOff ? '⚠️ Marcada em horário OFF\n' : ''}Horário: ${evento.inicio.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
+              `⏰ Lembrete: ${evento.titulo} em ~1h\n${evento.marcadoEmHorarioOff ? '⚠️ Marcada em horário OFF\n' : ''}Horário: ${formatarBrasilia(evento.inicio)}`
             );
           }
 
@@ -82,7 +83,7 @@ function criarLembreteWorker() {
           if (evento.vendedor?.telefoneWhatsapp) {
             await enviarMensagem(
               evento.vendedor.telefoneWhatsapp,
-              `⏰ Lembrete: ${evento.titulo} em ~30min\n${evento.marcadoEmHorarioOff ? '⚠️ Marcada em horário OFF\n' : ''}Horário: ${evento.inicio.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
+              `⏰ Lembrete: ${evento.titulo} em ~30min\n${evento.marcadoEmHorarioOff ? '⚠️ Marcada em horário OFF\n' : ''}Horário: ${formatarBrasilia(evento.inicio)}`
             );
           }
 

@@ -1,7 +1,7 @@
 const prisma = require('../config/database');
 const logger = require('../utils/logger');
 const { criarNotificacao } = require('../services/notificacaoService');
-const { parseDateBrasilia } = require('../utils/dateBrasilia');
+const { parseDateBrasilia, formatarBrasilia } = require('../utils/dateBrasilia');
 
 const TIPOS_REUNIAO = ['reuniao_sdr_instagram', 'reuniao_sdr_inbound', 'reuniao_manual'];
 
@@ -167,9 +167,7 @@ async function criar(req, res, next) {
 
       if (vendedor?.telefoneWhatsapp) {
         const { enviarMensagem } = require('../services/whatsappService');
-        const dataFormatada = eventoInicio.toLocaleDateString('pt-BR', {
-          day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-        });
+        const dataFormatada = formatarBrasilia(eventoInicio);
         setImmediate(async () => {
           try {
             await enviarMensagem(
@@ -212,9 +210,7 @@ async function criar(req, res, next) {
       const isAutoCriacao = vendedorEvt?.usuarioId === req.usuario.id;
 
       if (!isAutoCriacao) {
-        const dataFormatadaEvt = eventoInicio.toLocaleDateString('pt-BR', {
-          day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-        });
+        const dataFormatadaEvt = formatarBrasilia(eventoInicio);
 
         // WhatsApp
         if (vendedorEvt?.telefoneWhatsapp) {

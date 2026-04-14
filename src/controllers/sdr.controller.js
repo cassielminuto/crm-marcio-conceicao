@@ -2,7 +2,7 @@ const prisma = require('../config/database');
 const { validarMovimentacao, executarHandoff, ETAPAS_SDR } = require('../services/sdrService');
 const { analisarPrintWhatsApp } = require('../services/aiService');
 const logger = require('../utils/logger');
-const { parseDateBrasilia } = require('../utils/dateBrasilia');
+const { parseDateBrasilia, formatarBrasilia } = require('../utils/dateBrasilia');
 
 async function listarKanban(req, res, next) {
   try {
@@ -231,9 +231,7 @@ async function handoff(req, res, next) {
     // WhatsApp pro closer
     if (leadAtualizado.closerDestino?.telefoneWhatsapp) {
       const { enviarMensagem } = require('../services/whatsappService');
-      const dataFormatada = eventoInicio.toLocaleDateString('pt-BR', {
-        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-      });
+      const dataFormatada = formatarBrasilia(eventoInicio);
       let texto = `🎯 Nova reunião agendada via Instagram (SDR)\nLead: ${lead.nome} (@${lead.instagram})\nTel: ${whatsapp}\nTom emocional: ${tomEmocional}\nO que funcionou: ${oqueFuncionou}`;
       if (oqueEvitar) texto += `\nO que evitar: ${oqueEvitar}`;
       if (fraseChaveLead) texto += `\nFrase-chave: "${fraseChaveLead}"`;
@@ -249,9 +247,7 @@ async function handoff(req, res, next) {
     // Notificação in-app pro closer
     if (leadAtualizado.closerDestino?.usuarioId) {
       const { criarNotificacao } = require('../services/notificacaoService');
-      const dataFormatadaNotif = eventoInicio.toLocaleDateString('pt-BR', {
-        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-      });
+      const dataFormatadaNotif = formatarBrasilia(eventoInicio);
       setImmediate(async () => {
         try {
           await criarNotificacao({

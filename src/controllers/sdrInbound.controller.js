@@ -1,7 +1,7 @@
 const prisma = require('../config/database');
 const { ETAPAS_INBOUND, validarMovimentacao, executarHandoff } = require('../services/sdrInboundService');
 const logger = require('../utils/logger');
-const { parseDateBrasilia } = require('../utils/dateBrasilia');
+const { parseDateBrasilia, formatarBrasilia } = require('../utils/dateBrasilia');
 
 function verificarAcesso(req) {
   const { perfil } = req.usuario;
@@ -215,7 +215,7 @@ async function handoff(req, res, next) {
     // WhatsApp pro closer
     if (leadAtualizado.closerDestino?.telefoneWhatsapp) {
       const { enviarMensagem } = require('../services/whatsappService');
-      const dataFormatada = eventoInicio.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const dataFormatada = formatarBrasilia(eventoInicio);
       let texto = `🎯 Nova reunião agendada pelo Thomaz (SDR)\nLead: ${lead.nome}\nTel: ${lead.telefone}\nDor: ${lead.dorPrincipal || 'Não informada'}\nReunião: ${dataFormatada}\nObservações do SDR: ${leadAtualizado.observacoes || 'Nenhuma'}`;
       if (blocoOff) texto += `\n⚠️ ATENÇÃO: marcada em horário OFF`;
       setImmediate(async () => {
@@ -228,9 +228,7 @@ async function handoff(req, res, next) {
     // Notificação in-app pro closer
     if (leadAtualizado.closerDestino?.usuarioId) {
       const { criarNotificacao } = require('../services/notificacaoService');
-      const dataFormatadaNotif = eventoInicio.toLocaleDateString('pt-BR', {
-        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-      });
+      const dataFormatadaNotif = formatarBrasilia(eventoInicio);
       setImmediate(async () => {
         try {
           await criarNotificacao({
