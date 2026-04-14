@@ -211,6 +211,27 @@ export default function Agenda() {
       eventEl.style.position = 'relative';
     }
     eventEl.appendChild(wrapper);
+
+    // Detectar sobreposição com evento do mesmo vendedor → borda branca
+    const vendedorId = info.event.extendedProps.vendedorId;
+    if (vendedorId && info.view?.calendar) {
+      const todos = info.view.calendar.getEvents();
+      const inicio = info.event.start?.getTime();
+      const fim = info.event.end?.getTime();
+      if (inicio && fim) {
+        const temVizinhoMesmoVendedor = todos.some(ev => {
+          if (ev.id === info.event.id) return false;
+          if (ev.extendedProps.vendedorId !== vendedorId) return false;
+          const ei = ev.start?.getTime();
+          const ef = ev.end?.getTime();
+          if (!ei || !ef) return false;
+          return inicio < ef && fim > ei;
+        });
+        if (temVizinhoMesmoVendedor) {
+          eventEl.classList.add('fc-evento-vizinho-mesmo-vendedor');
+        }
+      }
+    }
   }
 
   function handleEventClick(info) {
@@ -371,6 +392,8 @@ export default function Agenda() {
           height="auto"
           contentHeight={650}
           expandRows
+          slotEventOverlap={false}
+          eventMinHeight={20}
           slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
           eventTimeFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
           dayHeaderFormat={{ weekday: 'short', day: 'numeric', month: 'numeric' }}
@@ -470,16 +493,41 @@ export default function Agenda() {
           line-height: 1.3;
         }
 
+        /* Margem vertical entre eventos consecutivos (evita cards "colados") */
+        .fc .fc-timegrid-event-harness {
+          margin-bottom: 2px;
+        }
+
+        /* Margem horizontal entre eventos lado-a-lado (sobreposição) */
+        .fc .fc-timegrid-event-harness + .fc-timegrid-event-harness,
+        .fc .fc-timegrid-event-harness-inset {
+          margin-left: 2px;
+        }
+
+        /* Borda branca em eventos do mesmo vendedor sobrepostos (injetada via JS) */
+        .fc .fc-evento-vizinho-mesmo-vendedor {
+          box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.55);
+        }
+
         .fc .fc-event .fc-event-title {
           font-weight: 600;
           white-space: normal;
-          overflow: visible;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         .fc .fc-event .fc-event-time {
-          font-size: 11px;
+          font-size: 10px;
           font-weight: 500;
           opacity: 0.85;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        /* Em colunas estreitas (evento sobreposto), reduz padding */
+        .fc .fc-timegrid-event .fc-event-main {
+          padding: 1px 2px;
         }
 
         .fc .fc-event:hover {
