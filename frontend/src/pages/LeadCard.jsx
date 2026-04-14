@@ -117,6 +117,8 @@ export default function LeadCard() {
     previsaoFechamento: '',
   });
 
+  const podeEditar = isAdmin || (lead && lead.vendedorId === usuario?.vendedorId);
+
   const redistribuirLead = async (novoVendedorId) => {
     setRedistribuindo(true);
     try {
@@ -150,6 +152,7 @@ export default function LeadCard() {
   };
 
   const iniciarEdicaoCampoInfo = (campo, valorAtual) => {
+    if (!podeEditar) return;
     setEditandoCampoInfo(campo);
     setCampoInfoValor(valorAtual || '');
   };
@@ -291,10 +294,10 @@ export default function LeadCard() {
               </select>
             ) : (
               <span
-                onClick={() => setEditandoEtapa(true)}
-                className="px-2.5 py-1 rounded-lg text-[11px] font-semibold cursor-pointer hover:ring-2 hover:ring-white/10 transition-all"
+                onClick={() => podeEditar && setEditandoEtapa(true)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${podeEditar ? 'cursor-pointer hover:ring-2 hover:ring-white/10' : 'cursor-default'}`}
                 style={{ backgroundColor: hexToRgba((etapasConfig.find(e => e.slug === lead.etapaFunil)?.cor || '#6c5ce7'), 0.12), color: etapasConfig.find(e => e.slug === lead.etapaFunil)?.cor || '#6c5ce7' }}
-                title="Clique para mudar a etapa"
+                title={podeEditar ? 'Clique para mudar a etapa' : ''}
               >
                 {etapasConfig.find(e => e.slug === lead.etapaFunil)?.label || lead.etapaFunil}
               </span>
@@ -307,21 +310,25 @@ export default function LeadCard() {
             )}
           </div>
         </div>
-        <button
-          onClick={() => setConfirmandoExclusao(true)}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-[10px] text-[12px] font-semibold text-accent-danger/70 hover:text-accent-danger hover:bg-[rgba(225,112,85,0.06)] transition-all"
-          title="Excluir lead"
-        >
-          <Trash2 size={14} />
-        </button>
-        <button
-          onClick={salvar}
-          disabled={salvando}
-          className="flex items-center gap-2 bg-gradient-to-r from-[#6c5ce7] to-[#00cec9] text-white px-4 py-2 rounded-[10px] text-[12px] font-semibold hover:shadow-[0_4px_16px_rgba(108,92,231,0.25)] disabled:opacity-50 transition-all duration-250"
-        >
-          <Save size={14} />
-          {salvando ? 'Salvando...' : 'Salvar'}
-        </button>
+        {podeEditar && (
+          <button
+            onClick={() => setConfirmandoExclusao(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-[10px] text-[12px] font-semibold text-accent-danger/70 hover:text-accent-danger hover:bg-[rgba(225,112,85,0.06)] transition-all"
+            title="Excluir lead"
+          >
+            <Trash2 size={14} />
+          </button>
+        )}
+        {podeEditar && (
+          <button
+            onClick={salvar}
+            disabled={salvando}
+            className="flex items-center gap-2 bg-gradient-to-r from-[#6c5ce7] to-[#00cec9] text-white px-4 py-2 rounded-[10px] text-[12px] font-semibold hover:shadow-[0_4px_16px_rgba(108,92,231,0.25)] disabled:opacity-50 transition-all duration-250"
+          >
+            <Save size={14} />
+            {salvando ? 'Salvando...' : 'Salvar'}
+          </button>
+        )}
         {salvoMsg && (
           <span className={`text-[11px] ${salvoMsg === 'Salvo!' ? 'text-accent-emerald' : 'text-text-muted'}`}>
             {salvoMsg}
@@ -608,9 +615,10 @@ export default function LeadCard() {
               <CampoIA label="Dor Principal">
                 <textarea
                   value={campos.dorPrincipal}
-                  onChange={(e) => setCampos({ ...campos, dorPrincipal: e.target.value })}
+                  onChange={(e) => podeEditar && setCampos({ ...campos, dorPrincipal: e.target.value })}
+                  readOnly={!podeEditar}
                   rows={3}
-                  className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)] resize-none transition-all"
+                  className={`w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)] resize-none transition-all ${!podeEditar ? 'opacity-70 cursor-default' : ''}`}
                   placeholder="Descreva a dor principal do lead..."
                 />
               </CampoIA>
@@ -618,9 +626,10 @@ export default function LeadCard() {
               <CampoIA label="Objecao Principal">
                 <textarea
                   value={campos.objecaoPrincipal}
-                  onChange={(e) => setCampos({ ...campos, objecaoPrincipal: e.target.value })}
+                  onChange={(e) => podeEditar && setCampos({ ...campos, objecaoPrincipal: e.target.value })}
+                  readOnly={!podeEditar}
                   rows={3}
-                  className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)] resize-none transition-all"
+                  className={`w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)] resize-none transition-all ${!podeEditar ? 'opacity-70 cursor-default' : ''}`}
                   placeholder="Qual a principal objecao?"
                 />
               </CampoIA>
@@ -628,8 +637,9 @@ export default function LeadCard() {
               <CampoIA label="Traco de Carater">
                 <select
                   value={campos.tracoCarater}
-                  onChange={(e) => setCampos({ ...campos, tracoCarater: e.target.value })}
-                  className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)] transition-all"
+                  onChange={(e) => podeEditar && setCampos({ ...campos, tracoCarater: e.target.value })}
+                  disabled={!podeEditar}
+                  className={`w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)] transition-all ${!podeEditar ? 'opacity-70 cursor-default' : ''}`}
                 >
                   {TRACO_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>{o.label}</option>
@@ -640,8 +650,9 @@ export default function LeadCard() {
               <CampoIA label="Resultado da Call">
                 <select
                   value={campos.resultadoCall}
-                  onChange={(e) => setCampos({ ...campos, resultadoCall: e.target.value })}
-                  className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)] transition-all"
+                  onChange={(e) => podeEditar && setCampos({ ...campos, resultadoCall: e.target.value })}
+                  disabled={!podeEditar}
+                  className={`w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)] transition-all ${!podeEditar ? 'opacity-70 cursor-default' : ''}`}
                 >
                   {RESULTADO_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>{o.label}</option>
@@ -656,10 +667,11 @@ export default function LeadCard() {
                 <input
                   type="number"
                   value={campos.valorVenda}
-                  onChange={(e) => setCampos({ ...campos, valorVenda: e.target.value })}
+                  onChange={(e) => podeEditar && setCampos({ ...campos, valorVenda: e.target.value })}
+                  readOnly={!podeEditar}
                   placeholder="1229"
                   step="0.01"
-                  className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)] transition-all"
+                  className={`w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)] transition-all ${!podeEditar ? 'opacity-70 cursor-default' : ''}`}
                 />
               </div>
 
@@ -670,8 +682,9 @@ export default function LeadCard() {
                 <input
                   type="date"
                   value={campos.previsaoFechamento}
-                  onChange={(e) => setCampos({ ...campos, previsaoFechamento: e.target.value })}
-                  className="w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)] transition-all"
+                  onChange={(e) => podeEditar && setCampos({ ...campos, previsaoFechamento: e.target.value })}
+                  readOnly={!podeEditar}
+                  className={`w-full bg-bg-input border border-border-default rounded-lg px-3 py-2 text-[12px] text-text-primary focus:outline-none focus:border-[rgba(108,92,231,0.4)] focus:ring-[3px] focus:ring-[rgba(108,92,231,0.06)] transition-all ${!podeEditar ? 'opacity-70 cursor-default' : ''}`}
                 />
               </div>
             </div>

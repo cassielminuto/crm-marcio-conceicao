@@ -4,6 +4,14 @@ const { distribuir, incrementarLeadsAtivos } = require('../services/distribuidor
 const { verificarDuplicidade, registrarDuplicatas, buscarDuplicatas, mergearLeads } = require('../services/deduplicador');
 const logger = require('../utils/logger');
 
+function validarDono(req, res, lead) {
+  const perfil = req.usuario.perfil;
+  if (perfil === 'admin' || perfil === 'gestor') return true;
+  if (lead.vendedorId === req.usuario.vendedorId) return true;
+  res.status(403).json({ error: 'Apenas o vendedor responsável ou admin pode realizar esta ação' });
+  return false;
+}
+
 async function listar(req, res, next) {
   try {
     const {
@@ -239,6 +247,8 @@ async function atualizar(req, res, next) {
       return res.status(404).json({ error: 'Lead não encontrado' });
     }
 
+    if (!validarDono(req, res, existente)) return;
+
     // Campos permitidos para atualização
     const camposPermitidos = [
       'nome', 'telefone', 'email', 'canal', 'dorPrincipal', 'tracoCarater',
@@ -312,6 +322,8 @@ async function moverEtapa(req, res, next) {
     if (!lead) {
       return res.status(404).json({ error: 'Lead não encontrado' });
     }
+
+    if (!validarDono(req, res, lead)) return;
 
     if (lead.etapaFunil === etapa) {
       return res.status(400).json({ error: 'Lead já está nesta etapa' });
@@ -468,6 +480,8 @@ async function criarInteracao(req, res, next) {
     if (!lead) {
       return res.status(404).json({ error: 'Lead não encontrado' });
     }
+
+    if (!validarDono(req, res, lead)) return;
 
     const vendedorId = req.usuario.vendedorId || lead.vendedorId;
     if (!vendedorId) {
@@ -707,6 +721,8 @@ async function excluir(req, res, next) {
     if (!lead) {
       return res.status(404).json({ error: 'Lead nao encontrado' });
     }
+
+    if (!validarDono(req, res, lead)) return;
 
     // Deletar registros relacionados (ordem importa por foreign keys)
     await prisma.possivelDuplicata.deleteMany({

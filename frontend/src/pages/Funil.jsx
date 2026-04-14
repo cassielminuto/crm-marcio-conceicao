@@ -392,8 +392,12 @@ export default function Funil() {
       await api.patch(`/leads/${leadId}/etapa`, { etapa: novaEtapa });
       carregarFunil();
     } catch (err) {
-      console.error('Erro ao mover lead:', err);
-      carregarFunil();
+      if (err.response?.status === 403) {
+        alert('Apenas o vendedor responsável pode mover este lead');
+      } else {
+        console.error('Erro ao mover lead:', err);
+      }
+      carregarFunil(); // Reverte visual
     }
   };
 
