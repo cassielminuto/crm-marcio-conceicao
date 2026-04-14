@@ -101,7 +101,8 @@ export default function Agenda() {
   // Mapear eventos pro FullCalendar
   const eventosFC = eventos.map(ev => {
     const isOff = ev.marcadoEmHorarioOff;
-    const isPassado = ev.statusReuniao != null;
+    // Só marca como passado se tem status REAL preenchido (realizada/no_show/remarcada)
+    const isPassado = ev.statusReuniao === 'realizada' || ev.statusReuniao === 'no_show' || ev.statusReuniao === 'remarcada';
     const isBlocoOff = ev.tipo === 'bloco_off';
     const isBlocoOn = ev.tipo === 'bloco_on';
 
