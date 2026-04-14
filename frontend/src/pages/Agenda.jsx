@@ -105,18 +105,18 @@ export default function Agenda() {
     const isBlocoOff = ev.tipo === 'bloco_off';
     const isBlocoOn = ev.tipo === 'bloco_on';
 
-    // Cores por tipo
+    // Cores: blocos ON/OFF têm semântica especial, resto pega cor do vendedor
     let backgroundColor, borderColor, textColor;
     if (isBlocoOff) {
       backgroundColor = 'rgba(239, 68, 68, 0.12)';
       borderColor = '#fca5a5';
       textColor = '#f87171';
     } else if (isBlocoOn) {
-      backgroundColor = 'rgba(107, 114, 128, 0.12)';
-      borderColor = '#9ca3af';
-      textColor = '#9ca3af';
+      backgroundColor = 'rgba(16, 185, 129, 0.12)';
+      borderColor = '#6ee7b7';
+      textColor = '#10b981';
     } else {
-      backgroundColor = ev.cor || CORES_TIPO[ev.tipo] || '#6b7280';
+      backgroundColor = corDoVendedor(ev.vendedorId);
       borderColor = isOff ? '#ef4444' : backgroundColor;
       textColor = '#ffffff';
     }
@@ -140,15 +140,77 @@ export default function Agenda() {
         isBlocoOff ? 'fc-bloco-off' : '',
         isBlocoOn ? 'fc-bloco-on' : '',
       ].filter(Boolean),
-      extendedProps: { ...ev, _vendedorCor: corDoVendedor(ev.vendedorId) },
+      extendedProps: { ...ev },
     };
   });
 
+  // Paths dos ícones Lucide por tipo (construídos via createElementNS, sem innerHTML)
+  const ICONE_POR_TIPO = {
+    reuniao_sdr_instagram: [
+      { tag: 'rect', attrs: { width: '20', height: '20', x: '2', y: '2', rx: '5', ry: '5' } },
+      { tag: 'path', attrs: { d: 'M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z' } },
+      { tag: 'line', attrs: { x1: '17.5', x2: '17.51', y1: '6.5', y2: '6.5' } },
+    ],
+    reuniao_sdr_inbound: [
+      { tag: 'polyline', attrs: { points: '22 12 16 12 14 15 10 15 8 12 2 12' } },
+      { tag: 'path', attrs: { d: 'M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z' } },
+    ],
+    reuniao_manual: [
+      { tag: 'path', attrs: { d: 'm11 17 2 2a1 1 0 1 0 3-3' } },
+      { tag: 'path', attrs: { d: 'm14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4' } },
+      { tag: 'path', attrs: { d: 'm21 3 1 11h-2' } },
+      { tag: 'path', attrs: { d: 'M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3' } },
+      { tag: 'path', attrs: { d: 'M3 4h8' } },
+    ],
+    evento_personalizado: [
+      { tag: 'path', attrs: { d: 'M12 17v5' } },
+      { tag: 'path', attrs: { d: 'M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z' } },
+    ],
+    bloco_on: [
+      { tag: 'path', attrs: { d: 'M22 11.08V12a10 10 0 1 1-5.93-9.14' } },
+      { tag: 'polyline', attrs: { points: '22 4 12 14.01 9 11.01' } },
+    ],
+    bloco_off: [
+      { tag: 'circle', attrs: { cx: '12', cy: '12', r: '10' } },
+      { tag: 'path', attrs: { d: 'm4.9 4.9 14.2 14.2' } },
+    ],
+  };
+
   function handleEventDidMount(info) {
-    const cor = info.event.extendedProps._vendedorCor;
-    if (cor && info.el) {
-      info.el.style.borderLeft = `5px solid ${cor}`;
+    const tipo = info.event.extendedProps.tipo;
+    const paths = ICONE_POR_TIPO[tipo];
+    if (!paths || !info.el) return;
+
+    const isBlocoOff = tipo === 'bloco_off';
+    const isBlocoOn = tipo === 'bloco_on';
+    const corIcone = isBlocoOff ? '#f87171' : isBlocoOn ? '#10b981' : '#ffffff';
+
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('width', '12');
+    svg.setAttribute('height', '12');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', corIcone);
+    svg.setAttribute('stroke-width', '2.5');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+
+    for (const p of paths) {
+      const el = document.createElementNS(SVG_NS, p.tag);
+      for (const [k, v] of Object.entries(p.attrs)) el.setAttribute(k, v);
+      svg.appendChild(el);
     }
+
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'position:absolute;top:3px;right:4px;opacity:0.85;pointer-events:none;';
+    wrapper.appendChild(svg);
+
+    const eventEl = info.el;
+    if (getComputedStyle(eventEl).position === 'static') {
+      eventEl.style.position = 'relative';
+    }
+    eventEl.appendChild(wrapper);
   }
 
   function handleEventClick(info) {
@@ -259,47 +321,29 @@ export default function Agenda() {
         </div>
       </div>
 
-      {/* Legendas */}
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-        {/* Legenda por tipo (fundo) */}
-        <div className="flex flex-wrap gap-3 text-xs text-text-secondary">
-          <span className="text-[10px] text-text-muted font-semibold uppercase tracking-wider">Tipo:</span>
-          {Object.entries(CORES_TIPO).map(([tipo, cor]) => (
-            <div key={tipo} className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cor }} />
-              <span>{LABELS_TIPO[tipo]}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Separador */}
-        <div className="w-px h-4 bg-border-default" />
-
-        {/* Legenda por vendedor (borda lateral) */}
-        <div className="flex flex-wrap gap-3 text-xs text-text-secondary">
-          <span className="text-[10px] text-text-muted font-semibold uppercase tracking-wider">Closer:</span>
-          {(() => {
-            // Vendedores únicos com eventos no range atual
-            const idsVistos = new Set();
-            const vendedoresVisiveis = [];
-            for (const ev of eventos) {
-              if (ev.vendedorId && !idsVistos.has(ev.vendedorId)) {
-                idsVistos.add(ev.vendedorId);
-                vendedoresVisiveis.push({
-                  id: ev.vendedorId,
-                  nome: ev.vendedor?.nomeExibicao || `#${ev.vendedorId}`,
-                  cor: corDoVendedor(ev.vendedorId),
-                });
-              }
+      {/* Legenda — closer por cor de fundo (tipo é ícone no canto) */}
+      <div className="flex flex-wrap gap-3 text-xs text-text-secondary items-center">
+        <span className="text-[10px] text-text-muted font-semibold uppercase tracking-wider">Closer:</span>
+        {(() => {
+          const idsVistos = new Set();
+          const vendedoresVisiveis = [];
+          for (const ev of eventos) {
+            if (ev.vendedorId && !idsVistos.has(ev.vendedorId)) {
+              idsVistos.add(ev.vendedorId);
+              vendedoresVisiveis.push({
+                id: ev.vendedorId,
+                nome: ev.vendedor?.nomeExibicao || `#${ev.vendedorId}`,
+                cor: corDoVendedor(ev.vendedorId),
+              });
             }
-            return vendedoresVisiveis.map(v => (
-              <div key={v.id} className="flex items-center gap-1.5">
-                <span className="w-1 h-3.5 rounded-full" style={{ backgroundColor: v.cor }} />
-                <span>{v.nome}</span>
-              </div>
-            ));
-          })()}
-        </div>
+          }
+          return vendedoresVisiveis.map(v => (
+            <div key={v.id} className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded" style={{ backgroundColor: v.cor }} />
+              <span>{v.nome}</span>
+            </div>
+          ));
+        })()}
       </div>
 
       {/* Calendário */}
