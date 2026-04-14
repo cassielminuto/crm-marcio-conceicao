@@ -66,17 +66,19 @@ async function calcularKpis(where) {
 
 // ─── 2. Ranking de vendedores ───
 async function calcularRanking(where) {
-  const grupos = await prisma.lead.groupBy({
+  // Total de leads por vendedor (todos leads atribuídos, sem filtro extra)
+  const totalPorVendedor = await prisma.lead.groupBy({
     by: ['vendedorId'],
     where: { ...where, vendedorId: { not: null } },
     _count: { id: true },
-    _sum: { valorVenda: true },
   });
 
+  // Vendas por vendedor (apenas vendaRealizada=true)
   const vendasPorVendedor = await prisma.lead.groupBy({
     by: ['vendedorId'],
     where: { ...where, vendaRealizada: true, vendedorId: { not: null } },
     _count: { id: true },
+    _sum: { valorVenda: true },
   });
 
   const vendedores = await prisma.vendedor.findMany({
@@ -84,23 +86,28 @@ async function calcularRanking(where) {
     select: { id: true, nomeExibicao: true, usuarioId: true },
   });
 
-  const vendasMap = new Map(vendasPorVendedor.map(v => [v.vendedorId, v._count.id]));
+  const totalMap = new Map(totalPorVendedor.map(g => [g.vendedorId, g._count.id]));
+  const vendasMap = new Map(vendasPorVendedor.map(v => [v.vendedorId, { count: v._count.id, faturamento: Number(v._sum.valorVenda || 0) }]));
   const vendedorMap = new Map(vendedores.map(v => [v.id, v]));
 
-  return grupos
-    .map(g => {
-      const v = vendedorMap.get(g.vendedorId);
-      const vendasCount = vendasMap.get(g.vendedorId) || 0;
-      const faturamento = Number(g._sum.valorVenda || 0);
-      const ticketMedio = vendasCount > 0 ? faturamento / vendasCount : 0;
-      const conversao = g._count.id > 0 ? ((vendasCount / g._count.id) * 100) : 0;
+  // Unir todos os vendedores que têm leads OU vendas
+  const todosIds = new Set([...totalMap.keys(), ...vendasMap.keys()]);
+
+  return Array.from(todosIds)
+    .map(vid => {
+      const v = vendedorMap.get(vid);
+      const totalLeads = totalMap.get(vid) || 0;
+      const venda = vendasMap.get(vid) || { count: 0, faturamento: 0 };
+      const ticketMedio = venda.count > 0 ? venda.faturamento / venda.count : 0;
+      // Conversão: vendas / total leads do vendedor no período
+      const conversao = totalLeads > 0 ? ((venda.count / totalLeads) * 100) : 0;
       return {
-        vendedorId: g.vendedorId,
-        nomeExibicao: v?.nomeExibicao || `Vendedor #${g.vendedorId}`,
+        vendedorId: vid,
+        nomeExibicao: v?.nomeExibicao || `Vendedor #${vid}`,
         usuarioId: v?.usuarioId,
-        leads: g._count.id,
-        vendas: vendasCount,
-        faturamento,
+        leads: totalLeads,
+        vendas: venda.count,
+        faturamento: venda.faturamento,
         ticketMedio,
         conversao,
       };

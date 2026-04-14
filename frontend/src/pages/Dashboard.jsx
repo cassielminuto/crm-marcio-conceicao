@@ -11,7 +11,6 @@ import { Users, TrendingUp, DollarSign, Target, Clock, Phone, MessageSquare, Ale
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 // ─── Novos componentes do dashboard expandido ───
-import FiltrosDashboard from '../components/dashboard/FiltrosDashboard';
 import RankingVendedores from '../components/dashboard/RankingVendedores';
 import ComoEuToIndo from '../components/dashboard/ComoEuToIndo';
 import FunilVisual from '../components/dashboard/FunilVisual';
@@ -186,13 +185,7 @@ export default function Dashboard() {
 
   // ─── State novo (endpoint /api/dashboard/metricas) ───
   const [dashMetricas, setDashMetricas] = useState(null);
-  const [filtrosExpanded, setFiltrosExpanded] = useState({
-    dataInicio: null,
-    dataFim: null,
-    vendedorId: '',
-    canal: '',
-    comparar: false,
-  });
+  const [comparar, setComparar] = useState(false);
 
   // ─── Carregar dados existentes ───
   const carregarDados = useCallback(async () => {
@@ -212,8 +205,8 @@ export default function Dashboard() {
         api.get(`/leads/funil?${dp}`),
         api.get(`/leads/vendas?${dp}`),
         api.get(`/leads/metricas-anuncio?${dp}`),
-        // Endpoint novo — métricas expandidas
-        api.get(`/dashboard/metricas?${dp}${filtrosExpanded.comparar ? '&comparar=true' : ''}${filtrosExpanded.vendedorId ? `&vendedor_id=${filtrosExpanded.vendedorId}` : ''}${filtrosExpanded.canal ? `&canal=${filtrosExpanded.canal}` : ''}`),
+        // Endpoint novo — métricas expandidas (mesmos filtros)
+        api.get(`/dashboard/metricas?${dp}${comparar ? '&comparar=true' : ''}${filtroVendedor ? `&vendedor_id=${filtroVendedor}` : ''}${filtroCanal ? `&canal=${filtroCanal}` : ''}`),
       ];
 
       if (vendedorId) {
@@ -257,7 +250,7 @@ export default function Dashboard() {
     } finally {
       setCarregando(false);
     }
-  }, [vendedorId, isAdmin, dataInicio, dataFim, filtrosExpanded, toast]);
+  }, [vendedorId, isAdmin, dataInicio, dataFim, comparar, filtroVendedor, filtroCanal, toast]);
 
   useEffect(() => {
     carregarDados();
@@ -342,16 +335,23 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Filtros expandidos (comparação período anterior) */}
-      <FiltrosDashboard
-        filtros={filtrosExpanded}
-        setFiltros={(f) => {
-          setFiltrosExpanded(f);
-          if (f.dataInicio) setDataInicio(new Date(f.dataInicio));
-          if (f.dataFim) setDataFim(new Date(f.dataFim));
-        }}
-        vendedores={todosVendedores}
-      />
+      {/* Barra de filtros extras */}
+      <div className="flex items-center gap-4 flex-wrap">
+        <label className="flex items-center gap-2 cursor-pointer select-none px-3 py-1.5 rounded-lg bg-bg-card border border-border-default hover:border-border-hover transition-colors">
+          <input
+            type="checkbox"
+            checked={comparar}
+            onChange={(e) => setComparar(e.target.checked)}
+            className="w-3.5 h-3.5 rounded border-border-default bg-bg-input text-accent-violet focus:ring-accent-violet"
+          />
+          <span className="text-[11px] font-medium text-text-secondary">Comparar período anterior</span>
+        </label>
+        {comparar && dashMetricas?.comparacao && (
+          <span className="text-[10px] text-text-muted">
+            vs {new Date(dashMetricas.comparacao.periodo.dataInicio).toLocaleDateString('pt-BR')} — {new Date(dashMetricas.comparacao.periodo.dataFim).toLocaleDateString('pt-BR')}
+          </span>
+        )}
+      </div>
 
       {/* KPIs principais — 4 cards com deltas reais */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-[14px]">
@@ -459,7 +459,7 @@ export default function Dashboard() {
           <div className="lg:col-span-2">
             <RankingVendedores ranking={dashMetricas.ranking} />
           </div>
-          <ComoEuToIndo ranking={dashMetricas.ranking} usuarioId={usuario?.id} />
+          <ComoEuToIndo ranking={dashMetricas.ranking} usuarioId={usuario?.id} vendedorId={vendedorId} />
         </div>
       )}
 

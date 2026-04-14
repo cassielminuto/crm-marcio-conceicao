@@ -10,16 +10,17 @@ function formatBRL(value) {
 }
 
 function formatPercent(value) {
-  return `${(value * 100).toFixed(1)}%`;
+  return `${Number(value).toFixed(1)}%`;
 }
 
-export default function ComoEuToIndo({ ranking, usuarioId }) {
+export default function ComoEuToIndo({ ranking, usuarioId, vendedorId }) {
   const idx = (ranking || []).findIndex((r) => r.usuarioId === usuarioId);
   const meuDado = idx >= 0 ? ranking[idx] : null;
   const posicao = idx >= 0 ? idx + 1 : null;
   const total = (ranking || []).length;
 
   if (!meuDado) {
+    const isVendedor = !!vendedorId;
     return (
       <div className="bg-bg-card border border-border-default rounded-[14px] p-6">
         <div className="flex items-center gap-2 mb-4">
@@ -28,7 +29,11 @@ export default function ComoEuToIndo({ ranking, usuarioId }) {
             Como eu tô indo
           </span>
         </div>
-        <p className="text-sm text-text-muted">Sem dados no período</p>
+        <p className="text-sm text-text-muted">
+          {isVendedor
+            ? 'Você ainda não fez vendas neste período. Bora começar! 💪'
+            : 'Esta visualização é para vendedores. Como admin/gestor, veja o ranking ao lado.'}
+        </p>
       </div>
     );
   }
