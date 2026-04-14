@@ -87,6 +87,7 @@ async function me(usuarioId) {
     email: usuario.email,
     perfil: usuario.perfil,
     fotoUrl: usuario.fotoUrl || null,
+    vendedorId: usuario.vendedor?.id || null,
     ativo: usuario.ativo,
     createdAt: usuario.createdAt,
     vendedor: usuario.vendedor

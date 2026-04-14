@@ -117,7 +117,8 @@ export default function LeadCard() {
     previsaoFechamento: '',
   });
 
-  const podeEditar = isAdmin || (lead && lead.vendedorId === usuario?.vendedorId);
+  const meuVendedorId = usuario?.vendedorId || usuario?.vendedor?.id || null;
+  const podeEditar = isAdmin || (lead && meuVendedorId && lead.vendedorId === meuVendedorId);
 
   const redistribuirLead = async (novoVendedorId) => {
     setRedistribuindo(true);
