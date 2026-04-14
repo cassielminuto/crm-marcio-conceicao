@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import api from '../services/api';
 import FiltroUnificado from '../components/FiltroUnificado';
 import { extrairProdutosUnicos, isProdutoExcluido } from '../utils/produtos';
@@ -8,6 +9,22 @@ import AvatarVendedor from '../components/AvatarVendedor';
 import { useNavigate } from 'react-router-dom';
 import { Users, TrendingUp, DollarSign, Target, Clock, Phone, MessageSquare, AlertTriangle, Trophy, ArrowUp, ArrowDown, Building2, Plus } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+
+// ─── Novos componentes do dashboard expandido ───
+import FiltrosDashboard from '../components/dashboard/FiltrosDashboard';
+import RankingVendedores from '../components/dashboard/RankingVendedores';
+import ComoEuToIndo from '../components/dashboard/ComoEuToIndo';
+import FunilVisual from '../components/dashboard/FunilVisual';
+import TempoMedioFunil from '../components/dashboard/TempoMedioFunil';
+import PerformanceSdr from '../components/dashboard/PerformanceSdr';
+import LeadsPorCanal from '../components/dashboard/LeadsPorCanal';
+import TopAnuncios from '../components/dashboard/TopAnuncios';
+import TaxaNoShow from '../components/dashboard/TaxaNoShow';
+import ProximasReunioes from '../components/dashboard/ProximasReunioes';
+import ValorPipeline from '../components/dashboard/ValorPipeline';
+import ForecastMes from '../components/dashboard/ForecastMes';
+import HeatmapHorario from '../components/dashboard/HeatmapHorario';
+import AtividadeTime from '../components/dashboard/AtividadeTime';
 
 /* ─── Accent color config per metric ─── */
 const accentMap = {
@@ -106,27 +123,6 @@ function PeriodTabs({ active, onChange }) {
   );
 }
 
-/* ─── Medal component for top 3 ─── */
-function MedalBadge({ position }) {
-  const medals = {
-    1: { bg: 'bg-[rgba(253,203,110,0.15)]', text: 'text-[#fdcb6e]', label: '1' },
-    2: { bg: 'bg-[rgba(160,160,190,0.15)]', text: 'text-[#a0a0be]', label: '2' },
-    3: { bg: 'bg-[rgba(225,112,85,0.15)]', text: 'text-[#e17055]', label: '3' },
-  };
-  const m = medals[position];
-  if (!m) return <span className="text-[13px] font-extrabold w-6 text-center text-text-faint">{position}</span>;
-
-  return (
-    <div className={`w-6 h-6 rounded-full ${m.bg} flex items-center justify-center`}>
-      {position <= 3 ? (
-        <Trophy size={13} className={m.text} />
-      ) : (
-        <span className={`text-[11px] font-extrabold ${m.text}`}>{m.label}</span>
-      )}
-    </div>
-  );
-}
-
 /* ─── Section header ─── */
 function SectionHeader({ children, right }) {
   return (
@@ -161,11 +157,16 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 export default function Dashboard() {
   const { usuario } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const vendedorId = usuario?.vendedorId;
+  const isAdmin = usuario?.perfil === 'admin' || usuario?.perfil === 'gestor';
+
+  // ─── State existente (APIs legadas) ───
   const [followUps, setFollowUps] = useState([]);
   const [ranking, setRanking] = useState([]);
   const [graficoDados, setGraficoDados] = useState([]);
   const [carregando, setCarregando] = useState(true);
-  const [vendedorInfo, setVendedorInfo] = useState(null);
   const [rawLeads, setRawLeads] = useState([]);
   const [rawVendas, setRawVendas] = useState([]);
   const [rawVendasData, setRawVendasData] = useState(null);
@@ -183,14 +184,20 @@ export default function Dashboard() {
   const [chartPeriod, setChartPeriod] = useState('30d');
   const [todosVendedores, setTodosVendedores] = useState([]);
 
-  const navigate = useNavigate();
-  const vendedorId = usuario?.vendedorId;
-  const isAdmin = usuario?.perfil === 'admin' || usuario?.perfil === 'gestor';
+  // ─── State novo (endpoint /api/dashboard/metricas) ───
+  const [dashMetricas, setDashMetricas] = useState(null);
+  const [filtrosExpanded, setFiltrosExpanded] = useState({
+    dataInicio: null,
+    dataFim: null,
+    vendedorId: '',
+    canal: '',
+    comparar: false,
+  });
 
+  // ─── Carregar dados existentes ───
   const carregarDados = useCallback(async () => {
     setCarregando(true);
     try {
-      // BRT (UTC-3): inicio = 03:00Z mesmo dia, fim = 02:59:59Z dia seguinte
       const inicioStr = dataInicio instanceof Date ? dataInicio.toISOString().slice(0, 10) : dataInicio;
       const fimStr = dataFim instanceof Date ? dataFim.toISOString().slice(0, 10) : dataFim;
       const inicioISO = inicioStr + 'T03:00:00.000Z';
@@ -205,6 +212,8 @@ export default function Dashboard() {
         api.get(`/leads/funil?${dp}`),
         api.get(`/leads/vendas?${dp}`),
         api.get(`/leads/metricas-anuncio?${dp}`),
+        // Endpoint novo — métricas expandidas
+        api.get(`/dashboard/metricas?${dp}${filtrosExpanded.comparar ? '&comparar=true' : ''}${filtrosExpanded.vendedorId ? `&vendedor_id=${filtrosExpanded.vendedorId}` : ''}${filtrosExpanded.canal ? `&canal=${filtrosExpanded.canal}` : ''}`),
       ];
 
       if (vendedorId) {
@@ -229,10 +238,9 @@ export default function Dashboard() {
       const vendasData = resultados[3].data;
       setRawVendasData(vendasData);
       setRawVendas(vendasData?.vendas || []);
-
       setMetricasAnuncio(resultados[4]?.data || null);
+      setDashMetricas(resultados[5]?.data || null);
 
-      // Meta empresa (período atual, independente do filtro)
       try {
         const periodoMes = new Date().toISOString().slice(0, 7);
         const metaEmpRes = await api.get(`/metas/empresa?periodo=${periodoMes}`);
@@ -240,19 +248,16 @@ export default function Dashboard() {
       } catch { setMetaEmpresaData(null); }
 
       if (vendedorId) {
-        const vInfo = vendedoresData.find(v => v.id === vendedorId);
-        setVendedorInfo(vInfo);
-        setFollowUps(resultados[5]?.data || []);
-      } else if (isAdmin) {
-        setVendedorInfo(null);
+        setFollowUps(resultados[6]?.data || []);
+      } else {
         setFollowUps([]);
       }
     } catch (err) {
-      console.error('Erro ao carregar dashboard:', err);
+      toast('Erro ao carregar dashboard', 'urgente');
     } finally {
       setCarregando(false);
     }
-  }, [vendedorId, isAdmin, dataInicio, dataFim]);
+  }, [vendedorId, isAdmin, dataInicio, dataFim, filtrosExpanded, toast]);
 
   useEffect(() => {
     carregarDados();
@@ -287,7 +292,6 @@ export default function Dashboard() {
     return { totalLeads, leadsConvertidos, leadsAtivos, taxaConversao, faturamento };
   }, [rawLeads, rawVendas, vendedorId, filtroVendedor, filtroCanal, produtosExcluidos]);
 
-  // Filter chart data by chartPeriod (7d/30d/90d)
   const graficoDadosFiltrados = useMemo(() => {
     if (!graficoDados.length) return [];
     const dias = parseInt(chartPeriod) || 30;
@@ -299,11 +303,14 @@ export default function Dashboard() {
     });
   }, [graficoDados, chartPeriod]);
 
-  // Compute max conversions for ranking progress bars
-  const maxConversoes = useMemo(() => {
-    if (!ranking.length) return 1;
-    return Math.max(...ranking.map(v => v.conversoesNoPeriodo ?? v.totalConversoes ?? 0), 1);
-  }, [ranking]);
+  // Deltas da comparação
+  const deltas = dashMetricas?.comparacao?.deltas;
+  function deltaProps(field) {
+    if (!deltas || deltas[field] === undefined) return undefined;
+    const val = deltas[field];
+    if (val === 0) return undefined;
+    return { tipo: val > 0 ? 'up' : 'down', valor: `${Math.abs(val)}${field === 'taxaConversao' ? 'pp' : ''}` };
+  }
 
   if (carregando) {
     return (
@@ -313,12 +320,9 @@ export default function Dashboard() {
     );
   }
 
-  const posicaoRanking = vendedorId
-    ? ranking.find((v) => v.id === vendedorId)?.rankingPosicao || '-'
-    : '-';
-
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Header + Filtros existentes */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-[24px] font-semibold text-text-primary">Dashboard</h1>
@@ -338,49 +342,60 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Cards de metricas — staggered entrance */}
+      {/* Filtros expandidos (comparação período anterior) */}
+      <FiltrosDashboard
+        filtros={filtrosExpanded}
+        setFiltros={(f) => {
+          setFiltrosExpanded(f);
+          if (f.dataInicio) setDataInicio(new Date(f.dataInicio));
+          if (f.dataFim) setDataFim(new Date(f.dataFim));
+        }}
+        vendedores={todosVendedores}
+      />
+
+      {/* KPIs principais — 4 cards com deltas reais */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-[14px]">
         <div className="animate-card-enter" style={{ animationDelay: '0ms' }}>
           <MetricCard
             titulo="Leads no Periodo"
-            valor={metricas?.totalLeads ?? 0}
+            valor={dashMetricas?.kpis?.totalLeads ?? metricas?.totalLeads ?? 0}
             icone={Users}
             accent="blue"
-            subtitulo={vendedorId ? `${metricas?.leadsAtivos ?? 0} ativos` : `${metricas?.leadsAtivos ?? 0} em negociacao`}
-            mudanca={{ tipo: 'up', valor: '12%' }}
+            subtitulo={`${metricas?.leadsAtivos ?? 0} em negociacao`}
+            mudanca={deltaProps('totalLeads')}
             index={0}
           />
         </div>
         <div className="animate-card-enter" style={{ animationDelay: '80ms' }}>
           <MetricCard
             titulo="Taxa de Conversao"
-            valor={`${metricas?.taxaConversao ?? 0}%`}
+            valor={`${(dashMetricas?.kpis?.taxaConversao ?? metricas?.taxaConversao ?? 0).toFixed(1)}%`}
             icone={TrendingUp}
             accent="emerald"
-            subtitulo={`${metricas?.leadsConvertidos ?? 0} de ${metricas?.totalLeads ?? 0}`}
-            mudanca={{ tipo: 'up', valor: '3.2%' }}
+            subtitulo={`${dashMetricas?.kpis?.vendas ?? metricas?.leadsConvertidos ?? 0} de ${dashMetricas?.kpis?.totalLeads ?? metricas?.totalLeads ?? 0}`}
+            mudanca={deltaProps('taxaConversao')}
             index={1}
           />
         </div>
         <div className="animate-card-enter" style={{ animationDelay: '160ms' }}>
           <MetricCard
             titulo="Faturamento"
-            valor={`R$ ${(metricas?.faturamento ?? 0).toLocaleString('pt-BR')}`}
+            valor={`R$ ${(dashMetricas?.kpis?.faturamento ?? metricas?.faturamento ?? 0).toLocaleString('pt-BR')}`}
             icone={DollarSign}
             accent="amber"
-            subtitulo={`${metricas?.leadsConvertidos ?? 0} vendas no periodo`}
-            mudanca={{ tipo: 'up', valor: '8%' }}
+            subtitulo={`${dashMetricas?.kpis?.vendas ?? metricas?.leadsConvertidos ?? 0} vendas`}
+            mudanca={deltaProps('faturamento')}
             index={2}
           />
         </div>
         <div className="animate-card-enter" style={{ animationDelay: '240ms' }}>
           <MetricCard
             titulo="Conversoes"
-            valor={metricas?.leadsConvertidos ?? 0}
+            valor={dashMetricas?.kpis?.vendas ?? metricas?.leadsConvertidos ?? 0}
             icone={Target}
             accent="violet"
-            subtitulo={`de ${metricas?.totalLeads ?? 0} leads`}
-            mudanca={{ tipo: 'down', valor: '5%' }}
+            subtitulo={`de ${dashMetricas?.kpis?.totalLeads ?? metricas?.totalLeads ?? 0} leads`}
+            mudanca={deltaProps('vendas')}
             index={3}
           />
         </div>
@@ -428,9 +443,7 @@ export default function Dashboard() {
       })() : (
         <div className="bg-bg-card border border-border-default rounded-[14px] p-6 text-center">
           <Building2 size={20} className="text-text-muted mx-auto mb-2" />
-          <p className="text-[13px] text-text-muted">
-            {isAdmin ? 'Meta do mês ainda não definida' : 'Meta do mês ainda não definida'}
-          </p>
+          <p className="text-[13px] text-text-muted">Meta do mês ainda não definida</p>
           {isAdmin && (
             <button onClick={() => navigate('/metas')} className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12px] font-semibold bg-accent-violet text-white hover:bg-accent-violet/90 transition-colors">
               <Plus size={13} />
@@ -440,7 +453,64 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Card Metricas Anuncio */}
+      {/* ═══ SESSÃO: Performance ═══ */}
+      {dashMetricas?.ranking && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <RankingVendedores ranking={dashMetricas.ranking} />
+          </div>
+          <ComoEuToIndo ranking={dashMetricas.ranking} usuarioId={usuario?.id} />
+        </div>
+      )}
+
+      {/* ═══ SESSÃO: Funil ═══ */}
+      {dashMetricas && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <FunilVisual funil={dashMetricas.funil} />
+          </div>
+          <TempoMedioFunil tempoMedio={dashMetricas.tempoMedio} />
+        </div>
+      )}
+
+      {/* ═══ SESSÃO: SDR ═══ */}
+      {dashMetricas?.sdr && (
+        <PerformanceSdr sdr={dashMetricas.sdr} />
+      )}
+
+      {/* ═══ SESSÃO: Canal/Origem ═══ */}
+      {dashMetricas && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <LeadsPorCanal porCanal={dashMetricas.porCanal} />
+          <TopAnuncios topAnuncios={dashMetricas.topAnuncios} />
+        </div>
+      )}
+
+      {/* ═══ SESSÃO: Reuniões ═══ */}
+      {dashMetricas?.reunioes && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <TaxaNoShow reunioes={dashMetricas.reunioes} />
+          <ProximasReunioes reunioes={dashMetricas.reunioes} />
+        </div>
+      )}
+
+      {/* ═══ SESSÃO: Pipeline ═══ */}
+      {dashMetricas?.pipeline && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ValorPipeline pipeline={dashMetricas.pipeline} />
+          <ForecastMes pipeline={dashMetricas.pipeline} />
+        </div>
+      )}
+
+      {/* ═══ SESSÃO: Atividade ═══ */}
+      {dashMetricas && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <HeatmapHorario heatmap={dashMetricas.heatmap} />
+          <AtividadeTime atividade={dashMetricas.atividade} />
+        </div>
+      )}
+
+      {/* Card Metricas Anuncio (existente) */}
       {metricasAnuncio && (
         <div className="bg-bg-card border border-border-default rounded-[14px] p-6">
           <SectionHeader>Metricas — Anuncio</SectionHeader>
@@ -473,10 +543,11 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* AI Resumo (existente) */}
       {isAdmin && <AIResumoPeriodo dataInicio={dataInicio} dataFim={dataFim} />}
 
+      {/* Gráfico Leads por dia (existente) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Grafico */}
         <div className="lg:col-span-2 bg-bg-card border border-border-default rounded-[14px] p-6">
           <SectionHeader right={<PeriodTabs active={chartPeriod} onChange={setChartPeriod} />}>
             Leads por dia
@@ -490,11 +561,7 @@ export default function Dashboard() {
                     <stop offset="100%" stopColor="#7C3AED" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid
-                  stroke="rgba(255,255,255,0.03)"
-                  strokeDasharray="4 6"
-                  vertical={false}
-                />
+                <CartesianGrid stroke="rgba(255,255,255,0.03)" strokeDasharray="4 6" vertical={false} />
                 <XAxis
                   dataKey="data"
                   tick={{ fontSize: 10, fill: '#5C5C6F' }}
@@ -507,21 +574,9 @@ export default function Dashboard() {
                   }}
                   interval={4}
                 />
-                <YAxis
-                  tick={{ fontSize: 10, fill: '#5C5C6F' }}
-                  stroke="rgba(255,255,255,0.04)"
-                  tickLine={false}
-                  axisLine={false}
-                  allowDecimals={false}
-                />
+                <YAxis tick={{ fontSize: 10, fill: '#5C5C6F' }} stroke="rgba(255,255,255,0.04)" tickLine={false} axisLine={false} allowDecimals={false} />
                 <Tooltip content={<CustomTooltip />} />
-                <Area
-                  type="monotone"
-                  dataKey="total"
-                  stroke="#7C3AED"
-                  fill="url(#gradViolet)"
-                  strokeWidth={2}
-                />
+                <Area type="monotone" dataKey="total" stroke="#7C3AED" fill="url(#gradViolet)" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
           ) : (
@@ -529,107 +584,59 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Ranking */}
+        {/* Follow-ups pendentes */}
         <div className="bg-bg-card border border-border-default rounded-[14px] p-6">
-          <SectionHeader>Ranking do Time</SectionHeader>
-          {vendedorId && (
-            <div className="mb-4 bg-[rgba(124,58,237,0.12)] rounded-[10px] p-3 text-center">
-              <p className="text-[10px] text-[#A78BFA]">Sua posicao</p>
-              <p className="text-[28px] font-extrabold text-text-primary" style={{ fontVariantNumeric: 'tabular-nums' }}>#{posicaoRanking}</p>
+          <SectionHeader right={
+            <span className="text-[12px] text-text-muted">{followUps.length} pendentes</span>
+          }>
+            Follow-ups Pendentes
+          </SectionHeader>
+
+          {followUps.length === 0 ? (
+            <p className="text-text-muted text-center py-6">Nenhum follow-up pendente</p>
+          ) : (
+            <div className="space-y-2">
+              {followUps.map((fu, idx) => {
+                const urgencia = classificarUrgencia(fu.dataProgramada);
+                const cores = coresUrgencia[urgencia];
+                const IconeTipo = tipoIcone[fu.tipo] || MessageSquare;
+
+                return (
+                  <div
+                    key={fu.id}
+                    className={`flex items-center justify-between p-3 rounded-[10px] border ${cores.bg} ${cores.border} transition-all duration-200 hover:scale-[1.005] animate-row-enter`}
+                    style={{
+                      borderLeft: `3px solid ${cores.leftBorder}`,
+                      animationDelay: `${idx * 40}ms`,
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <IconeTipo size={16} className={cores.text} />
+                      <div>
+                        <p className={`text-[12px] font-medium ${cores.text}`}>{fu.lead?.nome}</p>
+                        <p className="text-[11px] text-text-muted">{fu.lead?.telefone} — Classe {fu.lead?.classe}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className="text-[11px] text-text-secondary" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                          {new Date(fu.dataProgramada).toLocaleDateString('pt-BR')}
+                        </p>
+                        <p className="text-[10px] text-text-muted" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                          {new Date(fu.dataProgramada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${cores.badge}`}>
+                        {urgencia === 'atrasado' && <AlertTriangle size={10} className="inline mr-1" />}
+                        {labelUrgencia[urgencia]}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
-          <ul className="space-y-1">
-            {ranking.map((v, i) => {
-              const conv = v.conversoesNoPeriodo ?? v.totalConversoes ?? 0;
-              const convRate = maxConversoes > 0 ? (conv / maxConversoes) * 100 : 0;
-              return (
-                <li
-                  key={v.id}
-                  className={`flex items-center gap-3 p-[10px_12px] rounded-[10px] text-[12px] transition-colors duration-200 ${
-                    v.id === vendedorId ? 'bg-[rgba(124,58,237,0.1)]' : 'hover:bg-bg-card-hover'
-                  }`}
-                >
-                  <MedalBadge position={v.rankingPosicao} />
-                  <AvatarVendedor nome={v.nomeExibicao} fotoUrl={v.usuario?.fotoUrl} id={v.id} tamanho={32} />
-                  <div className="flex-1 min-w-0">
-                    <span className="font-medium text-text-primary block truncate">{v.nomeExibicao}</span>
-                    {/* Conversion progress bar */}
-                    <div className="mt-1 h-[3px] w-full bg-border-subtle rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-700 ease-out"
-                        style={{
-                          width: `${convRate}%`,
-                          background: i === 0 ? '#fdcb6e' : i === 1 ? '#a0a0be' : i === 2 ? '#e17055' : '#7C3AED',
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <span className="text-[12px] font-bold text-text-primary whitespace-nowrap" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                    {v.conversoesNoPeriodo ?? v.totalConversoes} conv.
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
         </div>
-      </div>
-
-      {/* Follow-ups pendentes */}
-      <div className="bg-bg-card border border-border-default rounded-[14px] p-6">
-        <SectionHeader right={
-          <span className="text-[12px] text-text-muted">{followUps.length} pendentes</span>
-        }>
-          Follow-ups Pendentes
-        </SectionHeader>
-
-        {followUps.length === 0 ? (
-          <p className="text-text-muted text-center py-6">Nenhum follow-up pendente</p>
-        ) : (
-          <div className="space-y-2">
-            {followUps.map((fu, idx) => {
-              const urgencia = classificarUrgencia(fu.dataProgramada);
-              const cores = coresUrgencia[urgencia];
-              const IconeTipo = tipoIcone[fu.tipo] || MessageSquare;
-
-              return (
-                <div
-                  key={fu.id}
-                  className={`flex items-center justify-between p-3 rounded-[10px] border ${cores.bg} ${cores.border} transition-all duration-200 hover:scale-[1.005] animate-row-enter`}
-                  style={{
-                    borderLeft: `3px solid ${cores.leftBorder}`,
-                    animationDelay: `${idx * 40}ms`,
-                  }}
-                >
-                  <div className="flex items-center gap-3">
-                    <IconeTipo size={16} className={cores.text} />
-                    <div>
-                      <p className={`text-[12px] font-medium ${cores.text}`}>
-                        {fu.lead?.nome}
-                      </p>
-                      <p className="text-[11px] text-text-muted">
-                        {fu.lead?.telefone} — Classe {fu.lead?.classe}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <p className="text-[11px] text-text-secondary" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                        {new Date(fu.dataProgramada).toLocaleDateString('pt-BR')}
-                      </p>
-                      <p className="text-[10px] text-text-muted" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                        {new Date(fu.dataProgramada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    </div>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${cores.badge}`}>
-                      {urgencia === 'atrasado' && <AlertTriangle size={10} className="inline mr-1" />}
-                      {labelUrgencia[urgencia]}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
       </div>
     </div>
   );
