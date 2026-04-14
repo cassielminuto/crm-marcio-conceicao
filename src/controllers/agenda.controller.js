@@ -259,8 +259,8 @@ async function editar(req, res, next) {
       return res.status(404).json({ error: 'Evento não encontrado' });
     }
 
-    // Permissão: dono ou admin/gestor
-    if (!isAdminGestor(req.usuario) && req.usuario.vendedorId !== evento.vendedorId) {
+    // Permissão: vendedorId dono, criadoPorId, ou admin/gestor
+    if (!isAdminGestor(req.usuario) && req.usuario.vendedorId !== evento.vendedorId && req.usuario.id !== evento.criadoPorId) {
       return res.status(403).json({ error: 'Sem permissão para editar este evento' });
     }
 
@@ -291,7 +291,8 @@ async function excluir(req, res, next) {
       return res.status(404).json({ error: 'Evento não encontrado' });
     }
 
-    if (!isAdminGestor(req.usuario) && req.usuario.vendedorId !== evento.vendedorId) {
+    // Permissão: vendedorId dono, criadoPorId, ou admin/gestor
+    if (!isAdminGestor(req.usuario) && req.usuario.vendedorId !== evento.vendedorId && req.usuario.id !== evento.criadoPorId) {
       return res.status(403).json({ error: 'Sem permissão para excluir este evento' });
     }
 
@@ -322,7 +323,7 @@ async function atualizarStatus(req, res, next) {
       return res.status(400).json({ error: 'Status de reunião só pode ser atualizado em eventos tipo reunião' });
     }
 
-    if (!isAdminGestor(req.usuario) && req.usuario.vendedorId !== evento.vendedorId) {
+    if (!isAdminGestor(req.usuario) && req.usuario.vendedorId !== evento.vendedorId && req.usuario.id !== evento.criadoPorId) {
       return res.status(403).json({ error: 'Sem permissão para atualizar status deste evento' });
     }
 

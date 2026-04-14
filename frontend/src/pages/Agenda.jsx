@@ -60,15 +60,13 @@ export default function Agenda() {
   const isAdminGestorSdr = usuario?.perfil === 'admin' || usuario?.perfil === 'gestor' || usuario?.perfil === 'sdr';
   const isAdminGestor = usuario?.perfil === 'admin' || usuario?.perfil === 'gestor';
 
-  // Carregar vendedores pra filtro
+  // Carregar vendedores pra filtro (todos veem — transparência total)
   useEffect(() => {
-    if (isAdminGestorSdr) {
-      api.get('/vendedores').then(res => {
-        const lista = Array.isArray(res.data) ? res.data : res.data.vendedores || [];
-        setVendedores(lista.filter(v => v.ativo));
-      }).catch(() => {});
-    }
-  }, [isAdminGestorSdr]);
+    api.get('/vendedores').then(res => {
+      const lista = Array.isArray(res.data) ? res.data : res.data.vendedores || [];
+      setVendedores(lista.filter(v => v.ativo));
+    }).catch(() => {});
+  }, []);
 
   // Carregar eventos
   const carregarEventos = useCallback(async (info) => {
@@ -225,8 +223,8 @@ export default function Agenda() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Filtro por closer */}
-          {isAdminGestorSdr && (
+          {/* Filtro por closer — visível pra todos (transparência total) */}
+          {vendedores.length > 0 && (
             <div className="relative">
               <select
                 value={filtroVendedor}

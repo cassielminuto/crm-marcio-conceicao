@@ -43,7 +43,8 @@ export default function AgendaEventoModal({ evento, onClose, onEditar, onDeleted
   if (!evento) return null;
 
   const isAdminGestor = usuario?.perfil === 'admin' || usuario?.perfil === 'gestor';
-  const isDono = usuario?.vendedorId === evento.vendedorId;
+  const meuVendedorId = usuario?.vendedorId || usuario?.vendedor?.id || null;
+  const isDono = (meuVendedorId && meuVendedorId === evento.vendedorId) || usuario?.id === evento.criadoPorId;
   const podeEditar = isDono || isAdminGestor;
   const isReuniao = evento.tipo.startsWith('reuniao_');
   const corTipo = evento.cor || CORES_TIPO[evento.tipo] || '#6b7280';
