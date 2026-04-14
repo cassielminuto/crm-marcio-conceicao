@@ -37,6 +37,7 @@ const moverSchema = z.object({
 
 const handoffSchema = z.object({
   dataReuniao: z.string().min(1, 'Data da reunião é obrigatória'),
+  fimReuniao: z.string().optional().nullable(),
   closerDestinoId: z.number().int().positive('Closer destino é obrigatório'),
   observacoes: z.string().optional().nullable(),
   proximoPasso: z.string().optional().nullable(),

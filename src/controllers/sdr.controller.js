@@ -156,6 +156,7 @@ async function handoff(req, res, next) {
     const {
       whatsapp,
       dataReuniao,
+      fimReuniao,
       closerDestinoId,
       resumoSituacao,
       tomEmocional,
@@ -169,12 +170,23 @@ async function handoff(req, res, next) {
       return res.status(404).json({ error: 'Lead SDR não encontrado' });
     }
 
+    // Parse datas + validar fim > inicio
+    const eventoInicio = parseDateBrasilia(dataReuniao);
+    const eventoFim = fimReuniao
+      ? parseDateBrasilia(fimReuniao)
+      : new Date(eventoInicio.getTime() + 30 * 60 * 1000); // fallback: +30min
+
+    if (eventoFim <= eventoInicio) {
+      return res.status(400).json({ error: 'Horário de término deve ser depois do início' });
+    }
+
     // Atualizar lead com dados do handoff e mover para reuniao_marcada
     const leadAtualizado = await prisma.leadSDR.update({
       where: { id: Number(id) },
       data: {
         whatsapp,
-        dataReuniao: parseDateBrasilia(dataReuniao),
+        dataReuniao: eventoInicio,
+        fimReuniao: eventoFim,
         closerDestinoId,
         resumoSituacao,
         tomEmocional,
@@ -191,10 +203,6 @@ async function handoff(req, res, next) {
 
     // Executar handoff — cria lead no CRM do closer
     const novoLead = await executarHandoff(leadAtualizado);
-
-    // Criar EventoAgenda pra reunião
-    const eventoInicio = parseDateBrasilia(dataReuniao);
-    const eventoFim = new Date(eventoInicio.getTime() + 60 * 60 * 1000); // +1h
 
     const blocoOff = await prisma.eventoAgenda.findFirst({
       where: {

@@ -755,6 +755,7 @@ function HandoffModalInline({ lead, onClose, onHandoffDone }) {
   const [form, setForm] = useState({
     whatsapp: lead.whatsapp || '',
     dataReuniao: '',
+    fimReuniao: '',
     closerDestinoId: '',
     tomEmocional: '',
     resumoSituacao: '',
@@ -811,16 +812,22 @@ function HandoffModalInline({ lead, onClose, onHandoffDone }) {
     }
   }
 
-  const canConfirm = form.whatsapp && form.dataReuniao && form.closerDestinoId && form.tomEmocional && form.resumoSituacao && form.oqueFuncionou;
+  const fimValido = !form.fimReuniao || (form.dataReuniao && new Date(form.fimReuniao) > new Date(form.dataReuniao));
+  const canConfirm = form.whatsapp && form.dataReuniao && form.closerDestinoId && form.tomEmocional && form.resumoSituacao && form.oqueFuncionou && fimValido;
 
   async function handleConfirm() {
     if (!canConfirm) return;
+    if (form.fimReuniao && new Date(form.fimReuniao) <= new Date(form.dataReuniao)) {
+      setError('Horário de término deve ser depois do início');
+      return;
+    }
     setConfirmando(true);
     setError('');
     try {
       const payload = {
         whatsapp: form.whatsapp,
         dataReuniao: form.dataReuniao,
+        fimReuniao: form.fimReuniao || null,
         closerDestinoId: parseInt(form.closerDestinoId),
         resumoSituacao: form.resumoSituacao,
         tomEmocional: form.tomEmocional,
@@ -871,7 +878,7 @@ function HandoffModalInline({ lead, onClose, onHandoffDone }) {
               />
             </div>
             <div>
-              <label className="block text-[11px] font-medium text-text-muted mb-1.5">Data da Reuniao</label>
+              <label className="block text-[11px] font-medium text-text-muted mb-1.5">Início da Reunião</label>
               <input
                 type="datetime-local"
                 value={form.dataReuniao}
@@ -879,6 +886,22 @@ function HandoffModalInline({ lead, onClose, onHandoffDone }) {
                 className="w-full px-3 py-2 rounded-lg bg-bg-input border border-border-default text-[13px] text-text-primary focus:border-accent-violet/40 outline-none transition-colors"
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[11px] font-medium text-text-muted mb-1.5">Fim da Reunião</label>
+              <input
+                type="datetime-local"
+                value={form.fimReuniao}
+                onChange={e => setForm(f => ({ ...f, fimReuniao: e.target.value }))}
+                className={`w-full px-3 py-2 rounded-lg bg-bg-input border text-[13px] text-text-primary focus:border-accent-violet/40 outline-none transition-colors ${!fimValido ? 'border-accent-danger/60' : 'border-border-default'}`}
+              />
+              {!fimValido && (
+                <p className="text-[10px] text-accent-danger mt-1">Fim deve ser depois do início</p>
+              )}
+            </div>
+            <div />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -917,7 +940,7 @@ function HandoffModalInline({ lead, onClose, onHandoffDone }) {
             <SeletorHorariosCloser
               vendedorId={Number(form.closerDestinoId)}
               valorAtual={form.dataReuniao}
-              onSelect={(valor) => setForm(f => ({ ...f, dataReuniao: valor }))}
+              onSelect={(inicio, fim) => setForm(f => ({ ...f, dataReuniao: inicio, fimReuniao: fim }))}
             />
           )}
 

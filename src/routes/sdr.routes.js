@@ -75,6 +75,7 @@ const moverSchema = z.object({
 const handoffSchema = z.object({
   whatsapp: z.string().min(1, 'WhatsApp é obrigatório'),
   dataReuniao: z.string().min(1, 'Data da reunião é obrigatória'),
+  fimReuniao: z.string().optional().nullable(),
   closerDestinoId: z.number().int().positive('Closer destino é obrigatório'),
   resumoSituacao: z.string().min(1, 'Resumo da situação é obrigatório'),
   tomEmocional: z.enum(['desesperado', 'racional', 'resistente', 'aberto', 'fragil'], {

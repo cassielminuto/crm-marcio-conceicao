@@ -482,6 +482,7 @@ model LeadSDR {
   // Handoff
   whatsapp              String?            @db.VarChar(20)
   dataReuniao           DateTime?          @map("data_reuniao")
+  fimReuniao            DateTime?          @map("fim_reuniao")
   closerDestinoId       Int?               @map("closer_destino_id")
   resumoSituacao        String?            @map("resumo_situacao")
   tomEmocional          TomEmocional?      @map("tom_emocional")
@@ -547,6 +548,7 @@ model LeadSDRInbound {
   proximoPasso      String?   @map("proximo_passo") @db.Text
 
   dataReuniao       DateTime? @map("data_reuniao")
+  fimReuniao        DateTime? @map("fim_reuniao")
   closerDestinoId   Int?      @map("closer_destino_id")
   closerDestino     Vendedor? @relation("CloserDestinoInbound", fields: [closerDestinoId], references: [id])
   leadCloserId      Int?      @map("lead_closer_id")

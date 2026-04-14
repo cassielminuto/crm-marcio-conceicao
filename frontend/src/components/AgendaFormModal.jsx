@@ -90,11 +90,11 @@ export default function AgendaFormModal({ isOpen, onClose, onSaved, evento, vend
     }
   }, [tipo, isEdit]);
 
-  // Auto-fim = inicio + 1h (se não editando)
+  // Auto-fim = inicio + 30min (se não editando)
   useEffect(() => {
     if (inicio && !isEdit && !fim) {
       const d = new Date(inicio);
-      d.setHours(d.getHours() + 1);
+      d.setMinutes(d.getMinutes() + 30);
       setFim(formatDatetimeLocal(d));
     }
   }, [inicio, isEdit, fim]);

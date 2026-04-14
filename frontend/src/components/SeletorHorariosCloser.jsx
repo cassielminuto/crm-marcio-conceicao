@@ -26,7 +26,7 @@ const STATUS_STYLES = {
   },
 };
 
-export default function SeletorHorariosCloser({ vendedorId, valorAtual, onSelect }) {
+export default function SeletorHorariosCloser({ vendedorId, valorAtual, onSelect, duracaoDefault = 30 }) {
   const [dados, setDados] = useState(null);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
@@ -66,10 +66,21 @@ export default function SeletorHorariosCloser({ vendedorId, valorAtual, onSelect
     }
   }
 
+  function computarFim(inicioStr) {
+    // inicioStr no formato "YYYY-MM-DDTHH:MM" (Brasília local)
+    const [data, hora] = inicioStr.split('T');
+    const [h, m] = hora.split(':').map(Number);
+    const totalMin = h * 60 + m + duracaoDefault;
+    const hFim = Math.floor(totalMin / 60);
+    const mFim = totalMin % 60;
+    return `${data}T${String(hFim).padStart(2, '0')}:${String(mFim).padStart(2, '0')}`;
+  }
+
   function handleSlotClick(dia, slot) {
     if (slot.status === 'ocupado') return;
 
     const valor = `${dia}T${slot.hora}`;
+    const fim = computarFim(valor);
 
     if (slot.status === 'off') {
       setConfirmDialog({
@@ -79,16 +90,15 @@ export default function SeletorHorariosCloser({ vendedorId, valorAtual, onSelect
         textoBotaoConfirmar: 'Sim, escolher',
         onConfirm: () => {
           setSelecionado(valor);
-          onSelect(valor, true);
+          onSelect(valor, fim, true);
           setConfirmDialog(null);
         },
       });
       return;
     }
 
-    // Formato datetime-local: "2026-04-14T10:00"
     setSelecionado(valor);
-    onSelect(valor, false);
+    onSelect(valor, fim, false);
   }
 
   function formatDia(dataStr) {

@@ -10,6 +10,7 @@ export default function SdrInboundHandoffModal({ lead, onClose, onHandoffDone })
   const [closers, setClosers] = useState([]);
   const [form, setForm] = useState({
     dataReuniao: '',
+    fimReuniao: '',
     closerDestinoId: '',
     observacoes: lead.observacoes || '',
     proximoPasso: lead.proximoPasso || '',
@@ -32,6 +33,10 @@ export default function SdrInboundHandoffModal({ lead, onClose, onHandoffDone })
   async function handleSubmit() {
     if (!form.dataReuniao || !form.closerDestinoId) {
       toast('Preencha data da reunião e closer responsável', 'aviso');
+      return;
+    }
+    if (form.fimReuniao && new Date(form.fimReuniao) <= new Date(form.dataReuniao)) {
+      toast('Horário de término deve ser depois do início', 'aviso');
       return;
     }
 
@@ -74,15 +79,26 @@ export default function SdrInboundHandoffModal({ lead, onClose, onHandoffDone })
             Ao confirmar, o lead será passado ao closer escolhido com uma reunião agendada.
           </p>
 
-          {/* Data reunião */}
-          <div>
-            <label className="text-[11px] font-medium text-text-muted mb-1 block">Data e hora da reunião *</label>
-            <input
-              type="datetime-local"
-              value={form.dataReuniao}
-              onChange={e => handleChange('dataReuniao', e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-bg-elevated border border-border-subtle text-[13px] text-text-primary focus:outline-none focus:border-accent-violet"
-            />
+          {/* Início + fim da reunião */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[11px] font-medium text-text-muted mb-1 block">Início *</label>
+              <input
+                type="datetime-local"
+                value={form.dataReuniao}
+                onChange={e => handleChange('dataReuniao', e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-bg-elevated border border-border-subtle text-[13px] text-text-primary focus:outline-none focus:border-accent-violet"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-medium text-text-muted mb-1 block">Fim</label>
+              <input
+                type="datetime-local"
+                value={form.fimReuniao}
+                onChange={e => handleChange('fimReuniao', e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-bg-elevated border border-border-subtle text-[13px] text-text-primary focus:outline-none focus:border-accent-violet"
+              />
+            </div>
           </div>
 
           {/* Closer */}
@@ -105,7 +121,9 @@ export default function SdrInboundHandoffModal({ lead, onClose, onHandoffDone })
             <SeletorHorariosCloser
               vendedorId={Number(form.closerDestinoId)}
               valorAtual={form.dataReuniao}
-              onSelect={(valor) => handleChange('dataReuniao', valor)}
+              onSelect={(inicio, fim) => {
+                setForm(f => ({ ...f, dataReuniao: inicio, fimReuniao: fim }));
+              }}
             />
           )}
 
