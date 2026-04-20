@@ -6,11 +6,13 @@ import ScriptChecklist from '../components/ScriptChecklist';
 import CallRecorder from '../components/CallRecorder';
 import PrintUploader from '../components/PrintUploader';
 import DuplicateAlert from '../components/DuplicateAlert';
+import AvatarVendedor from '../components/AvatarVendedor';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import {
   ArrowLeft, Phone, Mail, Instagram, Megaphone, Clock, User, Save,
   MessageSquare, PhoneCall, FileText, ChevronDown, ChevronUp, Bot, Camera,
-  Zap, CalendarPlus, RefreshCw, Loader, ChevronRight, Trash2, MessageCircle, ClipboardList, Package, DollarSign, Calendar, Pencil,
+  Zap, CalendarPlus, RefreshCw, Loader, ChevronRight, Trash2, MessageCircle, ClipboardList, Package, DollarSign, Calendar, Pencil, Send,
 } from 'lucide-react';
 import { extrairProduto } from '../utils/produtos';
 
@@ -19,6 +21,32 @@ function hexToRgba(hex, alpha) {
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
   return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function dataRelativa(iso) {
+  if (!iso) return '';
+  const agora = new Date();
+  const d = new Date(iso);
+  const diffMs = agora - d;
+  const seg = Math.floor(diffMs / 1000);
+  const min = Math.floor(seg / 60);
+  const hor = Math.floor(min / 60);
+  const dias = Math.floor(hor / 24);
+  if (seg < 60) return 'agora';
+  if (min < 60) return `há ${min}min`;
+  if (hor < 24) return `há ${hor}h`;
+  if (dias === 1) return 'ontem';
+  if (dias < 7) return `há ${dias}d`;
+  return d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+}
+
+function dataCompleta(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
 }
 
 const CLASSE_COR = {
@@ -87,9 +115,12 @@ export default function LeadCard() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { usuario } = useAuth();
+  const { toast } = useToast();
   const isAdmin = usuario?.perfil === 'admin' || usuario?.perfil === 'gestor';
   const [lead, setLead] = useState(null);
   const [interacoes, setInteracoes] = useState([]);
+  const [novoComentario, setNovoComentario] = useState('');
+  const [enviandoComentario, setEnviandoComentario] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [salvoMsg, setSalvoMsg] = useState('');
@@ -167,6 +198,27 @@ export default function LeadCard() {
       console.error('Erro ao excluir:', err);
       setExcluindo(false);
       setConfirmandoExclusao(false);
+    }
+  };
+
+  const enviarComentario = async () => {
+    const texto = novoComentario.trim();
+    if (!texto) {
+      toast('Escreva algo antes de comentar', 'aviso');
+      return;
+    }
+    setEnviandoComentario(true);
+    try {
+      const { data } = await api.post(`/leads/${id}/interacoes`, {
+        tipo: 'nota',
+        conteudo: texto,
+      });
+      setInteracoes((prev) => [data, ...prev]);
+      setNovoComentario('');
+    } catch (err) {
+      toast(err.response?.data?.error || 'Erro ao enviar comentário', 'urgente');
+    } finally {
+      setEnviandoComentario(false);
     }
   };
 
@@ -250,6 +302,7 @@ export default function LeadCard() {
   const score = scoreBadge(lead.pontuacao);
   const CanalIcone = lead.canal === 'bio' ? Instagram : Megaphone;
   const ultimaCallComResumo = interacoes.find((i) => i.tipo === 'call' && i.resumoIa);
+  const comentarios = interacoes.filter((i) => i.tipo === 'nota');
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -726,6 +779,85 @@ export default function LeadCard() {
               <p className="text-[12px] text-text-secondary">Status original: {lead.dadosRespondi.statusOriginal}</p>
             </div>
           )}
+
+          {/* Comentários */}
+          <div className="bg-bg-card border border-border-subtle rounded-[14px] overflow-hidden">
+            <div className="flex items-center gap-2 px-[22px] py-3 border-b border-border-subtle">
+              <MessageSquare size={14} className="text-text-secondary" />
+              <h2 className="text-[12px] font-semibold text-text-secondary">
+                Comentários ({comentarios.length})
+              </h2>
+            </div>
+
+            <div className="px-[22px] py-3 border-b border-border-subtle">
+              <textarea
+                value={novoComentario}
+                onChange={(e) => setNovoComentario(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                    e.preventDefault();
+                    enviarComentario();
+                  }
+                }}
+                placeholder="Escreva um comentário... (Cmd/Ctrl + Enter para enviar)"
+                rows={2}
+                className="w-full bg-bg-input border border-border-default rounded-lg text-text-primary text-[12px] px-3 py-2 outline-none focus:border-[rgba(108,92,231,0.4)] resize-none"
+                disabled={enviandoComentario}
+              />
+              <div className="flex justify-end mt-2">
+                <button
+                  onClick={enviarComentario}
+                  disabled={enviandoComentario || !novoComentario.trim()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold text-white bg-gradient-to-r from-[#6c5ce7] to-[#00cec9] hover:shadow-[0_4px_16px_rgba(108,92,231,0.25)] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  <Send size={12} />
+                  {enviandoComentario ? 'Enviando...' : 'Comentar'}
+                </button>
+              </div>
+            </div>
+
+            <div className="max-h-[300px] overflow-y-auto px-[22px] py-3">
+              {comentarios.length === 0 ? (
+                <p className="text-[12px] text-text-muted text-center py-6">
+                  Nenhum comentário ainda. Seja o primeiro!
+                </p>
+              ) : (
+                <div className="relative">
+                  <div className="absolute left-[17px] top-2 bottom-2 w-px bg-border-subtle" aria-hidden="true" />
+                  <ul className="space-y-4">
+                    {comentarios.map((c) => (
+                      <li key={c.id} className="relative flex gap-3">
+                        <div className="relative z-10 shrink-0">
+                          <AvatarVendedor
+                            nome={c.vendedor?.nomeExibicao}
+                            fotoUrl={c.vendedor?.usuario?.fotoUrl}
+                            id={c.vendedor?.id}
+                            tamanho={34}
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0 bg-bg-elevated border border-border-subtle rounded-[10px] px-3 py-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[11px] font-bold text-text-primary">
+                              {c.vendedor?.nomeExibicao || 'Vendedor'}
+                            </span>
+                            <span
+                              className="text-[10px] text-text-muted"
+                              title={dataCompleta(c.createdAt)}
+                            >
+                              {dataRelativa(c.createdAt)}
+                            </span>
+                          </div>
+                          <p className="text-[12px] text-text-secondary mt-1 whitespace-pre-wrap break-words">
+                            {c.conteudo}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Timeline */}
           <div className="bg-bg-card border border-border-subtle rounded-[14px] overflow-hidden">

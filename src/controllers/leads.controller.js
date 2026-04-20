@@ -455,12 +455,22 @@ async function redistribuir(req, res, next) {
 async function interacoes(req, res, next) {
   try {
     const { id } = req.params;
+    const { tipo } = req.query;
+
+    const where = { leadId: parseInt(id, 10) };
+    if (tipo) where.tipo = tipo;
 
     const lista = await prisma.interacao.findMany({
-      where: { leadId: parseInt(id, 10) },
+      where,
       orderBy: { createdAt: 'desc' },
       include: {
-        vendedor: { select: { id: true, nomeExibicao: true } },
+        vendedor: {
+          select: {
+            id: true,
+            nomeExibicao: true,
+            usuario: { select: { fotoUrl: true } },
+          },
+        },
       },
     });
 
@@ -481,11 +491,15 @@ async function criarInteracao(req, res, next) {
       return res.status(404).json({ error: 'Lead não encontrado' });
     }
 
-    if (!validarDono(req, res, lead)) return;
+    if (tipo !== 'nota' && !validarDono(req, res, lead)) return;
 
     const vendedorId = req.usuario.vendedorId || lead.vendedorId;
     if (!vendedorId) {
       return res.status(400).json({ error: 'Nenhum vendedor associado' });
+    }
+
+    if (tipo === 'nota' && (!conteudo || !conteudo.trim())) {
+      return res.status(400).json({ error: 'Conteúdo do comentário não pode ser vazio' });
     }
 
     const interacao = await prisma.interacao.create({
@@ -497,7 +511,13 @@ async function criarInteracao(req, res, next) {
         duracao: duracao || null,
       },
       include: {
-        vendedor: { select: { id: true, nomeExibicao: true } },
+        vendedor: {
+          select: {
+            id: true,
+            nomeExibicao: true,
+            usuario: { select: { fotoUrl: true } },
+          },
+        },
       },
     });
 
