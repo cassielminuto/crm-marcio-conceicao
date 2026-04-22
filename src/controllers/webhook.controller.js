@@ -1,11 +1,13 @@
 const prisma = require('../config/database');
-const { identificarCanal, calcularScore } = require('../services/scoreEngine');
+const { identificarCanal } = require('../services/scoreEngine');
+const { calcularScoreV2 } = require('../services/scoreEngineV2');
+const { mapearFormulario, isSdrInboundLegado } = require('../services/formularioMapper');
+const { extrairUtms } = require('../services/utmExtractor');
 const { distribuir, incrementarLeadsAtivos } = require('../services/distribuidor');
 const { verificarDuplicidade, registrarDuplicatas, buscarLeadPorTelefone } = require('../services/deduplicador');
 const logger = require('../utils/logger');
 const { obterProximoVendedor } = require('../services/distribuicaoLeads');
 
-const FORM_SDR_INBOUND = '[Anúncios] [SDR] Diagonóstico Gratuito - Compatíveis';
 const OPERADOR_INBOUND_ID = 11; // Thomaz (Vendedor #11)
 
 async function receberLeadRespondi(req, res, next) {
@@ -73,7 +75,7 @@ async function receberLeadRespondi(req, res, next) {
     telefone = telefone.replace(/[^\d]/g, '');
 
     // === SDR INBOUND: form do Thomaz cria LeadSDRInbound em vez de Lead normal ===
-    if (formName === FORM_SDR_INBOUND) {
+    if (isSdrInboundLegado(formName)) {
       // Extrair dor principal
       let dorPrincipal = null;
       if (dados.respondent?.answers) {
@@ -174,23 +176,34 @@ async function receberLeadRespondi(req, res, next) {
       });
     }
 
-    // 1. Identificar canal
+    // 1. Identificar canal (mantido pra preservar Lead.canal — Dashboard/Funil dependem)
     const canal = identificarCanal(tituloFormulario);
 
-    // 2. Calcular score
+    // 2. Mapear formulario e calcular score V2 (escala 0-86, 4 faixas)
+    const { tipo: formularioTipo, normalizar } = mapearFormulario(tituloFormulario);
     let pontuacao = 0;
-    let classe = 'B';
-    let respostas = { nome, telefone, email };
+    let classificacao = null;
+    let respostasCanonicas = {};
+    const respostas = { nome, telefone, email };
 
     try {
-      const resultado = calcularScore(canal, respostasRaw);
+      respostasCanonicas = normalizar(dados);
+      const resultado = calcularScoreV2(respostasCanonicas);
       pontuacao = resultado.pontuacao;
-      classe = resultado.classe;
-      respostas = { ...resultado.respostas, nome, telefone, email };
+      classificacao = resultado.classificacao;
     } catch (err) {
-      pontuacao = canal === 'bio' ? 60 : 35;
-      classe = pontuacao >= 75 ? 'A' : pontuacao >= 45 ? 'B' : 'C';
+      logger.warn(`scoreEngineV2 falhou para form "${tituloFormulario}": ${err.message}`);
     }
+
+    if (formularioTipo === 'pendente_mapeamento') {
+      logger.warn(`Form sem mapping canonico (D7 pendente): "${tituloFormulario}" — lead criado com pontuacao=0, classificacao=nao_qualificado`);
+    }
+
+    // Lead.classe (enum NOT NULL) fica inerte (D3) — default 'B' preserva contrato
+    const classe = 'B';
+
+    // 2b. Extrair UTMs e click IDs (CLAUDE.md§"UTMs ficam em respondent.respondent_utms")
+    const utms = extrairUtms(dados);
 
     // 3. Verificar duplicata por respondi_id
     if (respondiId) {
@@ -207,6 +220,20 @@ async function receberLeadRespondi(req, res, next) {
       await prisma.lead.update({
         where: { id: leadExistente.id },
         data: { dadosRespondi: dados },
+      });
+
+      // Registrar este preenchimento no historico (lead pode preencher
+      // varios forms ao longo do tempo — Diag depois Intensivao etc)
+      await prisma.formularioResposta.create({
+        data: {
+          leadId: leadExistente.id,
+          formularioTipo,
+          formularioOrigem: tituloFormulario,
+          respostas: dados,
+          scoreCalculado: pontuacao,
+          classificacao,
+          submittedAt: new Date(),
+        },
       });
 
       if (leadExistente.vendedor?.telefoneWhatsapp) {
@@ -233,7 +260,28 @@ async function receberLeadRespondi(req, res, next) {
       // Lead existe sem vendedor — distribuir o existente em vez de criar novo
       await prisma.lead.update({
         where: { id: leadExistente.id },
-        data: { dadosRespondi: dados, pontuacao, classe, canal },
+        data: {
+          dadosRespondi: dados,
+          pontuacao,
+          classe,
+          classificacao,
+          canal,
+          fbclid: utms.fbclid || leadExistente.fbclid,
+          gclid: utms.gclid || leadExistente.gclid,
+        },
+      });
+
+      // Registrar este preenchimento no historico
+      await prisma.formularioResposta.create({
+        data: {
+          leadId: leadExistente.id,
+          formularioTipo,
+          formularioOrigem: tituloFormulario,
+          respostas: dados,
+          scoreCalculado: pontuacao,
+          classificacao,
+          submittedAt: new Date(),
+        },
       });
 
       const vendedorIdDistribuido = await obterProximoVendedor();
@@ -330,6 +378,9 @@ async function receberLeadRespondi(req, res, next) {
         formularioTitulo: tituloFormulario,
         pontuacao,
         classe,
+        classificacao,
+        fbclid: utms.fbclid,
+        gclid: utms.gclid,
         etapaFunil: 'novo',
         status: 'aguardando',
         vendedorId: vendedorFinal?.id || null,
@@ -340,13 +391,26 @@ async function receberLeadRespondi(req, res, next) {
       },
     });
 
-    // 7. Historico funil
+    // 7b. Registrar preenchimento no historico (FormularioResposta)
+    await prisma.formularioResposta.create({
+      data: {
+        leadId: lead.id,
+        formularioTipo,
+        formularioOrigem: tituloFormulario,
+        respostas: dados,
+        scoreCalculado: pontuacao,
+        classificacao,
+        submittedAt: agora,
+      },
+    });
+
+    // 7c. Historico funil
     await prisma.funilHistorico.create({
       data: {
         leadId: lead.id,
         etapaNova: lead.etapaFunil,
         vendedorId: vendedorFinal?.id || null,
-        motivo: `Lead via Respondi — ${tituloFormulario} — canal ${canal}, score ${pontuacao}, classe ${classe}`,
+        motivo: `Lead via Respondi — ${tituloFormulario} — canal ${canal}, score ${pontuacao}, classificacao ${classificacao || 'n/a'}`,
       },
     });
 
