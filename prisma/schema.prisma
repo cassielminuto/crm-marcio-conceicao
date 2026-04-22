@@ -238,6 +238,10 @@ model Lead {
   previsaoFechamento  DateTime?     @map("previsao_fechamento")
   motivoPerda         String?       @map("motivo_perda")
   produtoHubla        String?       @map("produto_hubla") @db.VarChar(255)
+  // Fase 1 — scoring V2 + tracking de aquisicao paga
+  classificacao       String?       @db.VarChar(20)
+  fbclid              String?       @db.VarChar(255)
+  gclid               String?       @db.VarChar(255)
   createdAt           DateTime      @default(now()) @map("created_at")
   updatedAt           DateTime      @updatedAt @map("updated_at")
 
@@ -249,6 +253,7 @@ model Lead {
   duplicatasOrigem    PossivelDuplicata[] @relation("DuplicataOrigem")
   duplicatasDe        PossivelDuplicata[] @relation("DuplicataDuplicata")
   leadSdrOrigem       LeadSDR[]
+  formularioRespostas FormularioResposta[]
 
   @@map("leads")
 }
@@ -628,4 +633,26 @@ model Notificacao {
   usuario   Usuario  @relation(fields: [usuarioId], references: [id])
 
   @@map("notificacoes")
+}
+
+/// Tabela 16: formulario_respostas
+/// Historico de preenchimentos de formularios por lead. Lead pode preencher
+/// multiplos forms ao longo do tempo (ex: Diag Gratuito, depois Intensivao).
+/// Lead.dadosRespondi e unico e apaga historico — esta tabela preserva.
+model FormularioResposta {
+  id                Int       @id @default(autoincrement())
+  leadId            Int       @map("lead_id")
+  formularioTipo    String    @map("formulario_tipo") @db.VarChar(50)
+  formularioOrigem  String?   @map("formulario_origem") @db.VarChar(255)
+  respostas         Json
+  scoreCalculado    Int?      @map("score_calculado")
+  classificacao     String?   @db.VarChar(20)
+  submittedAt       DateTime  @map("submitted_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  lead              Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@index([formularioTipo, submittedAt])
+  @@map("formulario_respostas")
 }
