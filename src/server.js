@@ -46,6 +46,8 @@ const sdrRoutes = require('./routes/sdr.routes');
 const sdrInboundRoutes = require('./routes/sdrInbound.routes');
 const agendaRoutes = require('./routes/agenda.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
+const campanhasRoutes = require('./routes/campanhas.routes');
+const criativosRoutes = require('./routes/criativos.routes');
 // const { iniciarSlaChecker } = require('./jobs/slaChecker.job');
 const { iniciarWhatsappDispatcher } = require('./jobs/whatsappDispatcher.job');
 const { iniciarLembreteAgenda } = require('./jobs/lembreteAgenda.job');
@@ -76,6 +78,8 @@ app.use('/api/sdr', sdrRoutes);
 app.use('/api/sdr-inbound', sdrInboundRoutes);
 app.use('/api/agenda', agendaRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/campanhas', campanhasRoutes);
+app.use('/api/criativos', criativosRoutes);
 
 // Servir uploads (prints, calls) como arquivos estaticos
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
