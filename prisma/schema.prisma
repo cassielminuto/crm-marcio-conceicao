@@ -656,3 +656,54 @@ model FormularioResposta {
   @@index([formularioTipo, submittedAt])
   @@map("formulario_respostas")
 }
+
+/// Tabela 17: campanhas (Fase 2 — aquisicao paga)
+/// Campanhas do Meta Ads (ou outras) organizadas por estrategia.
+/// estrategia e String (nao enum) pra evitar migration a cada estrategia nova.
+/// Valores esperados: "intensivao_pago" | "diag_gratuito_n1" | "diag_gratuito_n2".
+/// gastoAcumulado e atualizado pelo job Meta Marketing API (Fase 3).
+model Campanha {
+  id              Int        @id @default(autoincrement())
+  metaCampaignId  String?    @unique @map("meta_campaign_id") @db.VarChar(50)
+  nome            String     @db.VarChar(255)
+  estrategia      String     @db.VarChar(50)
+  status          String     @default("ativa") @db.VarChar(20)
+  budgetDiario    Decimal?   @map("budget_diario") @db.Decimal(10, 2)
+  gastoAcumulado  Decimal    @default(0) @map("gasto_acumulado") @db.Decimal(12, 2)
+  dataInicio      DateTime?  @map("data_inicio")
+  dataFim         DateTime?  @map("data_fim")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  criativos       Criativo[]
+
+  @@index([estrategia, status])
+  @@map("campanhas")
+}
+
+/// Tabela 18: criativos (Fase 2 — aquisicao paga)
+/// Anuncios individuais dentro de uma Campanha.
+/// formato / angulo / narrativa / origemProducao sao String (nao enum) pra
+/// permitir experimentacao sem migration.
+model Criativo {
+  id              Int       @id @default(autoincrement())
+  campanhaId      Int       @map("campanha_id")
+  metaAdId        String?   @unique @map("meta_ad_id") @db.VarChar(50)
+  nome            String    @db.VarChar(255)
+  formato         String    @db.VarChar(30)
+  angulo          String?   @db.VarChar(30)
+  narrativa       String?   @db.VarChar(30)
+  origemProducao  String?   @map("origem_producao") @db.VarChar(20)
+  gastoAcumulado  Decimal   @default(0) @map("gasto_acumulado") @db.Decimal(12, 2)
+  impressoes      BigInt    @default(0)
+  cliques         Int       @default(0)
+  ctr             Float?
+  cpc             Decimal?  @db.Decimal(8, 4)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  campanha        Campanha  @relation(fields: [campanhaId], references: [id])
+
+  @@index([campanhaId])
+  @@map("criativos")
+}
