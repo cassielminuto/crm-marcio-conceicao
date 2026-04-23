@@ -1,5 +1,6 @@
 const prisma = require('../config/database');
 const logger = require('../utils/logger');
+const vendaService = require('../services/vendaService');
 
 async function receberWebhookHubla(req, res, next) {
   try {
@@ -101,6 +102,16 @@ async function processarEventoHubla(dados, tipo, req) {
         },
       });
 
+      // Dual-write Fase 2 (D1 do plano): cria Venda com recorrencia=true.
+      // vendaService detecta recorrencia automaticamente via count. Falha
+      // isolada — NAO derruba o fluxo antigo (Interacao + Lead.vendaRealizada
+      // seguem fonte oficial ate READ_VENDA_FROM_LEAD virar false).
+      try {
+        await vendaService.criarVendaDeHubla(dados, leadExistente.id);
+      } catch (err) {
+        logger.error(`Hubla dual-write (recorrencia): criarVendaDeHubla falhou pra lead #${leadExistente.id}: ${err.message}`);
+      }
+
       // Atualizar email se faltava
       if (email && !leadExistente.email) {
         await prisma.lead.update({ where: { id: leadExistente.id }, data: { email } });
@@ -131,6 +142,17 @@ async function processarEventoHubla(dados, tipo, req) {
     if (Object.keys(dadosUpdate).length > 0) {
       await prisma.lead.update({ where: { id: leadExistente.id }, data: dadosUpdate });
       logger.info('Hubla: Lead #' + leadExistente.id + ' (' + nome + ') atualizado - R$ ' + valor);
+    }
+
+    // Dual-write Fase 2: cria Venda (primeira venda do lead = recorrencia=false
+    // automatico via count no vendaService). So roda se houver pagamento —
+    // update de email-so nao gera Venda. Falha isolada.
+    if (isPagamento && valor > 0) {
+      try {
+        await vendaService.criarVendaDeHubla(dados, leadExistente.id);
+      } catch (err) {
+        logger.error(`Hubla dual-write (venda nova): criarVendaDeHubla falhou pra lead #${leadExistente.id}: ${err.message}`);
+      }
     }
 
     // Notificar vendedor apenas para venda nova
@@ -165,7 +187,7 @@ async function processarEventoHubla(dados, tipo, req) {
 
   } else {
     // Criar novo lead sem vendedor (time classifica manualmente)
-    await prisma.lead.create({
+    const novoLead = await prisma.lead.create({
       data: {
         nome,
         telefone,
@@ -184,7 +206,17 @@ async function processarEventoHubla(dados, tipo, req) {
         dadosRespondi: { hubla: { tipo, faturaId, valor, produto } },
       },
     });
-    logger.info('Hubla: Novo lead criado - ' + nome + ' - R$ ' + valor);
+    logger.info('Hubla: Novo lead criado #' + novoLead.id + ' - ' + nome + ' - R$ ' + valor);
+
+    // Dual-write Fase 2: cria Venda pro lead novo (recorrencia=false,
+    // primeira venda por definicao). Falha isolada — Lead ja criado.
+    if (isPagamento && valor > 0) {
+      try {
+        await vendaService.criarVendaDeHubla(dados, novoLead.id);
+      } catch (err) {
+        logger.error(`Hubla dual-write (lead novo): criarVendaDeHubla falhou pra lead #${novoLead.id}: ${err.message}`);
+      }
+    }
   }
 }
 
