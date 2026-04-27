@@ -1,6 +1,13 @@
 const prisma = require('../config/database');
 const logger = require('../utils/logger');
 
+// ─── Fonte de leitura de venda (Fase 2B do plano) ───
+// Default seguro: env nao setada -> false -> le do Lead (legado).
+// Pra ativar leitura de Venda em producao, setar READ_VENDA_FROM_LEAD=false.
+// Quando true, agrupamento usa Venda.closerResponsavelId (semantica nova:
+// meta de X e cumprida quando X fechou, nao quando X era dono do lead).
+const READ_FROM_VENDA = process.env.READ_VENDA_FROM_LEAD === 'false';
+
 /**
  * Calcula início e fim de um período "YYYY-MM" em UTC-3 (Brasília).
  */
@@ -16,21 +23,44 @@ function limitesPeriodo(periodo) {
 /**
  * Calcula valorAtual e leadsAtual para todas as metas de um período
  * usando groupBy (evita N+1).
+ *
+ * Quando READ_FROM_VENDA=true (env READ_VENDA_FROM_LEAD=false), agrupa
+ * Venda por closerResponsavelId. Resultado normalizado pro mesmo shape
+ * { vendedorId -> { valorAtual, leadsAtual } } pra consumidores nao mudarem.
  */
 async function calcularRealizadoPeriodo(periodo) {
   const { inicio, fim } = limitesPeriodo(periodo);
 
-  // Soma de valorVenda por vendedor no período
-  const vendas = await prisma.lead.groupBy({
-    by: ['vendedorId'],
-    where: {
-      vendaRealizada: true,
-      dataConversao: { gte: inicio, lt: fim },
-      vendedorId: { not: null },
-    },
-    _sum: { valorVenda: true },
-    _count: { id: true },
-  });
+  let vendas;
+  if (READ_FROM_VENDA) {
+    const grupos = await prisma.venda.groupBy({
+      by: ['closerResponsavelId'],
+      where: {
+        recorrencia: false,
+        dataPagamento: { gte: inicio, lt: fim },
+        closerResponsavelId: { not: null },
+      },
+      _sum: { valorTotal: true },
+      _count: { id: true },
+    });
+    // Normaliza shape pra reusar map abaixo
+    vendas = grupos.map(g => ({
+      vendedorId: g.closerResponsavelId,
+      _sum: { valorVenda: g._sum.valorTotal },
+      _count: g._count,
+    }));
+  } else {
+    vendas = await prisma.lead.groupBy({
+      by: ['vendedorId'],
+      where: {
+        vendaRealizada: true,
+        dataConversao: { gte: inicio, lt: fim },
+        vendedorId: { not: null },
+      },
+      _sum: { valorVenda: true },
+      _count: { id: true },
+    });
+  }
 
   const map = {};
   for (const v of vendas) {
