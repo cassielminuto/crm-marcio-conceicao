@@ -45,10 +45,14 @@ function setCache(key, data) {
 // whereVendaT: filtra prisma.venda por dataPagamento + recorrencia=false
 //   (vendedorId/canal sao aplicados na relation lead pra preservar semantica
 //   do filtro existente — filtra por dono do lead na hora da venda)
-function buildWheres(dataInicio, dataFim, vendedorId, canal) {
+//   campanhaId/criativoId sao aplicados direto na Venda quando READ_FROM_VENDA;
+//   nas wheres legadas (Lead) sao aplicados em Lead.campanhaId/criativoId.
+function buildWheres(dataInicio, dataFim, vendedorId, canal, campanhaId, criativoId) {
   const base = {};
   if (vendedorId) base.vendedorId = Number(vendedorId);
   if (canal) base.canal = canal;
+  if (campanhaId) base.campanhaId = Number(campanhaId);
+  if (criativoId) base.criativoId = Number(criativoId);
 
   const whereLeads = { ...base };
   if (dataInicio) whereLeads.createdAt = { ...whereLeads.createdAt, gte: new Date(dataInicio) };
@@ -63,6 +67,9 @@ function buildWheres(dataInicio, dataFim, vendedorId, canal) {
   if (vendedorId) leadFilter.vendedorId = Number(vendedorId);
   if (canal) leadFilter.canal = canal;
   if (Object.keys(leadFilter).length > 0) whereVendaT.lead = leadFilter;
+  // campanhaId/criativoId vivem direto em Venda — filtra na propria tabela
+  if (campanhaId) whereVendaT.campanhaId = Number(campanhaId);
+  if (criativoId) whereVendaT.criativoId = Number(criativoId);
   if (dataInicio) whereVendaT.dataPagamento = { ...whereVendaT.dataPagamento, gte: new Date(dataInicio) };
   if (dataFim) whereVendaT.dataPagamento = { ...whereVendaT.dataPagamento, lte: new Date(dataFim) };
 
@@ -546,16 +553,16 @@ async function calcularAtividade() {
 // ─── Handler principal ───
 async function metricas(req, res, next) {
   try {
-    const { data_inicio, data_fim, vendedor_id, canal, comparar } = req.query;
+    const { data_inicio, data_fim, vendedor_id, canal, campanha_id, criativo_id, comparar } = req.query;
 
     // Check cache
-    const cacheKey = getCacheKey({ data_inicio, data_fim, vendedor_id, canal, comparar });
+    const cacheKey = getCacheKey({ data_inicio, data_fim, vendedor_id, canal, campanha_id, criativo_id, comparar });
     const cached = getFromCache(cacheKey);
     if (cached) {
       return res.json(cached);
     }
 
-    const { whereLeads, whereVendas, whereVendaT } = buildWheres(data_inicio, data_fim, vendedor_id, canal);
+    const { whereLeads, whereVendas, whereVendaT } = buildWheres(data_inicio, data_fim, vendedor_id, canal, campanha_id, criativo_id);
 
     // Executar todas as métricas em paralelo
     const [kpis, ranking, funil, tempoMedio, sdr, porCanal, topAnuncios, reunioes, pipeline, heatmap, atividade] = await Promise.all([
@@ -589,7 +596,7 @@ async function metricas(req, res, next) {
     // Comparação com período anterior
     if (comparar === 'true' && data_inicio && data_fim) {
       const anterior = periodoAnterior(data_inicio, data_fim);
-      const { whereLeads: wlAnt, whereVendas: wvAnt, whereVendaT: wvtAnt } = buildWheres(anterior.dataInicio, anterior.dataFim, vendedor_id, canal);
+      const { whereLeads: wlAnt, whereVendas: wvAnt, whereVendaT: wvtAnt } = buildWheres(anterior.dataInicio, anterior.dataFim, vendedor_id, canal, campanha_id, criativo_id);
       const kpisAnterior = await calcularKpis(wlAnt, wvAnt, wvtAnt);
 
       resultado.comparacao = {

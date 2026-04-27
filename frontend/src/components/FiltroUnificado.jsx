@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { SlidersHorizontal } from 'lucide-react';
+import api from '../services/api';
 
 function fmtDate(d) {
   if (!d) return '';
@@ -24,6 +25,8 @@ export default function FiltroUnificado({
   canal, setCanal,
   classe, setClasse,
   produtosExcluidos, setProdutosExcluidos,
+  campanhaId, setCampanhaId,    // Fase 2B C12 — opcional
+  criativoId, setCriativoId,    // Fase 2B C12 — opcional, depende de campanhaId
   vendedores = [],
   produtosDisponiveis = [],
   onLimpar,
@@ -31,8 +34,31 @@ export default function FiltroUnificado({
 }) {
   const [aberto, setAberto] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0 });
+  const [campanhas, setCampanhas] = useState([]);
+  const [criativos, setCriativos] = useState([]);
   const btnRef = useRef(null);
   const panelRef = useRef(null);
+
+  // Carrega campanhas ativas ao montar (so se setCampanhaId foi passado).
+  // Cache 30s do backend amortiza re-renders multiplos.
+  useEffect(() => {
+    if (!setCampanhaId) return;
+    api.get('/campanhas?status=ativa')
+      .then((r) => setCampanhas(Array.isArray(r.data) ? r.data : []))
+      .catch(() => setCampanhas([]));
+  }, [setCampanhaId]);
+
+  // Cascade: criativos so carregam quando ha campanha selecionada.
+  // Se campanha muda/limpa, criativos zerados — handler do select tambem limpa criativoId.
+  useEffect(() => {
+    if (!setCriativoId || !campanhaId) {
+      setCriativos([]);
+      return;
+    }
+    api.get(`/criativos?campanha_id=${encodeURIComponent(campanhaId)}`)
+      .then((r) => setCriativos(Array.isArray(r.data) ? r.data : []))
+      .catch(() => setCriativos([]));
+  }, [campanhaId, setCriativoId]);
 
   const calcPos = useCallback(() => {
     if (!btnRef.current) return;
@@ -79,9 +105,11 @@ export default function FiltroUnificado({
     if (vendedorId) n++;
     if (canal) n++;
     if (classe) n++;
+    if (campanhaId) n++;
+    if (criativoId) n++;
     if (produtosExcluidos && produtosExcluidos.size > 0) n++;
     return n;
-  }, [vendedorId, canal, classe, produtosExcluidos]);
+  }, [vendedorId, canal, classe, campanhaId, criativoId, produtosExcluidos]);
 
   const aplicarAtalho = (a) => { const [i, f] = a.get(); setDataInicio(i); setDataFim(f); };
 
@@ -160,6 +188,47 @@ export default function FiltroUnificado({
                   <button key={c.v} onClick={() => setClasse(c.v)} className={`px-3 py-1 rounded-lg text-[11px] font-medium transition-all ${(classe || '') === c.v ? 'bg-[#7C3AED] text-white' : 'bg-bg-card-hover text-text-secondary hover:bg-border-hover'}`}>{c.l}</button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {setCampanhaId && (
+            <div>
+              <label className={labelCls}>Campanha</label>
+              <select
+                value={campanhaId || ''}
+                onChange={(e) => {
+                  const novo = e.target.value;
+                  setCampanhaId(novo);
+                  // Cascade: limpar criativo quando campanha muda
+                  if (setCriativoId && criativoId) setCriativoId('');
+                }}
+                className={inputCls}
+              >
+                <option value="">Todas as campanhas</option>
+                {campanhas.map((c) => (
+                  <option key={c.id} value={c.id}>{c.nome}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {setCriativoId && (
+            <div>
+              <label className={labelCls}>
+                Criativo
+                {!campanhaId && <span className="text-text-faint normal-case ml-1">(selecione uma campanha)</span>}
+              </label>
+              <select
+                value={criativoId || ''}
+                onChange={(e) => setCriativoId(e.target.value)}
+                disabled={!campanhaId}
+                className={`${inputCls} ${!campanhaId ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <option value="">Todos os criativos</option>
+                {criativos.map((c) => (
+                  <option key={c.id} value={c.id}>{c.nome}</option>
+                ))}
+              </select>
             </div>
           )}
 

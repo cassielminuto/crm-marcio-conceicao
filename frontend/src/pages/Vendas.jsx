@@ -369,6 +369,8 @@ export default function Vendas() {
   const [filtroCloser, setFiltroCloser] = useState('');
   const [filtroCanal, setFiltroCanal] = useState(''); // canal vem do lead.canal — filtro client-side
   const [filtroRecorrencia, setFiltroRecorrencia] = useState(''); // '' | 'true' | 'false'
+  const [filtroCampanha, setFiltroCampanha] = useState(''); // C12
+  const [filtroCriativo, setFiltroCriativo] = useState(''); // C12
   const [produtosExcluidos, setProdutosExcluidos] = useState(new Set());
 
   const carregarVendas = useCallback(async () => {
@@ -380,6 +382,8 @@ export default function Vendas() {
       params.set('data_fim', dp.dataFimISO);
       if (filtroCloser) params.set('closer_id', filtroCloser);
       if (filtroRecorrencia) params.set('recorrencia', filtroRecorrencia);
+      if (filtroCampanha) params.set('campanha_id', filtroCampanha);
+      if (filtroCriativo) params.set('criativo_id', filtroCriativo);
 
       const [vendasRes, vendedoresRes] = await Promise.all([
         api.get(`/vendas?${params.toString()}`),
@@ -393,7 +397,7 @@ export default function Vendas() {
     } finally {
       setCarregando(false);
     }
-  }, [dataInicio, dataFim, filtroCloser, filtroRecorrencia, toast]);
+  }, [dataInicio, dataFim, filtroCloser, filtroRecorrencia, filtroCampanha, filtroCriativo, toast]);
 
   useEffect(() => { carregarVendas(); }, [carregarVendas]);
 
@@ -512,6 +516,8 @@ export default function Vendas() {
     setFiltroCloser('');
     setFiltroCanal('');
     setFiltroRecorrencia('');
+    setFiltroCampanha('');
+    setFiltroCriativo('');
     setProdutosExcluidos(new Set());
   };
 
@@ -550,6 +556,8 @@ export default function Vendas() {
             dataFim={dataFim} setDataFim={setDataFim}
             vendedorId={filtroCloser} setVendedorId={setFiltroCloser}
             canal={filtroCanal} setCanal={setFiltroCanal}
+            campanhaId={filtroCampanha} setCampanhaId={setFiltroCampanha}
+            criativoId={filtroCriativo} setCriativoId={setFiltroCriativo}
             produtosExcluidos={produtosExcluidos} setProdutosExcluidos={setProdutosExcluidos}
             vendedores={vendedores}
             produtosDisponiveis={produtosDisponiveis}

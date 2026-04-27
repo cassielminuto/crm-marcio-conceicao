@@ -181,6 +181,8 @@ export default function Dashboard() {
       dataFim: new Date(),
       filtroVendedor: '',
       filtroCanal: '',
+      filtroCampanha: '',
+      filtroCriativo: '',
       produtosExcluidos: new Set(),
       chartPeriod: '30d',
       comparar: false,
@@ -192,6 +194,8 @@ export default function Dashboard() {
   const [dataFim, setDataFim] = useState(filtrosIniciais.dataFim);
   const [filtroVendedor, setFiltroVendedor] = useState(filtrosIniciais.filtroVendedor);
   const [filtroCanal, setFiltroCanal] = useState(filtrosIniciais.filtroCanal);
+  const [filtroCampanha, setFiltroCampanha] = useState(filtrosIniciais.filtroCampanha);
+  const [filtroCriativo, setFiltroCriativo] = useState(filtrosIniciais.filtroCriativo);
   const [produtosExcluidos, setProdutosExcluidos] = useState(filtrosIniciais.produtosExcluidos);
   const [chartPeriod, setChartPeriod] = useState(filtrosIniciais.chartPeriod);
   const [todosVendedores, setTodosVendedores] = useState([]);
@@ -201,8 +205,8 @@ export default function Dashboard() {
   const [comparar, setComparar] = useState(filtrosIniciais.comparar);
 
   useEffect(() => {
-    salvarFiltros(CHAVE_FILTROS, { dataInicio, dataFim, filtroVendedor, filtroCanal, produtosExcluidos, chartPeriod, comparar });
-  }, [dataInicio, dataFim, filtroVendedor, filtroCanal, produtosExcluidos, chartPeriod, comparar]);
+    salvarFiltros(CHAVE_FILTROS, { dataInicio, dataFim, filtroVendedor, filtroCanal, filtroCampanha, filtroCriativo, produtosExcluidos, chartPeriod, comparar });
+  }, [dataInicio, dataFim, filtroVendedor, filtroCanal, filtroCampanha, filtroCriativo, produtosExcluidos, chartPeriod, comparar]);
 
   // ─── Carregar dados existentes ───
   const carregarDados = useCallback(async () => {
@@ -231,7 +235,7 @@ export default function Dashboard() {
         api.get(`/leads/vendas?${dp}`),
         api.get(`/leads/metricas-anuncio?${dp}`),
         // Endpoint novo — métricas expandidas (mesmos filtros)
-        api.get(`/dashboard/metricas?${dp}${comparar ? '&comparar=true' : ''}${filtroVendedor ? `&vendedor_id=${filtroVendedor}` : ''}${filtroCanal ? `&canal=${filtroCanal}` : ''}`),
+        api.get(`/dashboard/metricas?${dp}${comparar ? '&comparar=true' : ''}${filtroVendedor ? `&vendedor_id=${filtroVendedor}` : ''}${filtroCanal ? `&canal=${filtroCanal}` : ''}${filtroCampanha ? `&campanha_id=${filtroCampanha}` : ''}${filtroCriativo ? `&criativo_id=${filtroCriativo}` : ''}`),
       ];
 
       if (vendedorId) {
@@ -276,7 +280,7 @@ export default function Dashboard() {
     } finally {
       setCarregando(false);
     }
-  }, [vendedorId, isAdmin, dataInicio, dataFim, comparar, filtroVendedor, filtroCanal, toast]);
+  }, [vendedorId, isAdmin, dataInicio, dataFim, comparar, filtroVendedor, filtroCanal, filtroCampanha, filtroCriativo, toast]);
 
   useEffect(() => {
     carregarDados();
@@ -354,6 +358,8 @@ export default function Dashboard() {
           dataFim={dataFim} setDataFim={setDataFim}
           vendedorId={filtroVendedor} setVendedorId={setFiltroVendedor}
           canal={filtroCanal} setCanal={setFiltroCanal}
+          campanhaId={filtroCampanha} setCampanhaId={setFiltroCampanha}
+          criativoId={filtroCriativo} setCriativoId={setFiltroCriativo}
           produtosExcluidos={produtosExcluidos} setProdutosExcluidos={setProdutosExcluidos}
           vendedores={todosVendedores}
           produtosDisponiveis={produtosDisponiveis}
@@ -363,6 +369,8 @@ export default function Dashboard() {
             setDataFim(new Date());
             setFiltroVendedor('');
             setFiltroCanal('');
+            setFiltroCampanha('');
+            setFiltroCriativo('');
             setProdutosExcluidos(new Set());
             setChartPeriod('30d');
             setComparar(false);
