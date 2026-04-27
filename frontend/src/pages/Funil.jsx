@@ -34,6 +34,28 @@ function formatarMoeda(valor) {
   return `R$ ${Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
+// ─── Helpers Fase 2B (deriva de lead.vendas[]) ───
+// Backend listarFunil agora inclui vendas: { recorrencia: false, select: id+valorTotal }.
+// temVenda usa OR pra cobrir leads historicos (vendaRealizada=true sem Venda
+// associada — antes do backfill).
+// valorEfetivoLead prefere SUM(vendas) sobre Lead.valorVenda quando ha venda.
+// UX-A1 do plano: edicao inline continua escrevendo em Lead.valorVenda;
+// soma agregada da coluna usa valorEfetivoLead. Pode haver divergencia
+// visual entre input (Lead.valorVenda) e total da coluna (Venda) durante
+// transicao — aceito explicitamente.
+function temVenda(lead) {
+  if (!lead) return false;
+  if (Array.isArray(lead.vendas) && lead.vendas.length > 0) return true;
+  return !!lead.vendaRealizada;
+}
+
+function valorEfetivoLead(lead) {
+  if (Array.isArray(lead?.vendas) && lead.vendas.length > 0) {
+    return lead.vendas.reduce((s, v) => s + Number(v.valorTotal || 0), 0);
+  }
+  return lead?.valorVenda ? Number(lead.valorVenda) : 0;
+}
+
 function classeBadge(classe) {
   if (classe === 'A') return { bg: 'bg-classe-a/15', text: 'text-classe-a', border: 'border-classe-a/30' };
   if (classe === 'B') return { bg: 'bg-classe-b/15', text: 'text-classe-b', border: 'border-classe-b/30' };
@@ -137,7 +159,7 @@ function LeadCard({ lead, index, onClickLead, onDeleteLead, onSalvarValor }) {
             </span>
           </div>
 
-          {lead.vendaRealizada && extrairProduto(lead) && (
+          {temVenda(lead) && extrairProduto(lead) && (
             <div className="mt-1.5">
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[11px] font-medium bg-[rgba(124,58,237,0.12)] text-[#A78BFA] max-w-full truncate">
                 <Package size={10} className="shrink-0" />
@@ -191,7 +213,8 @@ function LeadCard({ lead, index, onClickLead, onDeleteLead, onSalvarValor }) {
 
 function KanbanColuna({ etapa, leads, count, valorTotal, onClickLead, onDeleteLead, onSalvarValor, isAdmin, editandoLabel, setEditandoLabel, editLabel, setEditLabel, salvarLabel, editandoCor, setEditandoCor, atualizarCor, confirmarExclusaoEtapa, moverEtapa, etapaIndex, etapasTotal }) {
   const isClosed = etapa.tipo === 'ganho' || etapa.tipo === 'perdido';
-  const somaColuna = isClosed ? (valorTotal || 0) : leads.reduce((sum, l) => sum + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
+  // Fase 2B: soma agregada da coluna usa valorEfetivoLead (prefere SUM(vendas))
+  const somaColuna = isClosed ? (valorTotal || 0) : leads.reduce((sum, l) => sum + valorEfetivoLead(l), 0);
   const valorCor = etapa.tipo === 'ganho' ? 'text-accent-emerald' : etapa.tipo === 'perdido' ? 'text-accent-danger' : 'text-accent-amber';
 
   return (
@@ -555,7 +578,8 @@ export default function Funil() {
         if (ganhoSlugs.has(slug)) receitaTotal += data.valorTotal || 0;
       } else {
         const leadsContab = data.leads.filter(l => !isProdutoExcluido(l, produtosExcluidos));
-        const soma = leadsContab.reduce((s, l) => s + (l.valorVenda ? Number(l.valorVenda) : 0), 0);
+        // Fase 2B: pipeline usa valorEfetivoLead (SUM(vendas) || Lead.valorVenda)
+        const soma = leadsContab.reduce((s, l) => s + valorEfetivoLead(l), 0);
         pipelineTotal += soma;
       }
     }
