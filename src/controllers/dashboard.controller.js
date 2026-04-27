@@ -1,6 +1,15 @@
 const prisma = require('../config/database');
 const logger = require('../utils/logger');
 
+// ─── Fonte de leitura de venda (Fase 2B do plano) ───
+// READ_FROM_VENDA = true  -> le da tabela Venda (recorrencia=false, dataPagamento)
+// READ_FROM_VENDA = false -> le do Lead.vendaRealizada/valorVenda/dataConversao (legado)
+//
+// Default seguro: env nao setada -> false -> comportamento atual intocado.
+// Pra ativar leitura de Venda em producao, setar READ_VENDA_FROM_LEAD=false.
+// Contrato de saida do endpoint /dashboard/metricas NAO MUDA com a flag.
+const READ_FROM_VENDA = process.env.READ_VENDA_FROM_LEAD === 'false';
+
 // ─── Cache simples em memória (30s TTL) ───
 const cache = new Map();
 const CACHE_TTL = 30000;
@@ -32,7 +41,10 @@ function setCache(key, data) {
 
 // ─── Helpers de data ───
 // whereLeads: filtra por createdAt (quando lead entrou no sistema)
-// whereVendas: filtra por dataConversao (quando venda aconteceu)
+// whereVendas: filtra por dataConversao em Lead.vendaRealizada=true (legado)
+// whereVendaT: filtra prisma.venda por dataPagamento + recorrencia=false
+//   (vendedorId/canal sao aplicados na relation lead pra preservar semantica
+//   do filtro existente — filtra por dono do lead na hora da venda)
 function buildWheres(dataInicio, dataFim, vendedorId, canal) {
   const base = {};
   if (vendedorId) base.vendedorId = Number(vendedorId);
@@ -46,7 +58,15 @@ function buildWheres(dataInicio, dataFim, vendedorId, canal) {
   if (dataInicio) whereVendas.dataConversao = { ...whereVendas.dataConversao, gte: new Date(dataInicio) };
   if (dataFim) whereVendas.dataConversao = { ...whereVendas.dataConversao, lte: new Date(dataFim) };
 
-  return { whereLeads, whereVendas };
+  const whereVendaT = { recorrencia: false };
+  const leadFilter = {};
+  if (vendedorId) leadFilter.vendedorId = Number(vendedorId);
+  if (canal) leadFilter.canal = canal;
+  if (Object.keys(leadFilter).length > 0) whereVendaT.lead = leadFilter;
+  if (dataInicio) whereVendaT.dataPagamento = { ...whereVendaT.dataPagamento, gte: new Date(dataInicio) };
+  if (dataFim) whereVendaT.dataPagamento = { ...whereVendaT.dataPagamento, lte: new Date(dataFim) };
+
+  return { whereLeads, whereVendas, whereVendaT };
 }
 
 function periodoAnterior(dataInicio, dataFim) {
@@ -59,14 +79,27 @@ function periodoAnterior(dataInicio, dataFim) {
 }
 
 // ─── 1. KPIs principais ───
-async function calcularKpis(whereLeads, whereVendas) {
-  const [totalLeads, vendas, faturamentoAgg] = await Promise.all([
-    prisma.lead.count({ where: whereLeads }),
-    prisma.lead.count({ where: whereVendas }),
-    prisma.lead.aggregate({ where: whereVendas, _sum: { valorVenda: true } }),
-  ]);
+async function calcularKpis(whereLeads, whereVendas, whereVendaT) {
+  const totalLeads = await prisma.lead.count({ where: whereLeads });
 
-  const faturamento = Number(faturamentoAgg._sum.valorVenda || 0);
+  let vendas;
+  let faturamento;
+  if (READ_FROM_VENDA) {
+    const [c, agg] = await Promise.all([
+      prisma.venda.count({ where: whereVendaT }),
+      prisma.venda.aggregate({ where: whereVendaT, _sum: { valorTotal: true } }),
+    ]);
+    vendas = c;
+    faturamento = Number(agg._sum.valorTotal || 0);
+  } else {
+    const [c, agg] = await Promise.all([
+      prisma.lead.count({ where: whereVendas }),
+      prisma.lead.aggregate({ where: whereVendas, _sum: { valorVenda: true } }),
+    ]);
+    vendas = c;
+    faturamento = Number(agg._sum.valorVenda || 0);
+  }
+
   const ticketMedio = vendas > 0 ? faturamento / vendas : 0;
   const taxaConversao = totalLeads > 0 ? ((vendas / totalLeads) * 100) : 0;
 
@@ -74,7 +107,7 @@ async function calcularKpis(whereLeads, whereVendas) {
 }
 
 // ─── 2. Ranking de vendedores ───
-async function calcularRanking(whereLeads, whereVendas) {
+async function calcularRanking(whereLeads, whereVendas, whereVendaT) {
   // Total de leads por vendedor (createdAt no período)
   const totalPorVendedor = await prisma.lead.groupBy({
     by: ['vendedorId'],
@@ -83,12 +116,29 @@ async function calcularRanking(whereLeads, whereVendas) {
   });
 
   // Vendas por vendedor (dataConversao no período + vendaRealizada)
-  const vendasPorVendedor = await prisma.lead.groupBy({
-    by: ['vendedorId'],
-    where: { ...whereVendas, vendedorId: { not: null } },
-    _count: { id: true },
-    _sum: { valorVenda: true },
-  });
+  let vendasPorVendedor;
+  if (READ_FROM_VENDA) {
+    // groupBy em prisma.venda por closerResponsavelId; normaliza shape
+    // pra { vendedorId, _count, _sum: { valorVenda } } e reaproveita o map abaixo.
+    const grupos = await prisma.venda.groupBy({
+      by: ['closerResponsavelId'],
+      where: { ...whereVendaT, closerResponsavelId: { not: null } },
+      _count: { id: true },
+      _sum: { valorTotal: true },
+    });
+    vendasPorVendedor = grupos.map(g => ({
+      vendedorId: g.closerResponsavelId,
+      _count: g._count,
+      _sum: { valorVenda: g._sum.valorTotal },
+    }));
+  } else {
+    vendasPorVendedor = await prisma.lead.groupBy({
+      by: ['vendedorId'],
+      where: { ...whereVendas, vendedorId: { not: null } },
+      _count: { id: true },
+      _sum: { valorVenda: true },
+    });
+  }
 
   const vendedores = await prisma.vendedor.findMany({
     where: { ativo: true },
@@ -156,7 +206,21 @@ async function calcularFunil(whereLeads) {
 }
 
 // ─── 4. Tempo médio de conversão ───
-async function calcularTempoMedio(whereVendas) {
+async function calcularTempoMedio(whereVendas, whereVendaT) {
+  if (READ_FROM_VENDA) {
+    // Usa cicloVendaDias ja calculado pelo vendaService — economiza compute
+    const vendas = await prisma.venda.findMany({
+      where: { ...whereVendaT, cicloVendaDias: { not: null } },
+      select: { cicloVendaDias: true },
+    });
+    if (vendas.length === 0) return { tempoMedioConversaoDias: 0, amostra: 0 };
+    const totalDias = vendas.reduce((acc, v) => acc + v.cicloVendaDias, 0);
+    return {
+      tempoMedioConversaoDias: Math.round((totalDias / vendas.length) * 10) / 10,
+      amostra: vendas.length,
+    };
+  }
+
   // whereVendas já filtra por dataConversao no range + vendaRealizada
   const convertidos = await prisma.lead.findMany({
     where: whereVendas,
@@ -189,12 +253,15 @@ async function calcularPerformanceSdr(dataInicio, dataFim) {
   ]);
 
   // Dos handoffs, quantos fecharam?
+  const filtroFechouCloser = READ_FROM_VENDA
+    ? { vendas: { some: { recorrencia: false } } }
+    : { vendaRealizada: true };
   const sdrFechados = await prisma.leadSDR.count({
     where: {
       ...whereDate,
       deletedAt: null,
       handoffRealizadoEm: { not: null },
-      leadCloser: { vendaRealizada: true },
+      leadCloser: filtroFechouCloser,
     },
   });
 
@@ -240,20 +307,33 @@ async function calcularPerformanceSdr(dataInicio, dataFim) {
 }
 
 // ─── 6. Leads por canal ───
-async function calcularPorCanal(whereLeads, whereVendas) {
+async function calcularPorCanal(whereLeads, whereVendas, whereVendaT) {
   const grupos = await prisma.lead.groupBy({
     by: ['canal'],
     where: whereLeads,
     _count: { id: true },
   });
 
-  const vendasPorCanal = await prisma.lead.groupBy({
-    by: ['canal'],
-    where: whereVendas,
-    _count: { id: true },
-  });
-
-  const vendasMap = new Map(vendasPorCanal.map(g => [g.canal, g._count.id]));
+  let vendasMap;
+  if (READ_FROM_VENDA) {
+    // Prisma nao faz groupBy via relation — busca Vendas com lead.canal e agrega em JS
+    const vendas = await prisma.venda.findMany({
+      where: whereVendaT,
+      select: { lead: { select: { canal: true } } },
+    });
+    vendasMap = new Map();
+    for (const v of vendas) {
+      const canal = v.lead?.canal;
+      if (canal) vendasMap.set(canal, (vendasMap.get(canal) || 0) + 1);
+    }
+  } else {
+    const vendasPorCanal = await prisma.lead.groupBy({
+      by: ['canal'],
+      where: whereVendas,
+      _count: { id: true },
+    });
+    vendasMap = new Map(vendasPorCanal.map(g => [g.canal, g._count.id]));
+  }
 
   return grupos.map(g => ({
     canal: g.canal,
@@ -264,7 +344,7 @@ async function calcularPorCanal(whereLeads, whereVendas) {
 }
 
 // ─── 7. Top anúncios ───
-async function calcularTopAnuncios(whereLeads, whereVendas) {
+async function calcularTopAnuncios(whereLeads, whereVendas, whereVendaT) {
   // Leads criados no período (pra contagem de leads por anúncio)
   const leadsAnuncio = await prisma.lead.findMany({
     where: { ...whereLeads, canal: 'anuncio', formularioTitulo: { not: null } },
@@ -272,10 +352,26 @@ async function calcularTopAnuncios(whereLeads, whereVendas) {
   });
 
   // Vendas de anúncio no período (dataConversao no range)
-  const vendasAnuncio = await prisma.lead.findMany({
-    where: { ...whereVendas, canal: 'anuncio', formularioTitulo: { not: null } },
-    select: { formularioTitulo: true },
-  });
+  let vendasAnuncio;
+  if (READ_FROM_VENDA) {
+    const vendas = await prisma.venda.findMany({
+      where: {
+        ...whereVendaT,
+        lead: {
+          ...(whereVendaT.lead || {}),
+          canal: 'anuncio',
+          formularioTitulo: { not: null },
+        },
+      },
+      select: { lead: { select: { formularioTitulo: true } } },
+    });
+    vendasAnuncio = vendas.map(v => ({ formularioTitulo: v.lead?.formularioTitulo }));
+  } else {
+    vendasAnuncio = await prisma.lead.findMany({
+      where: { ...whereVendas, canal: 'anuncio', formularioTitulo: { not: null } },
+      select: { formularioTitulo: true },
+    });
+  }
 
   const porForm = {};
   for (const l of leadsAnuncio) {
@@ -374,15 +470,27 @@ async function calcularPipeline(whereLeads) {
   const diasNoMes = fimMes.getDate();
   const diasPassados = agora.getDate();
 
-  const realizadoMes = await prisma.lead.aggregate({
-    where: {
-      vendaRealizada: true,
-      dataConversao: { gte: inicioMes, lte: agora },
-    },
-    _sum: { valorVenda: true },
-  });
+  let realizadoValor;
+  if (READ_FROM_VENDA) {
+    const realizadoMes = await prisma.venda.aggregate({
+      where: {
+        recorrencia: false,
+        dataPagamento: { gte: inicioMes, lte: agora },
+      },
+      _sum: { valorTotal: true },
+    });
+    realizadoValor = Number(realizadoMes._sum.valorTotal || 0);
+  } else {
+    const realizadoMes = await prisma.lead.aggregate({
+      where: {
+        vendaRealizada: true,
+        dataConversao: { gte: inicioMes, lte: agora },
+      },
+      _sum: { valorVenda: true },
+    });
+    realizadoValor = Number(realizadoMes._sum.valorVenda || 0);
+  }
 
-  const realizadoValor = Number(realizadoMes._sum.valorVenda || 0);
   const forecast = diasPassados > 0 ? (realizadoValor / diasPassados) * diasNoMes : 0;
 
   return {
@@ -447,17 +555,17 @@ async function metricas(req, res, next) {
       return res.json(cached);
     }
 
-    const { whereLeads, whereVendas } = buildWheres(data_inicio, data_fim, vendedor_id, canal);
+    const { whereLeads, whereVendas, whereVendaT } = buildWheres(data_inicio, data_fim, vendedor_id, canal);
 
     // Executar todas as métricas em paralelo
     const [kpis, ranking, funil, tempoMedio, sdr, porCanal, topAnuncios, reunioes, pipeline, heatmap, atividade] = await Promise.all([
-      calcularKpis(whereLeads, whereVendas),
-      calcularRanking(whereLeads, whereVendas),
+      calcularKpis(whereLeads, whereVendas, whereVendaT),
+      calcularRanking(whereLeads, whereVendas, whereVendaT),
       calcularFunil(whereLeads),
-      calcularTempoMedio(whereVendas),
+      calcularTempoMedio(whereVendas, whereVendaT),
       calcularPerformanceSdr(data_inicio, data_fim),
-      calcularPorCanal(whereLeads, whereVendas),
-      calcularTopAnuncios(whereLeads, whereVendas),
+      calcularPorCanal(whereLeads, whereVendas, whereVendaT),
+      calcularTopAnuncios(whereLeads, whereVendas, whereVendaT),
       calcularReunioes(data_inicio, data_fim),
       calcularPipeline(whereLeads),
       calcularHeatmap(whereLeads),
@@ -481,8 +589,8 @@ async function metricas(req, res, next) {
     // Comparação com período anterior
     if (comparar === 'true' && data_inicio && data_fim) {
       const anterior = periodoAnterior(data_inicio, data_fim);
-      const { whereLeads: wlAnt, whereVendas: wvAnt } = buildWheres(anterior.dataInicio, anterior.dataFim, vendedor_id, canal);
-      const kpisAnterior = await calcularKpis(wlAnt, wvAnt);
+      const { whereLeads: wlAnt, whereVendas: wvAnt, whereVendaT: wvtAnt } = buildWheres(anterior.dataInicio, anterior.dataFim, vendedor_id, canal);
+      const kpisAnterior = await calcularKpis(wlAnt, wvAnt, wvtAnt);
 
       resultado.comparacao = {
         periodo: anterior,
