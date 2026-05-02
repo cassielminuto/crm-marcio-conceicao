@@ -1,7 +1,8 @@
 const logger = require('../utils/logger');
 
-// Distribuicao 100% — Lucas
+// Distribuicao 1:1 — Gabriel, Lucas
 const DISTRIBUICAO = [
+  6, // Gabriel
   1, // Lucas
 ];
 
@@ -14,8 +15,8 @@ async function obterProximoVendedor() {
     logger.info(`Lead distribuido para vendedor ID ${vendedorId} (contador: ${contador})`);
     return vendedorId;
   } catch (e) {
-    logger.warn('Redis indisponivel para distribuicao, fallback para vendedorId=1 (Lucas)');
-    return 1;
+    logger.warn('Redis indisponivel para distribuicao, fallback para vendedorId=6 (Gabriel)');
+    return 6;
   }
 }
 
