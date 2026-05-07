@@ -206,6 +206,14 @@ export default function Dashboard() {
 
   // ─── Carregar dados existentes ───
   const carregarDados = useCallback(async () => {
+    if (!dataInicio || !dataFim) return;
+    const inicioDate = dataInicio instanceof Date ? dataInicio : new Date(dataInicio);
+    const fimDate2 = dataFim instanceof Date ? dataFim : new Date(dataFim);
+    if (isNaN(inicioDate.getTime()) || isNaN(fimDate2.getTime())) {
+      console.warn('[Dashboard] datas inválidas, abortando carga:', { dataInicio, dataFim });
+      return;
+    }
+
     setCarregando(true);
     try {
       const inicioStr = dataInicio instanceof Date ? dataInicio.toISOString().slice(0, 10) : dataInicio;
@@ -263,6 +271,7 @@ export default function Dashboard() {
         setFollowUps([]);
       }
     } catch (err) {
+      console.error('[Dashboard] carregarDados falhou:', err);
       toast('Erro ao carregar dashboard', 'urgente');
     } finally {
       setCarregando(false);
