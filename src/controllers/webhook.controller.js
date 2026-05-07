@@ -10,6 +10,10 @@ const { obterProximoVendedor } = require('../services/distribuicaoLeads');
 
 const OPERADOR_INBOUND_ID = 11; // Thomaz (Vendedor #11)
 
+// D7 pendente: forms ainda não têm mapping canônico, scoreEngineV2 sempre devolveria
+// pontuacao=0/nao_qualificado. Flag desliga o scoring até D7 fechar.
+const SCORING_ENABLED = process.env.SCORING_ENABLED === 'true';
+
 async function receberLeadRespondi(req, res, next) {
   try {
     const dados = req.body;
@@ -186,17 +190,19 @@ async function receberLeadRespondi(req, res, next) {
     let respostasCanonicas = {};
     const respostas = { nome, telefone, email };
 
-    try {
-      respostasCanonicas = normalizar(dados);
-      const resultado = calcularScoreV2(respostasCanonicas);
-      pontuacao = resultado.pontuacao;
-      classificacao = resultado.classificacao;
-    } catch (err) {
-      logger.warn(`scoreEngineV2 falhou para form "${tituloFormulario}": ${err.message}`);
-    }
+    if (SCORING_ENABLED) {
+      try {
+        respostasCanonicas = normalizar(dados);
+        const resultado = calcularScoreV2(respostasCanonicas);
+        pontuacao = resultado.pontuacao;
+        classificacao = resultado.classificacao;
+      } catch (err) {
+        logger.warn(`scoreEngineV2 falhou para form "${tituloFormulario}": ${err.message}`);
+      }
 
-    if (formularioTipo === 'pendente_mapeamento') {
-      logger.warn(`Form sem mapping canonico (D7 pendente): "${tituloFormulario}" — lead criado com pontuacao=0, classificacao=nao_qualificado`);
+      if (formularioTipo === 'pendente_mapeamento') {
+        logger.warn(`Form sem mapping canonico (D7 pendente): "${tituloFormulario}" — lead criado com pontuacao=0, classificacao=nao_qualificado`);
+      }
     }
 
     // Lead.classe (enum NOT NULL) fica inerte (D3) — default 'B' preserva contrato
