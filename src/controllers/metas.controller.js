@@ -33,10 +33,10 @@ async function calcularRealizadoPeriodo(periodo) {
 
   let vendas;
   if (READ_FROM_VENDA) {
+    // Inclui recorrencias — Meta Realizado deve bater com Faturamento total da Hubla.
     const grupos = await prisma.venda.groupBy({
       by: ['closerResponsavelId'],
       where: {
-        recorrencia: false,
         dataPagamento: { gte: inicio, lt: fim },
         closerResponsavelId: { not: null },
       },
