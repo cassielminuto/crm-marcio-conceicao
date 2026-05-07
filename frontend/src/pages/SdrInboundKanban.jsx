@@ -8,6 +8,7 @@ import SdrInboundLeadCard from '../components/SdrInboundLeadCard';
 import SdrInboundLeadModal from '../components/SdrInboundLeadModal';
 import SdrInboundHandoffModal from '../components/SdrInboundHandoffModal';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { salvarFiltros, carregarFiltros } from '../utils/filtrosPersistentes';
 
 const COLUNAS = [
   { slug: 'novo_lead', label: 'Novo Lead', cor: '#74b9ff' },
@@ -152,10 +153,18 @@ export default function SdrInboundKanban() {
   // ConfirmDialog
   const [confirmDialog, setConfirmDialog] = useState(null);
 
-  // Filters
-  const [busca, setBusca] = useState('');
-  const [filtroEtapa, setFiltroEtapa] = useState('');
-  const [filtroPeriodo, setFiltroPeriodo] = useState('');
+  // Filters (persistidos em sessionStorage)
+  const CHAVE_FILTROS = 'filtros:sdr-inbound';
+  const filtrosDefaults = useMemo(() => ({ busca: '', filtroEtapa: '', filtroPeriodo: '' }), []);
+  const filtrosIniciais = useMemo(() => carregarFiltros(CHAVE_FILTROS, filtrosDefaults), [filtrosDefaults]);
+
+  const [busca, setBusca] = useState(filtrosIniciais.busca);
+  const [filtroEtapa, setFiltroEtapa] = useState(filtrosIniciais.filtroEtapa);
+  const [filtroPeriodo, setFiltroPeriodo] = useState(filtrosIniciais.filtroPeriodo);
+
+  useEffect(() => {
+    salvarFiltros(CHAVE_FILTROS, { busca, filtroEtapa, filtroPeriodo });
+  }, [busca, filtroEtapa, filtroPeriodo]);
 
   const carregarDados = useCallback(async () => {
     try {

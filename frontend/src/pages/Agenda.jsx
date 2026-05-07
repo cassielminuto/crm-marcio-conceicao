@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -10,6 +10,7 @@ import api from '../services/api';
 import AgendaFormModal from '../components/AgendaFormModal';
 import AgendaEventoModal from '../components/AgendaEventoModal';
 import { corDoVendedor } from '../utils/coresVendedor';
+import { salvarFiltros, carregarFiltros } from '../utils/filtrosPersistentes';
 
 const CORES_TIPO = {
   reuniao_sdr_instagram: '#3b82f6',
@@ -48,7 +49,14 @@ export default function Agenda() {
   const calendarRef = useRef(null);
   const [eventos, setEventos] = useState([]);
   const [vendedores, setVendedores] = useState([]);
-  const [filtroVendedor, setFiltroVendedor] = useState('todos');
+  const CHAVE_FILTROS = 'filtros:agenda';
+  const filtrosDefaults = useMemo(() => ({ filtroVendedor: 'todos' }), []);
+  const filtrosIniciais = useMemo(() => carregarFiltros(CHAVE_FILTROS, filtrosDefaults), [filtrosDefaults]);
+  const [filtroVendedor, setFiltroVendedor] = useState(filtrosIniciais.filtroVendedor);
+
+  useEffect(() => {
+    salvarFiltros(CHAVE_FILTROS, { filtroVendedor });
+  }, [filtroVendedor]);
   const [carregando, setCarregando] = useState(true);
   const [reunioesHoje, setReunioesHoje] = useState(0);
 
