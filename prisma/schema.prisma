@@ -203,6 +203,7 @@ model Vendedor {
   sdrInboundComoOperador LeadSDRInbound[] @relation("OperadorInbound")
   sdrInboundComoCloser   LeadSDRInbound[] @relation("CloserDestinoInbound")
   eventosAgenda          EventoAgenda[]   @relation("EventosAgenda")
+  vendasComoCloser       Venda[]          @relation("VendaCloser")
 
   @@map("vendedores")
 }
@@ -238,10 +239,19 @@ model Lead {
   previsaoFechamento  DateTime?     @map("previsao_fechamento")
   motivoPerda         String?       @map("motivo_perda")
   produtoHubla        String?       @map("produto_hubla") @db.VarChar(255)
+  // Fase 1 — scoring V2 + tracking de aquisicao paga
+  classificacao       String?       @db.VarChar(20)
+  fbclid              String?       @db.VarChar(255)
+  gclid               String?       @db.VarChar(255)
+  // Fase 2 — atribuicao a campanha/criativo
+  campanhaId          Int?          @map("campanha_id")
+  criativoId          Int?          @map("criativo_id")
   createdAt           DateTime      @default(now()) @map("created_at")
   updatedAt           DateTime      @updatedAt @map("updated_at")
 
   vendedor            Vendedor?     @relation(fields: [vendedorId], references: [id])
+  campanha            Campanha?     @relation(fields: [campanhaId], references: [id])
+  criativo            Criativo?     @relation(fields: [criativoId], references: [id])
   interacoes          Interacao[]
   followUps           FollowUp[]
   funilHistorico      FunilHistorico[]
@@ -249,7 +259,11 @@ model Lead {
   duplicatasOrigem    PossivelDuplicata[] @relation("DuplicataOrigem")
   duplicatasDe        PossivelDuplicata[] @relation("DuplicataDuplicata")
   leadSdrOrigem       LeadSDR[]
+  formularioRespostas FormularioResposta[]
+  vendas              Venda[]
 
+  @@index([campanhaId])
+  @@index([criativoId])
   @@map("leads")
 }
 
@@ -358,6 +372,8 @@ model FunilHistorico {
 }
 
 /// Tabela: etapas_funil (configuração dinâmica)
+/// Fase 2 — coluna `pipeline` e descritor/filtro (nao faz parte da chave unica).
+/// Slug continua globalmente unico; novos pipelines usam prefixo (int_*, dg_*).
 model EtapaFunil {
   id        Int      @id @default(autoincrement())
   slug      String   @unique @db.VarChar(100)
@@ -366,9 +382,11 @@ model EtapaFunil {
   ordem     Int      @default(0)
   ativo     Boolean  @default(true)
   tipo      String   @default("normal") @db.VarChar(20)
+  pipeline  String   @default("comercial") @db.VarChar(30)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  @@index([pipeline, ordem])
   @@map("etapas_funil")
 }
 
@@ -628,4 +646,121 @@ model Notificacao {
   usuario   Usuario  @relation(fields: [usuarioId], references: [id])
 
   @@map("notificacoes")
+}
+
+/// Tabela 16: formulario_respostas
+/// Historico de preenchimentos de formularios por lead. Lead pode preencher
+/// multiplos forms ao longo do tempo (ex: Diag Gratuito, depois Intensivao).
+/// Lead.dadosRespondi e unico e apaga historico — esta tabela preserva.
+model FormularioResposta {
+  id                Int       @id @default(autoincrement())
+  leadId            Int       @map("lead_id")
+  formularioTipo    String    @map("formulario_tipo") @db.VarChar(50)
+  formularioOrigem  String?   @map("formulario_origem") @db.VarChar(255)
+  respostas         Json
+  scoreCalculado    Int?      @map("score_calculado")
+  classificacao     String?   @db.VarChar(20)
+  submittedAt       DateTime  @map("submitted_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  lead              Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@index([formularioTipo, submittedAt])
+  @@map("formulario_respostas")
+}
+
+/// Tabela 17: campanhas (Fase 2 — aquisicao paga)
+/// Campanhas do Meta Ads (ou outras) organizadas por estrategia.
+/// estrategia e String (nao enum) pra evitar migration a cada estrategia nova.
+/// Valores esperados: "intensivao_pago" | "diag_gratuito_n1" | "diag_gratuito_n2".
+/// gastoAcumulado e atualizado pelo job Meta Marketing API (Fase 3).
+model Campanha {
+  id              Int        @id @default(autoincrement())
+  metaCampaignId  String?    @unique @map("meta_campaign_id") @db.VarChar(50)
+  nome            String     @db.VarChar(255)
+  estrategia      String     @db.VarChar(50)
+  status          String     @default("ativa") @db.VarChar(20)
+  budgetDiario    Decimal?   @map("budget_diario") @db.Decimal(10, 2)
+  gastoAcumulado  Decimal    @default(0) @map("gasto_acumulado") @db.Decimal(12, 2)
+  dataInicio      DateTime?  @map("data_inicio")
+  dataFim         DateTime?  @map("data_fim")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  criativos       Criativo[]
+  leads           Lead[]
+  vendas          Venda[]
+
+  @@index([estrategia, status])
+  @@map("campanhas")
+}
+
+/// Tabela 18: criativos (Fase 2 — aquisicao paga)
+/// Anuncios individuais dentro de uma Campanha.
+/// formato / angulo / narrativa / origemProducao sao String (nao enum) pra
+/// permitir experimentacao sem migration.
+model Criativo {
+  id              Int       @id @default(autoincrement())
+  campanhaId      Int       @map("campanha_id")
+  metaAdId        String?   @unique @map("meta_ad_id") @db.VarChar(50)
+  nome            String    @db.VarChar(255)
+  formato         String    @db.VarChar(30)
+  angulo          String?   @db.VarChar(30)
+  narrativa       String?   @db.VarChar(30)
+  origemProducao  String?   @map("origem_producao") @db.VarChar(20)
+  gastoAcumulado  Decimal   @default(0) @map("gasto_acumulado") @db.Decimal(12, 2)
+  impressoes      BigInt    @default(0)
+  cliques         Int       @default(0)
+  ctr             Float?
+  cpc             Decimal?  @db.Decimal(8, 4)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  campanha        Campanha  @relation(fields: [campanhaId], references: [id])
+  leads           Lead[]
+  vendas          Venda[]
+
+  @@index([campanhaId])
+  @@map("criativos")
+}
+
+/// Tabela 19: vendas (Fase 2 — refator central)
+/// Entidade separada do Lead. Lead tem 1:N Vendas (D1: primeira cobranca
+/// paga = recorrencia=false; cobrancas subsequentes = recorrencia=true).
+/// hublaInvoiceId unique garante idempotencia contra retry do webhook Hubla.
+/// campanhaId/criativoId opcionais: venda pode existir sem atribuicao
+/// (ex: venda manual, lead antigo anterior a campanhas).
+model Venda {
+  id                  Int       @id @default(autoincrement())
+  leadId              Int       @map("lead_id")
+  campanhaId          Int?      @map("campanha_id")
+  criativoId          Int?      @map("criativo_id")
+  hublaInvoiceId      String?   @unique @map("hubla_invoice_id") @db.VarChar(100)
+  produto             String?   @db.VarChar(255)
+  valorTotal          Decimal   @map("valor_total") @db.Decimal(10, 2)
+  taxas               Decimal   @default(0) @db.Decimal(10, 2)
+  valorLiquido        Decimal?  @map("valor_liquido") @db.Decimal(10, 2)
+  metodoPagamento     String?   @map("metodo_pagamento") @db.VarChar(30)
+  parcelas            Int?
+  orderBumpsAceitos   Json?     @map("order_bumps_aceitos")
+  utmsCheckout        Json?     @map("utms_checkout")
+  fbclidCheckout      String?   @map("fbclid_checkout") @db.VarChar(255)
+  closerResponsavelId Int?      @map("closer_responsavel_id")
+  origemVenda         String?   @map("origem_venda") @db.VarChar(50)
+  recorrencia         Boolean   @default(false)
+  dataPagamento       DateTime  @map("data_pagamento")
+  cicloVendaDias      Int?      @map("ciclo_venda_dias")
+  createdAt           DateTime  @default(now()) @map("created_at")
+
+  lead                Lead       @relation(fields: [leadId], references: [id])
+  campanha            Campanha?  @relation(fields: [campanhaId], references: [id], onDelete: Restrict)
+  criativo            Criativo?  @relation(fields: [criativoId], references: [id], onDelete: Restrict)
+  closerResponsavel   Vendedor?  @relation("VendaCloser", fields: [closerResponsavelId], references: [id], onDelete: Restrict)
+
+  @@index([leadId])
+  @@index([dataPagamento])
+  @@index([campanhaId, dataPagamento])
+  @@index([recorrencia, dataPagamento])
+  @@map("vendas")
 }

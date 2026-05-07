@@ -46,3 +46,31 @@ export function isProdutoExcluido(lead, produtosExcluidos) {
   if (!p) return false;
   return produtosExcluidos.has(p);
 }
+
+// ─── Helpers para a entidade Venda (Fase 2B) ───
+// produto agora é campo dedicado em Venda. Fallback pra venda.lead.dadosRespondi
+// se algum dia produto vier null (defensivo — backfill pode ter pulado).
+
+export function extrairProdutoVenda(venda) {
+  if (!venda) return null;
+  if (venda.produto) return normalizarProduto(venda.produto);
+  const dr = venda.lead?.dadosRespondi;
+  if (dr?.hubla?.produto) return normalizarProduto(dr.hubla.produto);
+  return null;
+}
+
+export function extrairProdutosUnicosVenda(vendas) {
+  const set = new Set();
+  for (const v of vendas) {
+    const p = extrairProdutoVenda(v);
+    if (p) set.add(p);
+  }
+  return [...set].sort();
+}
+
+export function isProdutoExcluidoVenda(venda, produtosExcluidos) {
+  if (!produtosExcluidos || produtosExcluidos.size === 0) return false;
+  const p = extrairProdutoVenda(venda);
+  if (!p) return false;
+  return produtosExcluidos.has(p);
+}

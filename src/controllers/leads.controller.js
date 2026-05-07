@@ -839,6 +839,17 @@ async function listarFunil(req, res, next) {
       })
     );
 
+    // Fase 2B: include vendas[] (so primeiras vendas, recorrencia=false)
+    // pra Funil.jsx derivar vendaRealizada/valorEfetivo. Select minimo
+    // pra evitar payload grande.
+    const includeFunil = {
+      vendedor: { select: { id: true, nomeExibicao: true } },
+      vendas: {
+        where: { recorrencia: false },
+        select: { id: true, valorTotal: true },
+      },
+    };
+
     for (const agg of closedAggregations) {
       let recentLeads = [];
       if (carregarLeadsFechados && agg.count > 0) {
@@ -846,9 +857,7 @@ async function listarFunil(req, res, next) {
           where: { ...where, etapaFunil: agg.slug },
           orderBy: [{ dataConversao: 'desc' }, { updatedAt: 'desc' }],
           take: 30,
-          include: {
-            vendedor: { select: { id: true, nomeExibicao: true } },
-          },
+          include: includeFunil,
         });
       }
       etapas[agg.slug] = { leads: recentLeads, count: agg.count, valorTotal: agg.valorTotal, totalReal: agg.count };
@@ -859,9 +868,7 @@ async function listarFunil(req, res, next) {
     const leads = await prisma.lead.findMany({
       where: activeWhere,
       orderBy: { createdAt: 'desc' },
-      include: {
-        vendedor: { select: { id: true, nomeExibicao: true } },
-      },
+      include: includeFunil,
     });
 
     for (const lead of leads) {
