@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import FiltroUnificado from '../components/FiltroUnificado';
 import { extrairProdutosUnicos, isProdutoExcluido } from '../utils/produtos';
+import { salvarFiltros, carregarFiltros, limparFiltros as limparFiltrosStorage } from '../utils/filtrosPersistentes';
 import { DollarSign, TrendingUp, Trophy, ArrowUpDown, Search, Phone, MessageCircle, Mail, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -63,17 +64,36 @@ export default function Vendas() {
   const [vendas, setVendas] = useState([]);
   const [vendedores, setVendedores] = useState([]);
   const [carregando, setCarregando] = useState(true);
-  const [busca, setBusca] = useState('');
-  const [ordenacao, setOrdenacao] = useState({ campo: 'dataConversao', dir: 'desc' });
+  const CHAVE_FILTROS = 'filtros:vendas';
+  const filtrosDefaults = useMemo(() => {
+    const n = new Date();
+    return {
+      busca: '',
+      ordenacao: { campo: 'dataConversao', dir: 'desc' },
+      dataInicio: new Date(n.getFullYear(), n.getMonth(), 1),
+      dataFim: new Date(),
+      filtroVendedor: '',
+      filtroCanal: '',
+      produtosExcluidos: new Set(),
+    };
+  }, []);
+  const filtrosIniciais = useMemo(() => carregarFiltros(CHAVE_FILTROS, filtrosDefaults), [filtrosDefaults]);
+
+  const [busca, setBusca] = useState(filtrosIniciais.busca);
+  const [ordenacao, setOrdenacao] = useState(filtrosIniciais.ordenacao);
   const [celulaSalva, setCelulaSalva] = useState(null); // { leadId, campo } - feedback visual
   const [editandoCelula, setEditandoCelula] = useState(null); // { leadId, campo, valor }
   const [confirmDialog, setConfirmDialog] = useState(null);
 
-  const [dataInicio, setDataInicio] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
-  const [dataFim, setDataFim] = useState(() => new Date());
-  const [filtroVendedor, setFiltroVendedor] = useState('');
-  const [filtroCanal, setFiltroCanal] = useState('');
-  const [produtosExcluidos, setProdutosExcluidos] = useState(new Set());
+  const [dataInicio, setDataInicio] = useState(filtrosIniciais.dataInicio);
+  const [dataFim, setDataFim] = useState(filtrosIniciais.dataFim);
+  const [filtroVendedor, setFiltroVendedor] = useState(filtrosIniciais.filtroVendedor);
+  const [filtroCanal, setFiltroCanal] = useState(filtrosIniciais.filtroCanal);
+  const [produtosExcluidos, setProdutosExcluidos] = useState(filtrosIniciais.produtosExcluidos);
+
+  useEffect(() => {
+    salvarFiltros(CHAVE_FILTROS, { busca, ordenacao, dataInicio, dataFim, filtroVendedor, filtroCanal, produtosExcluidos });
+  }, [busca, ordenacao, dataInicio, dataFim, filtroVendedor, filtroCanal, produtosExcluidos]);
 
   const carregarVendas = useCallback(async () => {
     setCarregando(true);
@@ -203,6 +223,9 @@ export default function Vendas() {
     setFiltroVendedor('');
     setFiltroCanal('');
     setProdutosExcluidos(new Set());
+    setBusca('');
+    setOrdenacao({ campo: 'dataConversao', dir: 'desc' });
+    limparFiltrosStorage(CHAVE_FILTROS);
   };
 
   if (carregando) {

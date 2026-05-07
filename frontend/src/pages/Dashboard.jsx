@@ -4,6 +4,7 @@ import { useToast } from '../context/ToastContext';
 import api from '../services/api';
 import FiltroUnificado from '../components/FiltroUnificado';
 import { extrairProdutosUnicos, isProdutoExcluido } from '../utils/produtos';
+import { salvarFiltros, carregarFiltros, limparFiltros } from '../utils/filtrosPersistentes';
 import AIResumoPeriodo from '../components/AIResumoPeriodo';
 import AvatarVendedor from '../components/AvatarVendedor';
 import { useNavigate } from 'react-router-dom';
@@ -172,20 +173,36 @@ export default function Dashboard() {
   const [metricasAnuncio, setMetricasAnuncio] = useState(null);
   const [metaEmpresaData, setMetaEmpresaData] = useState(null);
 
-  const [dataInicio, setDataInicio] = useState(() => {
+  const CHAVE_FILTROS = 'filtros:dashboard';
+  const filtrosDefaults = useMemo(() => {
     const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1);
-  });
-  const [dataFim, setDataFim] = useState(() => new Date());
-  const [filtroVendedor, setFiltroVendedor] = useState('');
-  const [filtroCanal, setFiltroCanal] = useState('');
-  const [produtosExcluidos, setProdutosExcluidos] = useState(new Set());
-  const [chartPeriod, setChartPeriod] = useState('30d');
+    return {
+      dataInicio: new Date(now.getFullYear(), now.getMonth(), 1),
+      dataFim: new Date(),
+      filtroVendedor: '',
+      filtroCanal: '',
+      produtosExcluidos: new Set(),
+      chartPeriod: '30d',
+      comparar: false,
+    };
+  }, []);
+  const filtrosIniciais = useMemo(() => carregarFiltros(CHAVE_FILTROS, filtrosDefaults), [filtrosDefaults]);
+
+  const [dataInicio, setDataInicio] = useState(filtrosIniciais.dataInicio);
+  const [dataFim, setDataFim] = useState(filtrosIniciais.dataFim);
+  const [filtroVendedor, setFiltroVendedor] = useState(filtrosIniciais.filtroVendedor);
+  const [filtroCanal, setFiltroCanal] = useState(filtrosIniciais.filtroCanal);
+  const [produtosExcluidos, setProdutosExcluidos] = useState(filtrosIniciais.produtosExcluidos);
+  const [chartPeriod, setChartPeriod] = useState(filtrosIniciais.chartPeriod);
   const [todosVendedores, setTodosVendedores] = useState([]);
 
   // ─── State novo (endpoint /api/dashboard/metricas) ───
   const [dashMetricas, setDashMetricas] = useState(null);
-  const [comparar, setComparar] = useState(false);
+  const [comparar, setComparar] = useState(filtrosIniciais.comparar);
+
+  useEffect(() => {
+    salvarFiltros(CHAVE_FILTROS, { dataInicio, dataFim, filtroVendedor, filtroCanal, produtosExcluidos, chartPeriod, comparar });
+  }, [dataInicio, dataFim, filtroVendedor, filtroCanal, produtosExcluidos, chartPeriod, comparar]);
 
   // ─── Carregar dados existentes ───
   const carregarDados = useCallback(async () => {
@@ -331,7 +348,17 @@ export default function Dashboard() {
           produtosExcluidos={produtosExcluidos} setProdutosExcluidos={setProdutosExcluidos}
           vendedores={todosVendedores}
           produtosDisponiveis={produtosDisponiveis}
-          onLimpar={() => { setFiltroVendedor(''); setFiltroCanal(''); setProdutosExcluidos(new Set()); }}
+          onLimpar={() => {
+            const now = new Date();
+            setDataInicio(new Date(now.getFullYear(), now.getMonth(), 1));
+            setDataFim(new Date());
+            setFiltroVendedor('');
+            setFiltroCanal('');
+            setProdutosExcluidos(new Set());
+            setChartPeriod('30d');
+            setComparar(false);
+            limparFiltros(CHAVE_FILTROS);
+          }}
         />
       </div>
 

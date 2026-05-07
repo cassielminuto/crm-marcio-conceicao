@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import FiltroUnificado from '../components/FiltroUnificado';
 import { extrairProduto, extrairProdutosUnicos, isProdutoExcluido } from '../utils/produtos';
+import { salvarFiltros, carregarFiltros, limparFiltros } from '../utils/filtrosPersistentes';
 import { Filter, Clock, User, Instagram, Megaphone, Trash2, Calendar, X, Plus, ChevronLeft, ChevronRight, Settings, Package } from 'lucide-react';
 
 const CORES = ['#3b82f6','#eab308','#a855f7','#f97316','#22c55e','#ef4444','#06b6d4','#ec4899','#6366f1','#84cc16'];
@@ -338,15 +339,30 @@ export default function Funil() {
   const [novoTipo, setNovoTipo] = useState('normal');
   const [criandoEtapa, setCriandoEtapa] = useState(false);
 
-  const [filtroVendedor, setFiltroVendedor] = useState('');
-  const [filtroClasse, setFiltroClasse] = useState('');
-  const [filtroCanal, setFiltroCanal] = useState('');
-  const [produtosExcluidos, setProdutosExcluidos] = useState(new Set());
-  const [dataInicio, setDataInicio] = useState(() => {
+  const CHAVE_FILTROS = 'filtros:funil';
+  const filtrosDefaults = useMemo(() => {
     const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
-  });
-  const [dataFim, setDataFim] = useState(() => new Date().toISOString().slice(0, 10));
+    return {
+      filtroVendedor: '',
+      filtroClasse: '',
+      filtroCanal: '',
+      produtosExcluidos: new Set(),
+      dataInicio: new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10),
+      dataFim: new Date().toISOString().slice(0, 10),
+    };
+  }, []);
+  const filtrosIniciais = useMemo(() => carregarFiltros(CHAVE_FILTROS, filtrosDefaults), [filtrosDefaults]);
+
+  const [filtroVendedor, setFiltroVendedor] = useState(filtrosIniciais.filtroVendedor);
+  const [filtroClasse, setFiltroClasse] = useState(filtrosIniciais.filtroClasse);
+  const [filtroCanal, setFiltroCanal] = useState(filtrosIniciais.filtroCanal);
+  const [produtosExcluidos, setProdutosExcluidos] = useState(filtrosIniciais.produtosExcluidos);
+  const [dataInicio, setDataInicio] = useState(filtrosIniciais.dataInicio);
+  const [dataFim, setDataFim] = useState(filtrosIniciais.dataFim);
+
+  useEffect(() => {
+    salvarFiltros(CHAVE_FILTROS, { filtroVendedor, filtroClasse, filtroCanal, produtosExcluidos, dataInicio, dataFim });
+  }, [filtroVendedor, filtroClasse, filtroCanal, produtosExcluidos, dataInicio, dataFim]);
 
   const carregarFunil = useCallback(async () => {
     setCarregando(true);
@@ -600,7 +616,7 @@ export default function Funil() {
           produtosExcluidos={produtosExcluidos} setProdutosExcluidos={setProdutosExcluidos}
           vendedores={vendedores}
           produtosDisponiveis={produtosDisponiveis}
-          onLimpar={() => { setFiltroVendedor(''); setFiltroClasse(''); setFiltroCanal(''); setProdutosExcluidos(new Set()); const n = new Date(); setDataInicio(new Date(n.getFullYear(), n.getMonth(), 1).toISOString().slice(0, 10)); setDataFim(n.toISOString().slice(0, 10)); }}
+          onLimpar={() => { setFiltroVendedor(''); setFiltroClasse(''); setFiltroCanal(''); setProdutosExcluidos(new Set()); const n = new Date(); setDataInicio(new Date(n.getFullYear(), n.getMonth(), 1).toISOString().slice(0, 10)); setDataFim(n.toISOString().slice(0, 10)); limparFiltros(CHAVE_FILTROS); }}
         />
       </div>
 

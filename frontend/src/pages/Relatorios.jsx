@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../services/api';
 import FiltroUnificado from '../components/FiltroUnificado';
 import { extrairProduto, extrairProdutosUnicos, isProdutoExcluido } from '../utils/produtos';
+import { salvarFiltros, carregarFiltros, limparFiltros } from '../utils/filtrosPersistentes';
 import AIResumoPeriodo from '../components/AIResumoPeriodo';
 import OrigemLeads from '../components/OrigemLeads';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -76,15 +77,28 @@ export default function Relatorios() {
   const [vendedores, setVendedores] = useState([]);
   const [rawVendas, setRawVendas] = useState([]);
   const [rawLeads, setRawLeads] = useState([]);
-  const [filtroVendedor, setFiltroVendedor] = useState('');
-  const [filtroCanal, setFiltroCanal] = useState('');
-  const [produtosExcluidos, setProdutosExcluidos] = useState(new Set());
-
-  const [dataInicio, setDataInicio] = useState(() => {
+  const CHAVE_FILTROS = 'filtros:relatorios';
+  const filtrosDefaults = useMemo(() => {
     const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1);
-  });
-  const [dataFim, setDataFim] = useState(() => new Date());
+    return {
+      filtroVendedor: '',
+      filtroCanal: '',
+      produtosExcluidos: new Set(),
+      dataInicio: new Date(now.getFullYear(), now.getMonth(), 1),
+      dataFim: new Date(),
+    };
+  }, []);
+  const filtrosIniciais = useMemo(() => carregarFiltros(CHAVE_FILTROS, filtrosDefaults), [filtrosDefaults]);
+
+  const [filtroVendedor, setFiltroVendedor] = useState(filtrosIniciais.filtroVendedor);
+  const [filtroCanal, setFiltroCanal] = useState(filtrosIniciais.filtroCanal);
+  const [produtosExcluidos, setProdutosExcluidos] = useState(filtrosIniciais.produtosExcluidos);
+  const [dataInicio, setDataInicio] = useState(filtrosIniciais.dataInicio);
+  const [dataFim, setDataFim] = useState(filtrosIniciais.dataFim);
+
+  useEffect(() => {
+    salvarFiltros(CHAVE_FILTROS, { filtroVendedor, filtroCanal, produtosExcluidos, dataInicio, dataFim });
+  }, [filtroVendedor, filtroCanal, produtosExcluidos, dataInicio, dataFim]);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -259,7 +273,15 @@ export default function Relatorios() {
           produtosExcluidos={produtosExcluidos} setProdutosExcluidos={setProdutosExcluidos}
           vendedores={vendedores}
           produtosDisponiveis={produtosDisponiveis}
-          onLimpar={() => { setFiltroVendedor(''); setFiltroCanal(''); setProdutosExcluidos(new Set()); }}
+          onLimpar={() => {
+            const now = new Date();
+            setFiltroVendedor('');
+            setFiltroCanal('');
+            setProdutosExcluidos(new Set());
+            setDataInicio(new Date(now.getFullYear(), now.getMonth(), 1));
+            setDataFim(new Date());
+            limparFiltros(CHAVE_FILTROS);
+          }}
         />
       </div>
 
