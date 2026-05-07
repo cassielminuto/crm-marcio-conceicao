@@ -2,7 +2,7 @@ const prisma = require('../config/database');
 const logger = require('../utils/logger');
 
 // ─── Fonte de leitura de venda (Fase 2B do plano) ───
-// READ_FROM_VENDA = true  -> le da tabela Venda (recorrencia=false, dataPagamento)
+// READ_FROM_VENDA = true  -> le da tabela Venda (TODAS vendas + dataPagamento)
 // READ_FROM_VENDA = false -> le do Lead.vendaRealizada/valorVenda/dataConversao (legado)
 //
 // Default seguro: env nao setada -> false -> comportamento atual intocado.
@@ -42,7 +42,10 @@ function setCache(key, data) {
 // ─── Helpers de data ───
 // whereLeads: filtra por createdAt (quando lead entrou no sistema)
 // whereVendas: filtra por dataConversao em Lead.vendaRealizada=true (legado)
-// whereVendaT: filtra prisma.venda por dataPagamento + recorrencia=false
+// whereVendaT: filtra prisma.venda por dataPagamento (TODAS vendas, incluindo
+//   recorrencias — bate com o faturamento total da Hubla). Consumidores que
+//   precisam só da primeira venda (ex: tempo medio) aplicam recorrencia: false
+//   localmente.
 //   (vendedorId/canal sao aplicados na relation lead pra preservar semantica
 //   do filtro existente — filtra por dono do lead na hora da venda)
 //   campanhaId/criativoId sao aplicados direto na Venda quando READ_FROM_VENDA;
@@ -62,7 +65,7 @@ function buildWheres(dataInicio, dataFim, vendedorId, canal, campanhaId, criativ
   if (dataInicio) whereVendas.dataConversao = { ...whereVendas.dataConversao, gte: new Date(dataInicio) };
   if (dataFim) whereVendas.dataConversao = { ...whereVendas.dataConversao, lte: new Date(dataFim) };
 
-  const whereVendaT = { recorrencia: false };
+  const whereVendaT = {};
   const leadFilter = {};
   if (vendedorId) leadFilter.vendedorId = Number(vendedorId);
   if (canal) leadFilter.canal = canal;
@@ -215,9 +218,11 @@ async function calcularFunil(whereLeads) {
 // ─── 4. Tempo médio de conversão ───
 async function calcularTempoMedio(whereVendas, whereVendaT) {
   if (READ_FROM_VENDA) {
-    // Usa cicloVendaDias ja calculado pelo vendaService — economiza compute
+    // Usa cicloVendaDias ja calculado pelo vendaService — economiza compute.
+    // recorrencia: false aqui porque ciclo de venda só faz sentido na primeira
+    // venda (uma recorrência teria ciclo ~0 e enviesaria a média pra baixo).
     const vendas = await prisma.venda.findMany({
-      where: { ...whereVendaT, cicloVendaDias: { not: null } },
+      where: { ...whereVendaT, recorrencia: false, cicloVendaDias: { not: null } },
       select: { cicloVendaDias: true },
     });
     if (vendas.length === 0) return { tempoMedioConversaoDias: 0, amostra: 0 };
