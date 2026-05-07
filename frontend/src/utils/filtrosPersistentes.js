@@ -26,6 +26,18 @@ export function carregarFiltros(chave, defaults) {
     const raw = sessionStorage.getItem(chave);
     if (!raw) return defaults;
     const parsed = JSON.parse(raw, reviver);
+
+    // Safety net: converte strings ISO completas que escaparam do replacer.
+    // Acontece quando state foi setado com string ISO em vez de Date.
+    // Não pega "YYYY-MM-DD" puro (Funil) — exige T<HH>:<MM>.
+    for (const key of Object.keys(parsed)) {
+      const v = parsed[key];
+      if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v)) {
+        const d = new Date(v);
+        if (!isNaN(d.getTime())) parsed[key] = d;
+      }
+    }
+
     // Merge raso com defaults pra cobrir chaves novas adicionadas depois
     return { ...defaults, ...parsed };
   } catch {
